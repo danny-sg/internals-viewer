@@ -15,11 +15,7 @@ public interface IPlayheadChart
 
     void SelectAdjacentCall(bool forward);
 
-    void MarkCall(CallTreeNode? node, int callIndex);
-
     void MarkPositions(TracePoint[]? points);
-
-    void MovePlayheadTo(CallTreeNode node, int callIndex);
 
     void ShowMemoryUpdates(TraceMemoryWrites? writes, string? name);
 

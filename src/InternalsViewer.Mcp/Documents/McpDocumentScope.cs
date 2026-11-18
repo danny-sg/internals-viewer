@@ -76,7 +76,7 @@ public sealed class McpDocumentScope(
             hidden = callIndex >= 0 ? $"{Context.GetFunctionName(node)} #{callIndex}" : Context.GetFunctionName(node);
 
             at = node.Frame is { } frame
-                 && trace.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is { } list
+                 && trace.Store.Calls.GetCallList(frame.Address, frame.InstanceAddress) is { } list
                  && callIndex >= 0
                  && callIndex < list.Count
                 ? list.GetFromPosition(callIndex)

@@ -159,11 +159,11 @@ public sealed partial class TraceTimelineControl
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var callNodeIndex = row.GetCallNodeIndex(index);
+                    var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-                    if (IsSearchMatch(matches, callNodeIndex) && IsWithinTrim(row, index))
+                    if (IsSearchMatch(matches, replayNodeIndex) && IsWithinTrim(row, index))
                     {
-                        var label = LabelOf(callNodeIndex);
+                        var label = LabelOf(replayNodeIndex);
 
                         calls[label] = calls.GetValueOrDefault(label) + 1;
                     }
@@ -201,11 +201,11 @@ public sealed partial class TraceTimelineControl
         {
             var matches = new bool[timeline.NodeCount];
 
-            for (var callNodeIndex = 0; callNodeIndex < matches.Length; callNodeIndex++)
+            for (var replayNodeIndex = 0; replayNodeIndex < matches.Length; replayNodeIndex++)
             {
-                matches[callNodeIndex] = _searchLocator is { } found
-                    ? timeline.GetNode(callNodeIndex)?.Locators?.Contains(found) == true
-                    : MatchesSearch(LabelOf(callNodeIndex));
+                matches[replayNodeIndex] = _searchLocator is { } found
+                    ? timeline.GetNode(replayNodeIndex)?.Locators?.Contains(found) == true
+                    : MatchesSearch(LabelOf(replayNodeIndex));
             }
 
             _searchMatches = matches;
@@ -274,9 +274,9 @@ public sealed partial class TraceTimelineControl
     {
         for (var index = 0; index < accesses.Count; index++)
         {
-            var callNodeIndex = accesses.GetCallNodeIndex(index);
+            var replayNodeIndex = accesses.GetReplayNodeIndex(index);
 
-            if (callNodeIndex < 0 || callNodeIndex >= excluded.Length || !excluded[callNodeIndex])
+            if (replayNodeIndex < 0 || replayNodeIndex >= excluded.Length || !excluded[replayNodeIndex])
             {
                 return true;
             }
@@ -306,9 +306,10 @@ public sealed partial class TraceTimelineControl
         {
             excluded ??= new bool[timeline.NodeCount];
 
-            for (var callNodeIndex = 0; callNodeIndex < excluded.Length; callNodeIndex++)
+            for (var replayNodeIndex = 0; replayNodeIndex < excluded.Length; replayNodeIndex++)
             {
-                excluded[callNodeIndex] |= timeline.GetNode(callNodeIndex) is { Frame: not null } node && hidden.Contains(node.Category);
+                excluded[replayNodeIndex] |= timeline.GetNode(replayNodeIndex) is { Frame: not null } node
+                                             && hidden.Contains(node.Category);
             }
         }
 
@@ -377,7 +378,7 @@ public sealed partial class TraceTimelineControl
                 {
                     for (var index = 0; index < row.Count; index++)
                     {
-                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)) && IsWithinTrim(row, index))
+                        if (IsSearchMatch(matches, row.GetReplayNodeIndex(index)) && IsWithinTrim(row, index))
                         {
                             count++;
                         }
@@ -491,7 +492,7 @@ public sealed partial class TraceTimelineControl
                      index >= 0 && index < row.Count && row.GetStart(_axis, index) <= to;
                      index++)
                 {
-                    if (!IsSearchMatch(matches, row.GetCallNodeIndex(index))
+                    if (!IsSearchMatch(matches, row.GetReplayNodeIndex(index))
                         || Math.Max(row.GetEnd(_axis, index), row.GetStart(_axis, index) + minimumLength) < from)
                     {
                         continue;
@@ -575,7 +576,7 @@ public sealed partial class TraceTimelineControl
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
+                    if (IsSearchMatch(matches, row.GetReplayNodeIndex(index)))
                     {
                         spans.Add((row.GetStart(_axis, index), row.GetEnd(_axis, index)));
                     }
@@ -642,7 +643,7 @@ public sealed partial class TraceTimelineControl
 
                     for (var index = first; index < row.Count && (best is null || row.GetStart(_axis, index) < bestStart); index++)
                     {
-                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)) && IsWithinTrim(row, index))
+                        if (IsSearchMatch(matches, row.GetReplayNodeIndex(index)) && IsWithinTrim(row, index))
                         {
                             best = new FlameHit(lane, depth, index);
 
@@ -660,7 +661,7 @@ public sealed partial class TraceTimelineControl
 
                     for (var index = last; index >= 0 && (best is null || row.GetStart(_axis, index) >= bestStart); index--)
                     {
-                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)) && IsWithinTrim(row, index))
+                        if (IsSearchMatch(matches, row.GetReplayNodeIndex(index)) && IsWithinTrim(row, index))
                         {
                             best = new FlameHit(lane, depth, index);
 
@@ -679,7 +680,7 @@ public sealed partial class TraceTimelineControl
     private bool IsWithinTrim(TraceTimelineRow row, int index)
         => row.GetEnd(_axis, index) >= TrimFrom && row.GetStart(_axis, index) <= TrimTo;
 
-    private static bool IsSearchMatch(bool[] matches, int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < matches.Length && matches[callNodeIndex];
+    private static bool IsSearchMatch(bool[] matches, int replayNodeIndex) => replayNodeIndex >= 0 && replayNodeIndex < matches.Length && matches[replayNodeIndex];
 
     private void FindNodeMatches(CallTreeNode? selected)
     {
@@ -700,7 +701,7 @@ public sealed partial class TraceTimelineControl
 
     private bool[]? GetMemoryScope()
     {
-        var node = _selected is { } selected && SpanOf(selected) is { } span ? _visible?.GetNode(span.CallNodeIndex) : null;
+        var node = _selected is { } selected && SpanOf(selected) is { } span ? _visible?.GetNode(span.ReplayNodeIndex) : null;
 
         if (ReferenceEquals(node, _memoryScopeNode) && ReferenceEquals(_timeline, _memoryScopeTimeline))
         {
@@ -724,19 +725,19 @@ public sealed partial class TraceTimelineControl
 
         var any = false;
 
-        for (var callNodeIndex = 0; callNodeIndex < under.Length; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < under.Length; replayNodeIndex++)
         {
-            var parent = timeline.GetParent(callNodeIndex);
+            var parent = timeline.GetParent(replayNodeIndex);
 
-            under[callNodeIndex] = (parent >= 0 && under[parent]) || (timeline.GetNode(callNodeIndex) is { } callNode && isSelected(callNode));
+            under[replayNodeIndex] = (parent >= 0 && under[parent]) || (timeline.GetNode(replayNodeIndex) is { } callNode && isSelected(callNode));
 
-            any |= under[callNodeIndex];
+            any |= under[replayNodeIndex];
         }
 
         return any ? under : null;
     }
 
-    private bool IsDimmed(int callNodeIndex) => Excludes(_memoryWriters, callNodeIndex);
+    private bool IsDimmed(int replayNodeIndex) => Excludes(_memoryWriters, replayNodeIndex);
 
     private void SetMemoryWriters(int? block)
     {
@@ -754,7 +755,7 @@ public sealed partial class TraceTimelineControl
         Redraw();
     }
 
-    private static bool Excludes(bool[]? matches, int callNodeIndex) => matches is not null && callNodeIndex >= 0 && callNodeIndex < matches.Length && !matches[callNodeIndex];
+    private static bool Excludes(bool[]? matches, int replayNodeIndex) => matches is not null && replayNodeIndex >= 0 && replayNodeIndex < matches.Length && !matches[replayNodeIndex];
 
     private static SKColor Dimmed(SKColor colour)
     {

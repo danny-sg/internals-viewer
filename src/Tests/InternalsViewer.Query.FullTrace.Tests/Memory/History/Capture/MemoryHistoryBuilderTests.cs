@@ -8,7 +8,8 @@ using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -114,6 +115,45 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
+    public void An_Allocation_Over_Memory_Still_Held_By_An_Older_One_Ends_The_Older_One()
+    {
+        var store = Build([Block(Owned, 0x58, from: 1), Block(Owned + 0x20, 0x70, from: 5)],
+                          [Write(2, Owned + 0x30, 1), Write(6, Owned + 0x30, 2), Write(7, Owned + 0x30, 3)]);
+
+        Assert.Equal([(At(1), At(5), 1), (At(5), TracePosition.Unknown, 2)],
+                     store.Blocks.Select((b, index) => (b.FromPosition, b.ToPosition, store.GetWrites(index).Count)));
+    }
+
+    [Fact]
+    public void An_Allocation_Carved_From_A_Larger_One_Leaves_The_Larger_One_Live()
+    {
+        var store = Build([Block(Page, 0x2000, from: 1), Block(Page + 0x100, 0x20, from: 2)],
+                          [Write(3, Page + 0x10, 1), Write(4, Page + 0x108, 2), Write(5, Page + 0x10, 3)]);
+
+        Assert.Equal([TracePosition.Unknown, TracePosition.Unknown], store.Blocks.Select(b => b.ToPosition));
+    }
+
+    [Fact]
+    public void An_Allocation_Inside_An_Older_One_On_A_Page_Another_Memory_Object_Took_Ends_The_Older_One()
+    {
+        var store = Build([Block(Owned, 0x800, from: 1), Block(Owned + 0x20, 0x80, from: 5)],
+                          [Write(2, Owned + 0x10, 1), Write(6, Owned + 0x30, 2)],
+                          getPageOwner: (_, p) => new MemoryObjectReference(p < At(5) ? 0xA000UL : 0xB000UL, null, 0x2000));
+
+        Assert.Equal([(At(1), At(5)), (At(5), TracePosition.Unknown)], store.Blocks.Select(b => (b.FromPosition, b.ToPosition)));
+    }
+
+    [Fact]
+    public void An_Allocation_Inside_An_Older_One_Of_The_Same_Memory_Object_Leaves_The_Older_One_Live()
+    {
+        var store = Build([Block(Owned, 0x800, from: 1), Block(Owned + 0x20, 0x80, from: 5)],
+                          [Write(2, Owned + 0x10, 1), Write(6, Owned + 0x30, 2)],
+                          getPageOwner: (_, _) => new MemoryObjectReference(0xA000, null, 0x2000));
+
+        Assert.Equal([TracePosition.Unknown, TracePosition.Unknown], store.Blocks.Select(b => b.ToPosition));
+    }
+
+    [Fact]
     public void An_Iterator_Inside_A_Larger_Allocation_Gets_A_Block_To_Its_End()
     {
         var store = Build([Block(Page, 0x2000, from: 1)],
@@ -176,7 +216,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void A_Memory_Object_Page_Is_Watched_Unless_An_Allocation_Already_Covers_It()
     {
-        var store = new TraceCallStore.Builder().Build();
+        var store = new ReplayCallLog().Build();
 
         var allocations = MemoryWatchPlanner.GetAllocations(store,
                                                               [],
@@ -257,13 +297,11 @@ public class MemoryHistoryBuilderTests
         var grant = tree.AddCall(query, Frame(string.Empty, "PbufGetGrantedBuf", 0x20), 1);
         var steal = tree.AddCall(grant, Frame("BPool", "Steal", 0x30), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100, 0), Span(1, 10, 20, 0), Span(2, 12, 18, 0)]);
 
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(1, 0x30, 0, 1)]);
-
-        timeline.MapNodes([query, grant, steal]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(1, 0x30, 0, 1)], [query, grant, steal]);
 
         var store = Build([Block(Page, 0x2000, from: 15), Block(Owned, 0x2000, from: 30)],
                           [Write(40, Page, 1), Write(41, Owned, 1)],
@@ -299,13 +337,13 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader, timeline);
+        var store = MemoryHistoryStore.Read(reader, new TraceStore(new ReplayCallLog().Build(), timeline));
 
         var write = store.GetWrites(0)[1];
 
         Assert.Equal((1, 2, (byte)7), (store.Blocks.Count, store.WriteCount, store.GetImage(0, 1).Data[8]));
-        Assert.Equal((2, 0, Iterator), (write.CallNodeIndex, write.CallIndex, store.GetIterator(write)));
-        Assert.Equal((built.Blocks[0].CallNodeIndex, Thread), (store.Blocks[0].CallNodeIndex, store.Blocks[0].Thread));
+        Assert.Equal((2, 0, Iterator), (write.ReplayNodeIndex, write.CallIndex, store.GetIterator(write)));
+        Assert.Equal((built.Blocks[0].ReplayNodeIndex, Thread), (store.Blocks[0].ReplayNodeIndex, store.Blocks[0].Thread));
     }
 
     [Fact]
@@ -313,7 +351,7 @@ public class MemoryHistoryBuilderTests
     {
         var start = 5ul << 32;
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([new CallSpan(0, 0, 100, 0, start, start + 100, 0, Thread, 0, 1)]);
 
@@ -332,7 +370,7 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader, timeline);
+        var store = MemoryHistoryStore.Read(reader, new TraceStore(new ReplayCallLog().Build(), timeline));
 
         Assert.Equal(start + 50, built.GetPoint(0).Instructions);
         Assert.Equal(new TracePoint(At(50), start + 50), store.GetPoint(0));
@@ -464,7 +502,7 @@ public class MemoryHistoryBuilderTests
         var writes = store.GetWrites(0);
 
         Assert.Equal((true, 6, At(5), At(50), 1),
-                     (block.IsStack, block.CallNodeIndex, block.FromPosition, block.ToPosition, block.InstanceCount));
+                     (block.IsStack, block.ReplayNodeIndex, block.FromPosition, block.ToPosition, block.InstanceCount));
         Assert.Equal([MemoryHistoryAccessType.Initialised, MemoryHistoryAccessType.Changed], writes.Select(w => w.Type));
         Assert.Equal((2, (byte)9), (writes[1].Offset, store.GetBytes(writes[1])[0]));
     }
@@ -581,7 +619,7 @@ public class MemoryHistoryBuilderTests
         var pages = tree.AddCall(getRow, Frame("CMemThread<CMemObj>", "PbGetNewPages", 0x40), 1);
         var bufferPool = tree.AddCall(query, Frame("BPool", "Get", 0x50), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100, 0),
                      Span(1, 10, 20, 0),
@@ -596,9 +634,7 @@ public class MemoryHistoryBuilderTests
                                       new(0, 0x20, Iterator, 3),
                                       new(1, 0x30, 0, 2),
                                       new(1, 0x40, 0, 1),
-                                      new(0, 0x50, 0, 1)]);
-
-        timeline.MapNodes([query, getRow, scanner, pages, bufferPool]);
+                                      new(0, 0x50, 0, 1)], [query, getRow, scanner, pages, bufferPool]);
 
         return (timeline, (query, getRow, scanner));
     }
@@ -617,8 +653,8 @@ public class MemoryHistoryBuilderTests
         }
     };
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 
     private static MemoryBlock Block(ulong pointer, ulong bytes, ulong from, ulong? to = null)
         => new(pointer, bytes, Thread, At(from), to is { } end ? At(end) : TracePosition.Unknown);
@@ -633,7 +669,8 @@ public class MemoryHistoryBuilderTests
                                             ulong[]? owners = null,
                                             Dictionary<ulong, TracePosition>? iterators = null,
                                             TraceTimeline? timeline = null,
-                                            ulong[]? clerkPages = null)
+                                            ulong[]? clerkPages = null,
+                                            Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
     {
         var data = new List<byte>();
 
@@ -651,7 +688,8 @@ public class MemoryHistoryBuilderTests
         var recording = new MemoryHistoryBuilder(allocations,
                                                            owners ?? new ulong[blocks.Length],
                                                            iterators ?? new Dictionary<ulong, TracePosition>(),
-                                                           timeline);
+                                                           timeline,
+                                                           getPageOwner: getPageOwner);
 
         return recording.Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
     }

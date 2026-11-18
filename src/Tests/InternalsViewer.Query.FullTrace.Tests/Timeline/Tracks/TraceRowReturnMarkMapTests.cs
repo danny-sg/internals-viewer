@@ -3,7 +3,8 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -309,11 +310,9 @@ public class TraceRowReturnMarkMapTests
         CallSpan[] spans = [.. joinCalls.Select((c, i) => Span(0, c.Start, c.End, (uint)i)),
                             .. scanCalls.Select((c, i) => Span(1, c.Start, c.End, (uint)i))];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
-
-        var timeline = builder.Build(Nodes);
 
         var tree = new CallTree();
 
@@ -323,28 +322,24 @@ public class TraceRowReturnMarkMapTests
 
         CallTreeNode[] nodes = [join, scan];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
         var open = tree.AddCall(tree.Root, Frame(JoinIterator, "Open"), 1);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, callNodeIndex: 0))]), joinCalls.Length);
+        store.AddChunk(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, replayNodeIndex: 0))]), joinCalls.Length);
 
-        store.Add(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, callNodeIndex: 1))]), scanCalls.Length);
+        store.AddChunk(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, replayNodeIndex: 1))]), scanCalls.Length);
 
         if (joinOpens is not null)
         {
-            ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), callNodeIndex: 2))];
+            ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), replayNodeIndex: 2))];
 
-            store.Add(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
+            store.AddChunk(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
         }
 
-        var calls = store.Build();
-
-        calls.MapNodes([join, scan, open]);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build([join, scan, open]);
 
         TraceOperatorLifetime[] lifetimes =
         [
@@ -352,11 +347,11 @@ public class TraceRowReturnMarkMapTests
             new(Thread, bottom ?? Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [ScanIterator] }
         ];
 
-        return TraceRowReturnMarkMap.Build(timeline, calls, new TraceOperatorLifetimeList(lifetimes));
+        return TraceRowReturnMarkMap.Build(timeline, calls, new TraceOperatorLifetimeList(lifetimes), EngineLayout.Latest);
     }
 
-    private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int callNodeIndex)
-        => Row(call.Start, flags: Thread | TraceCallColumnSet.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
+    private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int replayNodeIndex)
+        => Row(call.Start, flags: Thread | TraceCallColumnSet.ReturnedFlag, returnValue: call.Status, replayNodeIndex: replayNodeIndex, endSequence: call.End);
 
     private static CallFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {
@@ -374,6 +369,6 @@ public class TraceRowReturnMarkMapTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 }

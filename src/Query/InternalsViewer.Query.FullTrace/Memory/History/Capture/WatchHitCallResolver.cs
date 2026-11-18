@@ -1,12 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
@@ -21,15 +16,15 @@ internal sealed class WatchHitCallResolver(TraceTimeline? timeline)
 
     public int GetWriter(uint thread, TracePosition position) => Calls.GetSpanId(thread, position);
 
-    public int GetCallNodeIndex(int spanId) => timeline?.GetSpanCall(spanId).CallNodeIndex ?? -1;
+    public int GetReplayNodeIndex(int spanId) => timeline?.GetSpanCall(spanId).ReplayNodeIndex ?? -1;
 
     public ulong GetInstructions(uint thread, TracePosition position)
-        => timeline?.GetInnermostCall(thread, position) is { } span ? timeline.GetInstructions(span, position) : 0;
+        => timeline?.GetInnermostSpan(thread, position) is { } span ? timeline.GetInstructions(span, position) : 0;
 
-    public int GetCallNodeIndex(uint thread, TracePosition position)
-        => timeline?.GetInnermostCall(thread, position) is { } span ? span.CallNodeIndex : -1;
+    public int GetReplayNodeIndex(uint thread, TracePosition position)
+        => timeline?.GetInnermostSpan(thread, position) is { } span ? span.ReplayNodeIndex : -1;
 
-    public TracePosition? GetFrameStart(uint thread, TracePosition position, int callNodeIndex)
+    public TracePosition? GetFrameStart(uint thread, TracePosition position, int replayNodeIndex)
     {
         foreach (var lane in timeline?.Threads ?? [])
         {
@@ -40,7 +35,7 @@ internal sealed class WatchHitCallResolver(TraceTimeline? timeline)
 
             for (var row = lane.Rows.Count - 1; row >= 0; row--)
             {
-                if (lane.Rows[row].GetIndex(position) is >= 0 and var index && lane.Rows[row].GetCallNodeIndex(index) == callNodeIndex)
+                if (lane.Rows[row].GetIndex(position) is >= 0 and var index && lane.Rows[row].GetReplayNodeIndex(index) == replayNodeIndex)
                 {
                     return lane.Rows[row].GetFromPosition(index);
                 }
@@ -50,28 +45,28 @@ internal sealed class WatchHitCallResolver(TraceTimeline? timeline)
         return null;
     }
 
-    public bool IsBufferPool(int callNodeIndex, bool isClerkPage)
+    public bool IsBufferPool(int replayNodeIndex, bool isClerkPage)
     {
-        if (!PageSources.TryGetValue(callNodeIndex, out var source))
+        if (!PageSources.TryGetValue(replayNodeIndex, out var source))
         {
-            CallTreeNode[] ancestors = [.. timeline?.GetNode(callNodeIndex)?.GetAncestors() ?? []];
+            CallTreeNode[] ancestors = [.. timeline?.GetNode(replayNodeIndex)?.GetAncestors() ?? []];
 
             source = (ancestors.Any(n => BufferPoolFunctionLookup.IsBufferPool(n.Frame)),
                       ancestors.Any(n => AllocationFunction.IsGrantFrame(n.Frame)));
 
-            PageSources[callNodeIndex] = source;
+            PageSources[replayNodeIndex] = source;
         }
 
         return !source.IsGrant && (isClerkPage || source.IsBufferPool);
     }
 
-    public ulong GetIterator(int callNodeIndex)
+    public ulong GetIterator(int replayNodeIndex)
     {
-        if (!Iterators.TryGetValue(callNodeIndex, out var iterator))
+        if (!Iterators.TryGetValue(replayNodeIndex, out var iterator))
         {
-            iterator = timeline?.GetNode(callNodeIndex)?.GetAncestors().FirstOrDefault(IsIteratorCall)?.Frame!.InstanceAddress ?? 0;
+            iterator = timeline?.GetNode(replayNodeIndex)?.GetAncestors().FirstOrDefault(IsIteratorCall)?.Frame!.InstanceAddress ?? 0;
 
-            Iterators[callNodeIndex] = iterator;
+            Iterators[replayNodeIndex] = iterator;
         }
 
         return iterator;

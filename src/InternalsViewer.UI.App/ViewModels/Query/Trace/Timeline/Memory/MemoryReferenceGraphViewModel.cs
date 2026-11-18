@@ -949,7 +949,7 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
                    .Where(m => m.Position < context.Shutdown)
                    .OrderBy(m => m.IsReference)
                    .Select(m => new MemoryReferenceGraphMark((scale.GetValue(m.Position) - start) / (end - start),
-                                                             History.GetCategoryColour(m.CallNodeIndex)))
+                                                             History.GetCategoryColour(m.ReplayNodeIndex)))
                    .Where(m => m.At > 0 && m.At < 1)
         ];
     }

@@ -100,7 +100,7 @@ internal static class TraceSeekRangeTrackBuilder
 
             for (var index = 0; index < list.Count; index++)
             {
-                if (timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is { } location && isNode(location.Node))
+                if (timeline.FindSpan(list, index) is { } location && isNode(location.Node))
                 {
                     sources.Add(TraceTickSource.Create(location, 0));
                 }
@@ -122,7 +122,7 @@ internal static class TraceSeekRangeTrackBuilder
             return null;
         }
 
-        var index = list.IndexOfEnclosing(key.Span.From.Position, key.Thread);
+        var index = list.GetEnclosingCallIndex(key.Thread, key.Span.From.Position);
 
         return index < 0 ? null : list.GetFromPosition(index);
     }

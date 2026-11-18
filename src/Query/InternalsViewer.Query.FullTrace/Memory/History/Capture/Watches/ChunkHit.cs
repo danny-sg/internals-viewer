@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 

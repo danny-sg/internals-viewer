@@ -26,8 +26,7 @@ the acquire and `lock_released` the release.
 a seek and from a lookup is two nodes. Calls is how many times that path was taken. Allocated bytes and allocations are the node's own. The
 app shows the subtree total, which `query_calltree` with `hot` and `by` set to `inclusive-alloc`, and `inclusive`, give. `query_functions`
 adds every path of a function together. The root has an empty key. In a Full Trace the Extended Events and tracing machinery
-was cut out of the tree, so what is left is the query's own work, and SQLOS (`sqldk`) was not recorded, so only the calls into
-it appear, not what it did.
+is skipped by the replay, so what is left is the query's own work. Windows code is in the tree, named from its exports.
 
 **Operators and the tree.** Each plan node has an operator event. Node -1 is the statement itself (`SELECT`). Entry frames are
 the call tree nodes where that operator's execution begins and exit frames where a child operator takes over, so `query_calltree`
@@ -59,17 +58,19 @@ method, a worked hash join and the batch memory layout.
 
 Some things are absent by design. None of them is a gap in the capture or a sign that something went wrong:
 
-- **Extended Events and tracing calls** are cut from a Full Trace call tree. Publishing an event is code that runs on the
-  query's own thread, so the Extended Events machinery would otherwise dominate the tree. The actual-plan profiling wrappers
+- **Extended Events and tracing calls** are skipped by the Full Trace replay, so they are not in the call tree or the
+  timeline. Publishing an event is code that runs on the query's own thread, so the Extended Events machinery would
+  otherwise dominate the tree. The actual-plan profiling wrappers
   (`CQScanProfileNew`, `CQScanLightProfileNew`) stay, because the operators run inside them.
 - **A run without Full Trace has no call stacks.** Its events carry no stack, and the call tree and every tool that reads
   it need a Full Trace run.
 - **A Full Trace run's event session is minimal.** It captures the batch start and end, the per-operator profile, the actual
   plan and the parallelism waits that identify worker threads. Its lock, latch, page read and I/O detail comes from the calls
   instead. A run without Full Trace has those events.
-- **SQLOS (`sqldk`) and Windows are not recorded** in a Full Trace, only `sqlmin` and `sqllang`. Calls into the scheduler,
-  memory objects, synchronisation and the operating system appear as the entry call only, so waiting, memory allocation
-  inside SQLOS and disk I/O add almost no instructions. Instruction counts measure recorded engine code.
+- **Windows code is named from its exports.** Recording starts in `sqlmin` and `sqllang` and follows every call they
+  make, so SQLOS (`sqldk`) and the Windows code they call are recorded too. Only SQL Server's symbols are loaded, so a
+  Windows function that is not exported shows as an offset, such as `bcryptPrimitives+0x7F0E0`. Waiting and disk I/O
+  happen in the kernel, which is never recorded, so they add almost no instructions.
 - **A Full Trace has no clock.** Positions and instructions are the only measures. Nothing in it is a duration.
 - **Crop to query** trims the call tree and events to the statement's execution, so the batch handling above it and anything
   before the query started are not there.

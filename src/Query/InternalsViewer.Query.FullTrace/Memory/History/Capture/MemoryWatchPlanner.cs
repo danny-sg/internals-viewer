@@ -1,17 +1,10 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Memory.History.Enums;
-using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
-using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
-using InternalsViewer.Query.FullTrace.Native;
-using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
 
@@ -42,10 +35,9 @@ internal static class MemoryWatchPlanner
                     continue;
                 }
 
-                var thread = list.GetThread(index);
+                var thread = list.GetThreadId(index);
 
-                if (function.Operation is not (AllocationOperation.Allocate or AllocationOperation.AllocateArray)
-                    && function.GetPointer(call) is not 0 and var released)
+                if (function.GetReleased(call) is not 0 and var released)
                 {
                     events.Add((list.GetFromPosition(index), released, 0, thread, false, false));
                 }
@@ -141,7 +133,7 @@ internal static class MemoryWatchPlanner
 
         foreach (var list in calls.GetCallLists())
         {
-            if (!iterators.Contains(list.InstanceAddress))
+            if (!iterators.Contains(list.InstanceAddress) || !IteratorSymbolLookup.IsIterator(calls.GetFirstNode(list)?.Frame))
             {
                 continue;
             }
@@ -157,7 +149,5 @@ internal static class MemoryWatchPlanner
         return positions;
     }
 
-    private static bool IsWatched(AllocationFunction function)
-        => !function.IsVirtual
-           && (function.IsAllocation || function is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 });
+    private static bool IsWatched(AllocationFunction function) => function is { IsVirtual: false, IsAllocationOrFree: true };
 }

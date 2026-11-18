@@ -1,9 +1,4 @@
-using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
@@ -20,17 +15,17 @@ public sealed partial class TraceTimeline
 
         var any = false;
 
-        for (var callNodeIndex = 0; callNodeIndex < depths.Length; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < depths.Length; replayNodeIndex++)
         {
-            var parent = Parents[callNodeIndex];
+            var parent = GetParent(replayNodeIndex);
 
-            depths[callNodeIndex] = parent >= 0 ? depths[parent] + 1 : 0;
+            depths[replayNodeIndex] = parent >= 0 ? depths[parent] + 1 : 0;
 
-            rootDepths[callNodeIndex] = parent >= 0 && rootDepths[parent] >= 0
+            rootDepths[replayNodeIndex] = parent >= 0 && rootDepths[parent] >= 0
                 ? rootDepths[parent]
-                : GetNode(callNodeIndex) is { } callNode && isRoot(callNode) ? depths[callNodeIndex] : -1;
+                : GetNode(replayNodeIndex) is { } callNode && isRoot(callNode) ? depths[replayNodeIndex] : -1;
 
-            any |= rootDepths[callNodeIndex] >= 0;
+            any |= rootDepths[replayNodeIndex] >= 0;
         }
 
         if (!any)
@@ -38,7 +33,7 @@ public sealed partial class TraceTimeline
             return null;
         }
 
-        var rooted = Threads.Select(t => Regroup(t, (_, row, index) => row.GetCallNodeIndex(index) is var n
+        var rooted = Threads.Select(t => Regroup(t, (_, row, index) => row.GetReplayNodeIndex(index) is var n
                                                                        && n >= 0
                                                                        && n < depths.Length
                                                                        && rootDepths[n] >= 0
@@ -69,9 +64,9 @@ public sealed partial class TraceTimeline
 
         var depths = new int[NodeCount];
 
-        for (var callNodeIndex = 0; callNodeIndex < depths.Length; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < depths.Length; replayNodeIndex++)
         {
-            depths[callNodeIndex] = GetNode(callNodeIndex) is { } callNode ? GetDepthUnder(roots, callNode, known) : -1;
+            depths[replayNodeIndex] = GetNode(replayNodeIndex) is { } callNode ? GetDepthUnder(roots, callNode, known) : -1;
         }
 
         List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => GetRowDepth(row, index)))
@@ -80,7 +75,7 @@ public sealed partial class TraceTimeline
         return threads.Count > 0 ? new TraceTimeline(threads, this, fit: true) : null;
 
         int GetRowDepth(TraceTimelineRow row, int index)
-            => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : -1;
+            => row.GetReplayNodeIndex(index) is var replayNodeIndex && replayNodeIndex >= 0 && replayNodeIndex < depths.Length ? depths[replayNodeIndex] : -1;
     }
 
     public TraceTimeline Fold(Func<CallTreeNode, bool> isFolded)
@@ -89,11 +84,11 @@ public sealed partial class TraceTimeline
 
         var any = false;
 
-        for (var callNodeIndex = 0; callNodeIndex < folded.Length; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < folded.Length; replayNodeIndex++)
         {
-            folded[callNodeIndex] = GetNode(callNodeIndex) is { } callNode && isFolded(callNode);
+            folded[replayNodeIndex] = GetNode(replayNodeIndex) is { } callNode && isFolded(callNode);
 
-            any |= folded[callNodeIndex];
+            any |= folded[replayNodeIndex];
         }
 
         if (!any)
@@ -103,21 +98,21 @@ public sealed partial class TraceTimeline
 
         var lifts = new int[NodeCount];
 
-        int GetLift(int callNodeIndex, int depth)
+        int GetLift(int replayNodeIndex, int depth)
         {
-            if (depth == 0 || callNodeIndex < 0 || callNodeIndex >= lifts.Length)
+            if (depth == 0 || replayNodeIndex < 0 || replayNodeIndex >= lifts.Length)
             {
                 return 0;
             }
 
-            if (lifts[callNodeIndex] < 0)
+            if (lifts[replayNodeIndex] < 0)
             {
-                var parent = Parents[callNodeIndex];
+                var parent = GetParent(replayNodeIndex);
 
-                lifts[callNodeIndex] = parent < 0 ? 0 : GetLift(parent, depth - 1) + (folded[parent] ? 1 : 0);
+                lifts[replayNodeIndex] = parent < 0 ? 0 : GetLift(parent, depth - 1) + (folded[parent] ? 1 : 0);
             }
 
-            return lifts[callNodeIndex];
+            return lifts[replayNodeIndex];
         }
 
         var threads = new List<TraceTimelineThread>(Threads.Count);
@@ -126,7 +121,7 @@ public sealed partial class TraceTimeline
         {
             Array.Fill(lifts, -1);
 
-            threads.Add(Regroup(thread, (depth, row, index) => row.GetCallNodeIndex(index) is var n && n >= 0 && n < folded.Length && folded[n]
+            threads.Add(Regroup(thread, (depth, row, index) => row.GetReplayNodeIndex(index) is var n && n >= 0 && n < folded.Length && folded[n]
                                                                    ? -1
                                                                    : depth - GetLift(n, depth)));
         }
@@ -172,7 +167,7 @@ public sealed partial class TraceTimeline
             return depth;
         }
 
-        if (node.Parent is not { } parent || !parent.Children.TryGetValue(node.Key, out var child) || !ReferenceEquals(child, node))
+        if (node.Parent is not { } parent || !parent.ChildrenByKey.TryGetValue(node.Key, out var child) || !ReferenceEquals(child, node))
         {
             depth = -1;
         }
@@ -221,7 +216,7 @@ public sealed partial class TraceTimeline
         }
 
         int GetRowDepth(TraceTimelineRow row, int index)
-            => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : 0;
+            => row.GetReplayNodeIndex(index) is var replayNodeIndex && replayNodeIndex >= 0 && replayNodeIndex < depths.Length ? depths[replayNodeIndex] : 0;
     }
 
     private TraceTimelineThread Regroup(TraceTimelineThread thread, Func<int, TraceTimelineRow, int, int> getDepth)

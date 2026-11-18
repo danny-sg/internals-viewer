@@ -14,7 +14,7 @@ public sealed partial class TraceTimelineRow
 
         ReadColumn(reader, store.Tos, offset, count);
 
-        ReadColumn(reader, store.CallNodeIndexes, offset, count);
+        ReadColumn(reader, store.ReplayNodeIndexes, offset, count);
 
         ReadColumn(reader, store.Calls, offset, count);
 
@@ -29,7 +29,7 @@ public sealed partial class TraceTimelineRow
 
         WriteColumn(writer, Store.Tos);
 
-        WriteColumn(writer, Store.CallNodeIndexes);
+        WriteColumn(writer, Store.ReplayNodeIndexes);
 
         WriteColumn(writer, Store.Calls);
 

@@ -39,7 +39,9 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
                                        string? ReturnType,
                                        bool HasReturnBuffer = false)
 {
-    public const string EnumPrefix = "enum ";
+    public const string EnumKeyword = "enum";
+
+    public const string EnumPrefix = EnumKeyword + " ";
 
     private const string EnumCode = "W4";
 
@@ -238,7 +240,7 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
         {
             var word = type[range];
 
-            if (word.IsEmpty || word is "const" or "volatile")
+            if (word.IsEmpty || TypeNameText.IsQualifier(word))
             {
                 continue;
             }
@@ -297,7 +299,7 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
 
         if (encoded.StartsWith(EnumCode))
         {
-            return "enum";
+            return EnumKeyword;
         }
 
         return encoded[0] switch
@@ -432,7 +434,7 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
 
                 if (index >= names.Count)
                 {
-                    return EnumPrefix.TrimEnd();
+                    return EnumKeyword;
                 }
 
                 scopes.Add(names[index]);

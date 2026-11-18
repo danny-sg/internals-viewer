@@ -16,6 +16,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.Calls.Arguments;
 
@@ -186,7 +187,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.GetLayout(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionType.Member, "void"));
 
-        var key = ColumnStoreObjectLocator.Create(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
+        var key = ColumnStoreObjectLocator.Create(1, 0x0100_0000_02A7_0000, ColumnStoreObjectType.ColumnSegment, 2, 3);
 
         var call = Call(0x100, 0x200) with { Locators = [key] };
 

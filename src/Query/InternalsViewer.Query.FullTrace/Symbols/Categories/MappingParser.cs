@@ -79,6 +79,17 @@ internal static class MappingParser
         }
     }
 
+    public static IEnumerable<(GlobPattern Class, string Badge, ObjectStage Stage)> ParseObjects(TextReader reader)
+    {
+        foreach (var cells in ReadRows(reader, minCells: 3))
+        {
+            if (cells[0].Length > 0 && cells[1].Length > 0 && Enum.TryParse<ObjectStage>(cells[2], ignoreCase: true, out var stage))
+            {
+                yield return (GlobPattern.Parse(cells[0]), cells[1], stage);
+            }
+        }
+    }
+
     // Blank is empty, not GlobPattern.Parse("") — an empty pattern is match-anything, which for the plan operator would
     // make every unmapped frame an operator boundary.
     private static IReadOnlyList<GlobPattern> ParsePlanOperators(string? cell)

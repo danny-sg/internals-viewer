@@ -1,14 +1,14 @@
-using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Controls.Query.SqlEditor;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
-using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -32,7 +32,6 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -48,7 +47,6 @@ using InternalsViewer.UI.App.Services;
 using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using InternalsViewer.UI.App.ViewModels.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
@@ -57,13 +55,11 @@ using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Index;
-using InternalsViewer.UI.App.Views.Query.Page;
-using InternalsViewer.UI.App.Views.Query.Simulation;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
@@ -72,6 +68,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
@@ -93,6 +90,7 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -107,10 +105,10 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          SimulationTabViewModelFactory simulationTabViewModelFactory,
                                           TraceTickTrackStore tickTrackStore,
                                           IEnumerable<ITraceMenuContributor> menuContributors,
-                                          IPageService pageService)
+                                          IPageService pageService,
+                                          IRecordService recordService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -123,10 +121,10 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  pageTabViewModelFactory,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
-                                                                 simulationTabViewModelFactory,
                                                                  tickTrackStore,
                                                                  menuContributors,
                                                                  pageService,
+                                                                 recordService,
                                                                  database);
 }
 
@@ -134,21 +132,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 {
     private const string LayoutSettingKey = "QueryDockLayout";
 
-    private const string SimulationDocumentKey = "Simulation";
-
     private const string CancelledOutcome = "Cancelled";
 
     private const string FailedOutcome = "Failed";
 
     private const string TraceLoadedStep = "Loading Full Trace";
 
+    private const string BuildingTracksStatus = "Building Tracks";
+
     private const string RunFileType = "Internals Viewer Run";
 
-    private readonly SimulationTabViewModelFactory _simulationTabViewModelFactory;
-
     private readonly TimelineDefinitionBuilder _timelineDefinitionBuilder = TimelineDefinitionBuilder.CreateDefault();
-
-    private readonly Dictionary<string, SimulationTabViewModel> _openSimulations = [];
 
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = [];
 
@@ -175,8 +169,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _layoutTouched;
     private bool _saveScheduled;
     private bool _isClearBuferPool = true;
-
-    private int? _simulationTargetNodeId;
 
     private List<PageSpan> _pageSpans = [];
 
@@ -296,6 +288,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTraceTimelineHintVisible))]
     [NotifyPropertyChangedFor(nameof(IsNoQueryHintVisible))]
+    [NotifyPropertyChangedFor(nameof(RulerStatus))]
     [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
     private bool _isTraceLoading;
 
@@ -305,7 +298,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFullTrace))]
-    private TraceTimeline? _fullTraceTimeline;
+    private TraceStore? _traceStore;
 
     [ObservableProperty]
     private AllocationIndex _traceAllocation = AllocationIndex.Empty;
@@ -388,21 +381,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           PageTabViewModelFactory pageTabViewModelFactory,
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                          SimulationTabViewModelFactory simulationTabViewModelFactory,
                           TraceTickTrackStore tickTrackStore,
                           IEnumerable<ITraceMenuContributor> menuContributors,
                           IPageService pageService,
+                          IRecordService recordService,
                           DatabaseSource database)
     {
-        _simulationTabViewModelFactory = simulationTabViewModelFactory;
-
         MenuContributors = [.. menuContributors];
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
         Arguments = new ArgumentsViewModel(logger, Symbols);
 
-        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
+        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree)
+        {
+            Records = new PlanOutputRecordReader(pageService, recordService, database, logger),
+            Logger = logger
+        };
+
+        TraceSummary = new TraceSummaryViewModel(MemoryHistory, () => TraceTimelineTab);
 
         RowResolver = new PageRowResolver(pageService, database, logger);
 
@@ -517,6 +514,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public MemoryHistoryViewModel MemoryHistory { get; }
 
+    public TraceSummaryViewModel TraceSummary { get; }
+
     public List<ITraceMenuContributor> MenuContributors { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
@@ -545,7 +544,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
     /// </summary>
-    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.ChildNodes ?? [];
+    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.Children ?? [];
 
     public IReadOnlyList<CallTreeNode>? CroppedRoots
         => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallTree, CallTree)
@@ -589,27 +588,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
 
             return ScanModeDetector.Detect(node, FindAllocationUnit(node), Events);
-        }
-    }
-
-    /// <summary>
-    /// Whether the trace is open, which the View menu shows and toggles
-    /// </summary>
-    public bool IsSimulationVisible
-    {
-        get => Layout.IsVisible(SimulationDocumentKey);
-        set
-        {
-            if (value)
-            {
-                OpenSimulation();
-            }
-            else
-            {
-                CloseSimulationDocument();
-            }
-
-            OnPropertyChanged();
         }
     }
 
@@ -686,13 +664,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         get;
         set
         {
+            CreatedTraceTimelineTab?.CloseMemory();
+         
             field = value;
 
             TraceFile = null;
 
             MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
 
-            CreatedTraceTimelineTab?.CloseMemory();
+            TraceSummary.Reset();
+
+            CreatedTraceTimelineTab?.ReloadDataPath();
+
         }
     }
 
@@ -706,6 +689,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ExportRunCommand.NotifyCanExecuteChanged();
 
             OnPropertyChanged(nameof(IsNoQueryHintVisible));
+
+            OnPropertyChanged(nameof(RulerStatus));
 
             OnPropertyChanged(nameof(IsRulerAvailable));
         }
@@ -738,7 +723,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
 
-    public bool IsFullTrace => FullTraceTimeline is not null;
+    public bool IsFullTrace => TraceStore is not null;
 
     public PlanActivity PlanActivity { get; private set; } = PlanActivity.Empty;
 
@@ -751,6 +736,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public int SelectedRowSlotCount => RowResolver.SlotCount;
 
     public bool IsNoQueryHintVisible => LastRun is null && !ExecuteQueryCommand.IsRunning && !IsTraceLoading;
+
+    public string? RulerStatus => ExecuteQueryCommand.IsRunning || IsTraceLoading ? "Running" : LastRun is null ? "No Query" : null;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -796,50 +783,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
     }
-
-    public void OpenSimulation(PlanNodeIdentifier identifier)
-    {
-        if (ResolvePlanNode(identifier) is { } node)
-        {
-            OpenSimulation(node);
-        }
-    }
-
-    public bool OpenSimulation(PlanNode node)
-    {
-        if (node.IsStatement)
-        {
-            return node.Children.FirstOrDefault() is { } child && OpenSimulationCore(child, wrapInSelect: true);
-        }
-
-        return OpenSimulationCore(node, wrapInSelect: false);
-    }
-
-    [RelayCommand]
-    public void OpenSimulation()
-    {
-        if (SelectedPlanNode is { } node && CanSimulate(node))
-        {
-            OpenSimulation(node);
-
-            return;
-        }
-
-        var root = ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault();
-
-        if (root is not null)
-        {
-            OpenSimulation(root);
-        }
-    }
-
-    /// <summary>
-    /// Whether a trace can be offered for an operator, which needs every operator below it to be one we simulate
-    /// </summary>
-    public bool CanSimulate(PlanNode node)
-        => node.IsStatement
-            ? node.Children.FirstOrDefault() is { } child && new SimulationDefinitionBuilder(FindAllocationUnit).CanBuild(child)
-            : new SimulationDefinitionBuilder(FindAllocationUnit).CanBuild(node);
 
     public void SetScope(long fromUs, long toUs)
     {
@@ -892,6 +835,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             FollowGuidePlayhead(position);
 
             UpdatePlanActivity(position);
+
+            TraceSummary.SetPlayhead(position);
         }
     }
 
@@ -948,11 +893,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ShowObjectGraph()
     {
-        if (Trace is { } trace && TraceTimeline is { } timeline && TraceStartCall.Find(trace.CallStore, timeline) is { } start)
+        if (GetTraceStartCall() is { } start)
         {
             TraceTimelineTab.OpenObjectGraph(start);
         }
     }
+
+    [RelayCommand]
+    private void ShowTraceSummary() => Layout.ShowTraceSummary();
+
+    [RelayCommand]
+    private void ShowDataPath() => TraceTimelineTab.OpenDataPath();
+
+    private TraceStartCall? GetTraceStartCall()
+        => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.Store.Calls, timeline) : null;
 
     public void ShowMemoryWrite(int block, TracePosition? position)
     {
@@ -961,12 +915,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimelineTab.OpenMemory(block, target.Address, position ?? target.FromPosition);
     }
 
+    public bool IsOutsideCrop(TracePosition position)
+        => CroppedRoots is not null
+           && Trace is { QueryTimeline: var timeline }
+           && (position < timeline.Start.Position || position > timeline.End.Position);
+
+    public bool IsOutsideCrop(CallTreeNode node) => CroppedRoots is { } roots && !node.GetAncestors().Any(roots.Contains);
+
     partial void OnTraceTimelineChanged(TraceTimeline? value)
     {
         MemoryHistory.SetWindow(value);
 
+        TraceSummary.Reset();
+
         SetGuidePositionText();
     }
+
+    partial void OnIsTraceLoadingChanged(bool value) => CreatedTraceTimelineTab?.ShowTraceStatus();
+
+    partial void OnTraceStatusChanged(string? value) => CreatedTraceTimelineTab?.ShowTraceStatus();
 
     partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
@@ -1071,6 +1038,62 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public void OpenHashTable(ulong group, int partition, int bucket)
         => TraceTimelineTab.OpenHashTable(group, partition, bucket, isBelowPlan: true);
 
+    public void OpenHashTable(PlanNode node)
+    {
+        if (GetHashTableGroup(node) is { } group)
+        {
+            TraceTimelineTab.OpenHashTable(group, -1, -1, isBelowPlan: true);
+        }
+    }
+
+    public void OpenHashTable(ExecutionOperatorEvent op)
+    {
+        if (GetHashTableGroup(op) is { } group)
+        {
+            TraceTimelineTab.OpenHashTable(group, -1, -1, isBelowPlan: false);
+        }
+    }
+
+    public ulong? GetHashTableGroup(PlanNode node)
+        => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(e => e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op
+            ? GetHashTableGroup(op)
+            : null;
+
+    public ulong? GetHashTableGroup(ExecutionOperatorEvent op)
+        => Trace is { } trace
+            ? TraceHashTableReader.GetGroup(trace.MemoryHistory,
+                                            trace.Store.Calls,
+                                            [.. trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)).SelectMany(l => l.Instances)])
+            : null;
+
+    public void OpenSortTable(PlanNode node)
+    {
+        if (GetSortIterator(node) is { } iterator)
+        {
+            TraceTimelineTab.OpenSortTable(iterator, isBelowPlan: true);
+        }
+    }
+
+    public void OpenSortTable(ExecutionOperatorEvent op)
+    {
+        if (GetSortIterator(op) is { } iterator)
+        {
+            TraceTimelineTab.OpenSortTable(iterator, isBelowPlan: false);
+        }
+    }
+
+    public ulong? GetSortIterator(PlanNode node)
+        => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(e => e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op
+            ? GetSortIterator(op)
+            : null;
+
+    public ulong? GetSortIterator(ExecutionOperatorEvent op)
+        => Trace is { } trace
+            ? TraceSortTableReader.GetIterator(trace.MemoryHistory,
+                                               trace.AddressMap,
+                                               trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)))
+            : null;
+
     public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)
     {
         var logRecords = GetPageLogRecords(pageAddress);
@@ -1109,6 +1132,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (e.PropertyName == nameof(IAsyncRelayCommand.IsRunning))
         {
             OnPropertyChanged(nameof(IsNoQueryHintVisible));
+
+            OnPropertyChanged(nameof(RulerStatus));
         }
     }
 
@@ -1152,9 +1177,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             CreatedGuidePlayback?.Stop();
 
-            RefreshGuideSteps();
-
-            SelectFirstGuideStep();
+            RefreshGuideSteps(_ => SelectFirstGuideStep());
 
             OnPropertyChanged(nameof(TransportSource));
 
@@ -1223,14 +1246,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openColumnstores.Clear();
 
-        foreach (var simulation in _openSimulations.Values)
-        {
-            simulation.PageNavigated -= OnIndexPageNavigated;
-            simulation.PageOpenRequested -= OnSimulationPageOpenRequested;
-        }
-
-        _openSimulations.Clear();
-
         _pageSpans = [];
 
         _pageVisits = [];
@@ -1239,7 +1254,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceTimeline = null;
 
-        FullTraceTimeline = null;
+        TraceStore = null;
 
         TraceAllocation = AllocationIndex.Empty;
 
@@ -1294,8 +1309,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         PruneClosedColumnstores();
 
         PruneClosedPages();
-
-        PruneClosedSimulations();
 
         ScheduleSaveLayout();
     }
@@ -1381,114 +1394,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
         => AllocationUnitProvider.FindAllocationUnit(Database, node.Schema, node.Table, node.Index);
-
-    private bool OpenSimulationCore(PlanNode node, bool wrapInSelect)
-    {
-        var targetNodeId = wrapInSelect ? -1 : node.NodeId;
-
-        if (_simulationTargetNodeId == targetNodeId && Layout.TryGetDocument(SimulationDocumentKey, out var existing))
-        {
-            Layout.Show(existing);
-
-            return true;
-        }
-
-        var scanMode = FindAllocationUnit(node) is { } unit ? ScanModeDetector.Detect(node, unit, Events) : null;
-
-        var simulationViewModel = _simulationTabViewModelFactory.Create(Database,
-                                                              node,
-                                                              FindAllocationUnit,
-                                                              Events.FirstOrDefault()?.Timestamp,
-                                                              scanMode,
-                                                              wrapInSelect);
-
-        if (simulationViewModel is null)
-        {
-            Logger.LogWarning("Operator {NodeId} ({Operator}) cannot be traced", node.NodeId, node.PhysicalOperator);
-
-            return false;
-        }
-
-        CloseSimulationDocument();
-
-        simulationViewModel.IsNestedLayout = _settingsViewModel.SimulationNestedLayout;
-
-        simulationViewModel.IsZoomToPage = IsZoomToPage;
-
-        simulationViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(SimulationTabViewModel.IsNestedLayout))
-            {
-                _settingsViewModel.SimulationNestedLayout = simulationViewModel.IsNestedLayout;
-            }
-
-            if (e.PropertyName == nameof(SimulationTabViewModel.IsZoomToPage))
-            {
-                IsZoomToPage = simulationViewModel.IsZoomToPage;
-            }
-        };
-
-        simulationViewModel.PageNavigated += OnIndexPageNavigated;
-
-        simulationViewModel.PageOpenRequested += OnSimulationPageOpenRequested;
-
-        var title = wrapInSelect ? "Simulation: SELECT" : $"Simulation: {SimulationTitle(node, simulationViewModel)}";
-
-        var document = new DocumentViewModel(title: title,
-                                             content: simulationViewModel,
-                                             viewFactory: static () => new SimulationTabView(),
-                                             canClose: true,
-                                             keepAlive: true,
-                                             key: SimulationDocumentKey,
-                                             persist: false,
-                                             commandsFactory: static () => new SimulationTabCommands());
-
-        Layout.RegisterDocument(SimulationDocumentKey, document);
-
-        _openSimulations[SimulationDocumentKey] = simulationViewModel;
-
-        _simulationTargetNodeId = targetNodeId;
-
-        Layout.Show(document);
-
-        OnPropertyChanged(nameof(IsSimulationVisible));
-
-        return true;
-    }
-
-    /// <summary>
-    /// Closes the trace, which is one document per query rather than one per operator traced
-    /// </summary>
-    /// <remarks>
-    /// Dropping the document from tracking leaves it in the dock, so the tab has to be closed as well. Tracking is cleared first, which
-    /// is what stops the layout change that closing raises from pruning a trace that is about to be replaced.
-    /// </remarks>
-    private void CloseSimulationDocument()
-    {
-        if (_openSimulations.Remove(SimulationDocumentKey, out var viewModel))
-        {
-            viewModel.PageNavigated -= OnIndexPageNavigated;
-            viewModel.PageOpenRequested -= OnSimulationPageOpenRequested;
-        }
-
-        _simulationTargetNodeId = null;
-
-        if (Layout.RemoveDocument(SimulationDocumentKey, out var document))
-        {
-            Layout.Close(document);
-
-            document.DisposeView();
-        }
-
-        OnPropertyChanged(nameof(IsSimulationVisible));
-    }
-
-    private static string SimulationTitle(PlanNode node, SimulationTabViewModel viewModel)
-    {
-        var objects = viewModel.Visuals.Select(v => v.AllocationUnit.TableName).Distinct().ToList();
-
-        return objects.Count == 1 ? objects[0] ?? node.PhysicalOperator : $"{node.PhysicalOperator} {string.Join("/", objects)}";
-    }
 
     private void UpdateActiveOperators(long timeUs)
     {
@@ -1711,7 +1616,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             || trace.PageAccesses.GetRowAccess(rowTick.Span.From.Position) is not { Offset: { } offset } access
             || access.Page != fetch.Page
             || access.DatabaseId != fetch.DatabaseId
-            || trace.BufferPool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is not { } slot)
+            || trace.BufferPool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is not { } slot)
         {
             return null;
         }
@@ -1808,7 +1713,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         => tick.Span.From.Position < position && position < tick.Span.To.Position;
 
     private PlanNode GetCalculatorNode(PlanNode computeScalar, TraceTick tick)
-        => !computeScalar.IsBatchMode && tick.Caller is { } caller && GetPlanNode(caller) is { } puller ? puller : computeScalar;
+        => !computeScalar.IsBatchMode && tick.Caller is { } caller && GetPlanNode(caller) is { } evaluator ? evaluator : computeScalar;
 
     private List<PlanNode> GetPlanNodes(IEnumerable<ExecutionOperatorEvent> operators)
     {
@@ -2069,74 +1974,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
         }
     }
-
-    private void PruneClosedSimulations()
-    {
-        if (_openSimulations.Count == 0)
-        {
-            return;
-        }
-
-        var closed = _openSimulations.Keys
-            .Where(k => !Layout.IsVisible(k))
-            .ToList();
-
-        foreach (var key in closed)
-        {
-            _openSimulations[key].PageNavigated -= OnIndexPageNavigated;
-            _openSimulations[key].PageOpenRequested -= OnSimulationPageOpenRequested;
-
-            _openSimulations.Remove(key);
-
-            _simulationTargetNodeId = null;
-
-            if (Layout.RemoveDocument(key, out var document))
-            {
-                document.DisposeView();
-            }
-
-            OnPropertyChanged(nameof(IsSimulationVisible));
-        }
-    }
-
-    /// <summary>
-    /// Points the open trace at the plan the query just produced, so one trace follows the query rather than outliving it
-    /// </summary>
-    /// <remarks>
-    /// A rerun of the same statement still has the operator that was being traced, so the trace is rebuilt on it. A different query has
-    /// its own plan and the node traced may be gone from it, which falls back to the root rather than leaving the old plan's trace open.
-    /// </remarks>
-    private void RefreshSimulationDocuments()
-    {
-        if (_openSimulations.Count == 0 || _simulationTargetNodeId is not { } target)
-        {
-            return;
-        }
-
-        var root = ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault();
-
-        var node = target < 0
-            ? root
-            : ExecutionPlans.Where(p => !p.IsInternalPlan)
-                            .Select(p => p.NodesById.GetValueOrDefault(target))
-                            .FirstOrDefault(n => n is not null) ?? root;
-
-        if (node is null || !CanSimulate(node))
-        {
-            CloseSimulationDocument();
-
-            return;
-        }
-
-        _simulationTargetNodeId = null;
-
-        if (!OpenSimulation(node))
-        {
-            CloseSimulationDocument();
-        }
-    }
-
-    private void OnSimulationPageOpenRequested(object? sender, PageOpenRequestedEventArgs e) => OpenPage(e.PageAddress, e.Slot);
 
     private void OnIndexPageNavigated(object? sender, PageNavigatedEventArgs e)
     {
@@ -2569,6 +2406,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ShowTrace(result, request.TraceFile);
 
+            TraceStatus = BuildingTracksStatus;
+
+            await RefreshTickTracksAsync();
+
             Layout.ShowGuidePlan();
 
             LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
@@ -2682,11 +2523,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             await using var stream = File.OpenRead(file.Path);
 
-            var run = await QueryExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
+            var run = await QueryExport.ReadAsync(stream,
+                                                  id => Database.AllocationUnits.GetValueOrDefault(id),
+                                                  _settingsViewModel.SymbolsPath,
+                                                  CancellationToken.None);
 
             AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
 
-            ShowImportedRun(run);
+            await ShowImportedRunAsync(run);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or JsonException or UnauthorizedAccessException)
         {
@@ -2702,7 +2546,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private void ShowImportedRun(QueryExportContent run)
+    private async Task ShowImportedRunAsync(QueryExportContent run)
     {
         var exported = run.ExportedAt is { } exportedAt ? $" on {exportedAt:g}" : string.Empty;
 
@@ -2736,6 +2580,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ShowTrace(fullTrace, null);
 
+            await RefreshTickTracksAsync();
+
             Layout.ShowGuidePlan();
         }
 
@@ -2756,8 +2602,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ExecutionPlans = [.. results.ExecutionPlans.Where(p => !p.IsInternalPlan)];
 
-        RefreshSimulationDocuments();
-
         ResultSets = results.ResultSets;
 
         ShowResultTabsForFirstRun();
@@ -2777,16 +2621,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var iterators = IteratorTarget.Build(result.CallTree, Events, result.PlanLink, result.OperatorFrames);
 
-        Arguments.SetSource(result.CallStore,
+        Arguments.SetSource(result.Store.Calls,
                             result.CallTree,
                             iterators,
                             result.HoBtAccess,
                             result.AddressMap,
                             result.MemoryHistory,
                             result.MemoryObjects,
-                            StorageIdMap.Build(Database.AllocationUnits.Values));
+                            StorageIdMap.Build(Database.AllocationUnits.Values),
+                            result.BufferPool,
+                            b => result.GetVtableClass(b) ?? result.GetTextLabel(b),
+                            result.GetModuleLabel,
+                            result.GetInterfaceName);
 
-        FullTraceTimeline = result.Timeline;
+        TraceStore = result.Store;
 
         TraceAllocation = result.Allocation;
 
@@ -2794,9 +2642,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = result.SourceTracks.RowReturns;
 
-        ClearTickTrackCache();
-
-        RefreshTickTracks();
+        ResetTickTracks();
 
         StatementName = GetStatementOperator(result.Lifetimes)?.Name;
 
@@ -2821,7 +2667,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private TraceTimeline ApplyCrop(TraceResult result)
     {
-        var timeline = QueryOptions.CropToQuery ? result.QueryTimeline : result.Timeline;
+        var timeline = QueryOptions.CropToQuery ? result.QueryTimeline : result.Store.Timeline;
 
         result.SetActivityWindow(timeline);
 
@@ -2936,7 +2782,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceTimeline = null;
 
-        FullTraceTimeline = null;
+        TraceStore = null;
 
         TraceAllocation = AllocationIndex.Empty;
 

@@ -12,20 +12,50 @@ internal static class AllocationOwnerResolver
     public static ulong[] GetOwners(IReadOnlyList<MemoryBlock> blocks,
                                     TraceCallStore calls,
                                     IReadOnlySet<ulong> iterators,
+                                    IReadOnlyDictionary<ulong, TracePosition> firstPositions,
                                     IReadOnlyList<IteratorPlanNode> planNodes)
     {
         var owners = EnclosingSweep.GetEnclosing(GetCalls(calls, iterators, GetBuilders(planNodes)),
                                                  [.. blocks.Select(b => new SweepSpan<TracePosition>(b.Thread, b.FromPosition, b.FromPosition, 0))]);
 
+        var iteratorBlocks = GetIteratorBlocks(blocks, iterators, firstPositions);
+
         for (var index = 0; index < blocks.Count; index++)
         {
-            if (iterators.Contains(blocks[index].Address))
+            var address = blocks[index].Address;
+
+            if (iteratorBlocks.GetValueOrDefault(address, -1) == index)
             {
-                owners[index] = blocks[index].Address;
+                owners[index] = address;
+            }
+            else if (owners[index] == address)
+            {
+                owners[index] = 0;
             }
         }
 
         return owners;
+    }
+
+    private static Dictionary<ulong, int> GetIteratorBlocks(IReadOnlyList<MemoryBlock> blocks,
+                                                            IReadOnlySet<ulong> iterators,
+                                                            IReadOnlyDictionary<ulong, TracePosition> firstPositions)
+    {
+        var found = new Dictionary<ulong, int>();
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            var block = blocks[index];
+
+            if (iterators.Contains(block.Address)
+                && block.FromPosition <= firstPositions.GetValueOrDefault(block.Address, TracePosition.Unknown)
+                && (!found.TryGetValue(block.Address, out var current) || blocks[current].FromPosition < block.FromPosition))
+            {
+                found[block.Address] = index;
+            }
+        }
+
+        return found;
     }
 
     private static Dictionary<ulong, ulong> GetBuilders(IReadOnlyList<IteratorPlanNode> planNodes)

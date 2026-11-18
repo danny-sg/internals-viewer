@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace;

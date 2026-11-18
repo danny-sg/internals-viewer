@@ -5,15 +5,73 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
+    xmlns:categories="using:InternalsViewer.Query.FullTrace.Symbols.Categories"
+    xmlns:helpers="using:InternalsViewer.UI.App.Helpers"
     SizeChanged="OnSizeChanged">
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="HexColumn" Width="*"/>
             <ColumnDefinition x:Name="DetailsColumn" Width="0"/>
         </Grid.ColumnDefinitions>
 
-        <hexView:HexViewControl Grid.Column="0"
+        <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="2"
+                    Padding="12,8"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Visibility="{x:Bind ViewModel.IsHashTableVisible, Mode=OneWay, FallbackValue=Collapsed}">
+            <TextBlock Text="Hash Table"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       VerticalAlignment="Center"/>
+            <HyperlinkButton Content="{x:Bind ViewModel.HashTableText, Mode=OneWay}"
+                             FontSize="12"
+                             FontFamily="{StaticResource MonospaceFontFamily}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             VerticalAlignment="Center"
+                             ToolTipService.ToolTip="Open Hash Table"
+                             Click="OnHashTableClick"/>
+            <TextBlock Text="{x:Bind ViewModel.HashTablePartText, Mode=OneWay}"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="2"
+                    Padding="12,8"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Visibility="{x:Bind ViewModel.IsSortTableVisible, Mode=OneWay, FallbackValue=Collapsed}">
+            <TextBlock Text="Sort Table"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       VerticalAlignment="Center"/>
+            <HyperlinkButton Content="{x:Bind ViewModel.SortTableText, Mode=OneWay}"
+                             FontSize="12"
+                             FontFamily="{StaticResource MonospaceFontFamily}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             VerticalAlignment="Center"
+                             ToolTipService.ToolTip="Open Sort Table"
+                             Click="OnSortTableClick"/>
+            <TextBlock Text="{x:Bind ViewModel.SortTablePartText, Mode=OneWay}"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <hexView:HexViewControl x:Name="Hex"
+                                Grid.Row="1"
+                                Grid.Column="0"
                                 VerticalAlignment="Stretch"
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Data="{x:Bind ViewModel.Data, Mode=OneWay}"
@@ -21,64 +79,44 @@
                                 Links="{x:Bind ViewModel.Links, Mode=OneWay}"
                                 Watches="{x:Bind ViewModel.Watches, Mode=TwoWay}"
                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
+                                SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                                 ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"
                                 IsChangeNavigationEnabled="True"
                                 ChangeNavigationRequested="OnChangeNavigationRequested"
                                 OffsetClicked="OnOffsetClicked"/>
 
         <Grid x:Name="Details"
+              Grid.Row="1"
               Grid.Column="1"
               Visibility="Collapsed">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0"
-                        Padding="12,8"
-                        Orientation="Horizontal"
-                        Spacing="12"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="0,0,0,1"
-                        Visibility="{x:Bind ViewModel.IsHashTableVisible, Mode=OneWay, FallbackValue=Collapsed}">
-                <TextBlock Text="Hash Table"
-                           FontSize="12"
-                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                           VerticalAlignment="Center"/>
-                <HyperlinkButton Content="{x:Bind ViewModel.HashTableText, Mode=OneWay}"
-                                 FontSize="12"
-                                 FontFamily="{StaticResource MonospaceFontFamily}"
-                                 Style="{StaticResource DetailLinkStyle}"
-                                 VerticalAlignment="Center"
-                                 ToolTipService.ToolTip="Open Hash Table"
-                                 Click="OnHashTableClick"/>
-            </StackPanel>
-
-            <TabView Grid.Row="1"
-                     VerticalAlignment="Stretch"
+            <TabView VerticalAlignment="Stretch"
                      IsAddTabButtonVisible="False"
                      TabWidthMode="SizeToContent"
                      SelectedIndex="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}">
-                <TabViewItem Header="Details" IsClosable="False">
-                    <local:MemoryDetailsPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="Writes" IsClosable="False">
-                    <local:MemoryWritesPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="Reads" IsClosable="False">
-                    <local:MemoryReadsPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="Watches" IsClosable="False">
-                    <local:MemoryWatchesPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="References" IsClosable="False">
-                    <local:MemoryReferencesPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="BUF"
-                             IsClosable="False"
-                             Visibility="{x:Bind ViewModel.Buffer.IsAvailable, Mode=OneWay}">
-                    <local:MemoryBufferPanelView/>
-                </TabViewItem>
+                <TabView.TabStripFooter>
+                    <ItemsControl Margin="0,0,8,0"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  ItemsSource="{x:Bind ViewModel.Badges, Mode=OneTime}"
+                                  Visibility="{x:Bind ViewModel.IsCategoryVisible, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="categories:ObjectBadge">
+                                <Border Style="{StaticResource ObjectBadgeStyle}"
+                                        Background="{x:Bind helpers:ObjectBadgeBrush.Get(Stage, Index, Count)}"
+                                        Padding="5,2,5,3"
+                                        ToolTipService.ToolTip="{x:Bind StageName}">
+                                    <TextBlock Style="{StaticResource ObjectBadgeTextStyle}" Text="{x:Bind Name}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </TabView.TabStripFooter>
                 <TabViewItem Header="{x:Bind ViewModel.Batch.Title, Mode=OneWay}"
                              IsClosable="False"
                              Visibility="{x:Bind ViewModel.Batch.IsAvailable, Mode=OneWay}">
@@ -94,12 +132,42 @@
                              Visibility="{x:Bind ViewModel.WorkfilePage.IsAvailable, Mode=OneWay}">
                     <local:MemoryPagePanelView DataContext="{x:Bind ViewModel.WorkfilePage, Mode=OneWay}"/>
                 </TabViewItem>
-                <TabViewItem Header="Bindings"
+                <TabViewItem Header="{x:Bind ViewModel.Generated.Header, Mode=OneWay}"
                              IsClosable="False"
-                             Visibility="{x:Bind ViewModel.Bindings.IsAvailable, Mode=OneWay}">
-                    <local:MemoryBindingsPanelView/>
+                             Visibility="{x:Bind ViewModel.Generated.IsAvailable, Mode=OneWay}">
+                    <local:MemoryObjectTabsView Tabs="{x:Bind ViewModel.Generated.Tabs, Mode=OneWay}"
+                                                ParentHeader="{x:Bind ViewModel.Generated.Header, Mode=OneWay}"/>
+                </TabViewItem>
+                <TabViewItem Header="Details" IsClosable="False">
+                    <local:MemoryDetailsPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Writes" IsClosable="False">
+                    <local:MemoryWritesPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Reads" IsClosable="False">
+                    <local:MemoryReadsPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Watches" IsClosable="False">
+                    <local:MemoryWatchesPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="References" IsClosable="False">
+                    <local:MemoryReferencesPanelView/>
                 </TabViewItem>
             </TabView>
         </Grid>
+
+        <StackPanel Grid.Row="0"
+                    Grid.RowSpan="2"
+                    Grid.ColumnSpan="2"
+                    Spacing="12"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, FallbackValue=Collapsed}">
+            <ProgressRing HorizontalAlignment="Center"
+                          IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay, FallbackValue=False}"/>
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="Loading..."/>
+        </StackPanel>
     </Grid>
 </UserControl>

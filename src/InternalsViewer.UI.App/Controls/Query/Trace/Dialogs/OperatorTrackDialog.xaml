@@ -109,6 +109,10 @@
                   Content="Plan Default"
                   ToolTipService.ToolTip="Every tick is a Guide Mode step. When off, the rule is offered under Additional Steps on the plan's View menu"/>
 
+        <CheckBox x:Name="DetailedBox"
+                  Content="Detailed"
+                  ToolTipService.ToolTip="A Guide Mode step only when Detailed is on in the plan's View menu"/>
+
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>

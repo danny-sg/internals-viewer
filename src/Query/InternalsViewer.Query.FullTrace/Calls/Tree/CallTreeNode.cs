@@ -1,19 +1,9 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
-/// <summary>
-/// A single frame in the query's shared call stack tree, linking the events whose path ends here
-/// </summary>
-/// <remarks>
-/// Every captured call stack is merged into one tree (see <see cref="CallTree"/>) so a code location appears once
-/// no matter how many events hit it. A node's <see cref="Frame"/> is the canonical frame for its <c>(Module, Rva)</c> —
-/// resolved once rather than per event. <see cref="Events"/> holds, by reference, the events whose innermost frame is
-/// this node (the leaf link); an event's own path is recovered by walking <see cref="Parent"/> to the root.
-/// </remarks>
 public sealed class CallTreeNode
 {
     /// <summary>
@@ -29,7 +19,7 @@ public sealed class CallTreeNode
     /// <summary>
     /// The key this node is stored under in its parent (RVA before resolution, function after)
     /// </summary>
-    public string Key { get; init; } = string.Empty;
+    public (ulong FunctionAddress, ulong InstanceAddress) Key => Frame is { } frame ? (frame.Address, frame.InstanceAddress) : default;
 
     /// <summary>
     /// Creation order — nodes are created in first-seen order, so ordering by this shows the call sequence
@@ -40,8 +30,6 @@ public sealed class CallTreeNode
     /// Whether this frame is infrastructure (Extended Events, Tracing, scheduling…) rather than query code
     /// </summary>
     public bool IsInfrastructure => Frame?.Function?.SymbolMetadata?.IsInfrastructure ?? false;
-
-    public bool IsInstrumentation => Frame?.Function?.SymbolCategory is { } category && category.IsInstrumentation(HasOperatorName);
 
     /// <summary>
     /// The plan operator this frame implements if it is a query iterator, otherwise null
@@ -78,7 +66,7 @@ public sealed class CallTreeNode
     /// <summary>
     /// Per-time-bucket event counts for this node's subtree, filled by <see cref="CallTree.ComputeActivity"/>
     /// </summary>
-    public int[] ActivityCounts => GetTree()?.GetActivityCounts(this) ?? [];
+    public int[] SubtreeActivityCounts => GetTree()?.GetActivityCounts(this) ?? [];
 
     /// <summary>
     /// The activity histogram bars to draw — only the selected node has any, so the histogram shows just for it
@@ -87,12 +75,12 @@ public sealed class CallTreeNode
     /// Set by the view when a node is selected: its subtree activity as grey bars with the selected event's time
     /// bucket highlighted. Empty on every other node, so the histogram column is drawn only for the selection.
     /// </remarks>
-    public ActivityBand? Activity { get; set; }
+    public ActivityBand? ActivityBand { get; set; }
 
     /// <summary>
     /// Child frames keyed by identity (RVA before resolution, resolved function after) so equal frames merge to one
     /// </summary>
-    public Dictionary<string, CallTreeNode> Children { get; } = [];
+    internal Dictionary<(ulong FunctionAddress, ulong InstanceAddress), CallTreeNode> ChildrenByKey { get; } = [];
 
     public long CallCount { get; set; }
 
@@ -100,7 +88,7 @@ public sealed class CallTreeNode
 
     public string CallsLabel => CountText.GetCalls(CallCount);
 
-    public int[] CallActivity { get; set; } = [];
+    public int[] OwnActivityCounts { get; set; } = [];
 
     public long AllocatedBytes { get; set; }
 
@@ -108,12 +96,12 @@ public sealed class CallTreeNode
 
     public long AllocatedBytesIncludingChildren => Allocated.Bytes;
 
-    public long AllocationsIncludingChildren => Allocated.Count;
+    public long AllocationCountIncludingChildren => Allocated.Count;
 
     public bool HasAllocations => Allocated.Count > 0;
 
     public string AllocationsLabel
-        => CountText.GetText(AllocationsIncludingChildren, "Allocation Including Children", "Allocations Including Children");
+        => CountText.GetText(AllocationCountIncludingChildren, "Allocation Including Children", "Allocations Including Children");
 
     public LocatorSet? Locators { get; set; }
 
@@ -133,15 +121,24 @@ public sealed class CallTreeNode
                                               PlanOperators.Select(o => $"{Category} · {o.OperatorDescription} "
                                                                         + $"(Node {o.PlanNodeIdentifier?.NodeId}) {o.TargetLabel}"));
 
-    /// <summary>
-    /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator
-    /// </summary>
-    /// <remarks>
-    /// Only ever filled on a projected tree, and only where <see cref="CallTree.Project"/> stopped. The projection
-    /// knows precisely which frame ended each segment and would otherwise discard it, leaving the call tree to just stop
-    /// with nothing to say the work continues in another operator.
-    /// </remarks>
-    public HashSet<CallTreeNode> CutBelow { get; } = [];
+    public IReadOnlyCollection<CallTreeNode> CutBelow => CutBelowNodes is { } nodes
+        ? nodes
+        : Array.Empty<CallTreeNode>();
+
+    private HashSet<CallTreeNode>? CutBelowNodes { get; set; }
+
+    internal void AddCutBelow(CallTreeNode node)
+    {
+        (CutBelowNodes ??= []).Add(node);
+    }
+
+    private void AddCutBelow(IReadOnlyCollection<CallTreeNode> nodes)
+    {
+        if (nodes.Count > 0)
+        {
+            (CutBelowNodes ??= []).UnionWith(nodes);
+        }
+    }
 
     public IReadOnlyList<CallTreeNode> MergedFrom { get; private init; } = [];
 
@@ -150,22 +147,17 @@ public sealed class CallTreeNode
     private (long Bytes, long Count)? AllocatedIncludingChildren { get; set; }
 
     private (long Bytes, long Count) Allocated => AllocatedIncludingChildren ??= (
-        AllocatedBytes + Children.Values.Sum(c => c.AllocatedBytesIncludingChildren),
-        AllocationCount + Children.Values.Sum(c => c.AllocationsIncludingChildren));
+        AllocatedBytes + Children.Sum(c => c.AllocatedBytesIncludingChildren),
+        AllocationCount + Children.Sum(c => c.AllocationCountIncludingChildren));
 
-    public IEnumerable<CallTreeNode> ChildNodes => Children.Values;
+    public IReadOnlyCollection<CallTreeNode> Children => ChildrenByKey.Values;
 
     /// <summary>
     /// The frame's symbol category name (e.g. AccessMethod, Buffer), falling back to the module
     /// </summary>
     public string Category => Frame?.Function?.SymbolMetadata?.Name ?? Frame?.Module.Name ?? string.Empty;
 
-    /// <summary>
-    /// The resolved <c>Class::Method</c> of this frame
-    /// </summary>
-    public string Symbol => Frame?.Function is { } resolved
-        ? resolved.ClassName is { Length: > 0 } className ? $"{className}::{resolved.MethodName}" : resolved.MethodName
-        : string.Empty;
+    public string Symbol => Frame?.Function?.Symbol ?? string.Empty;
 
     /// <summary>
     /// Hex colour of the symbol category, for the node's tag
@@ -175,8 +167,6 @@ public sealed class CallTreeNode
     /// <summary>
     /// The frames from this node up to (excluding) the root, innermost first — the call path of an event linked here
     /// </summary>
-    public IEnumerable<CallFrame> Path() => GetAncestors().Select(node => node.Frame!);
-
     /// <summary>
     /// This node and its ancestors up to (excluding) the root, innermost first
     /// </summary>
@@ -191,7 +181,6 @@ public sealed class CallTreeNode
         var merged = new CallTreeNode
         {
             Frame = first.Frame,
-            Key = first.Key,
             Order = nodes.Min(n => n.Order),
             Parent = first.Parent,
             MergedFrom = nodes,
@@ -199,20 +188,20 @@ public sealed class CallTreeNode
             AllocatedBytes = nodes.Sum(n => n.AllocatedBytes),
             AllocationCount = nodes.Sum(n => n.AllocationCount),
             AllocatedIncludingChildren = (nodes.Sum(n => n.AllocatedBytesIncludingChildren),
-                                          nodes.Sum(n => n.AllocationsIncludingChildren)),
+                                          nodes.Sum(n => n.AllocationCountIncludingChildren)),
             PlanOperators = [.. nodes.SelectMany(n => n.PlanOperators).Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance)]
         };
 
         foreach (var node in nodes)
         {
-            merged.CutBelow.UnionWith(node.CutBelow);
+            merged.AddCutBelow(node.CutBelow);
 
             if (node.Locators is { } locators)
             {
                 (merged.Locators ??= new LocatorSet()).Add(locators);
             }
 
-            merged.CallActivity = Sum(merged.CallActivity, node.CallActivity);
+            merged.OwnActivityCounts = Sum(merged.OwnActivityCounts, node.OwnActivityCounts);
         }
 
         return merged;

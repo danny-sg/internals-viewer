@@ -2,8 +2,9 @@
 using System.Globalization;
 using System.Text;
 using System.Linq;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
@@ -45,10 +46,12 @@ public static class PlanNodePropertyBuilder
         operatorGroup.Children.Add(new PlanNodeProperty("Execution Mode", node.ExecutionMode.ToString()));
         operatorGroup.Children.Add(new PlanNodeProperty("Node Id", node.NodeId.ToString(CultureInfo.InvariantCulture)));
 
-        if ((OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node)) && node.Children.Count >= 2)
+        foreach (var child in node.Children)
         {
-            operatorGroup.Children.Add(new PlanNodeProperty("Outer Input", InputName(node.Children[0])));
-            operatorGroup.Children.Add(new PlanNodeProperty("Inner Input", InputName(node.Children[1])));
+            if (InputLabel.Get(node, child) is { } label)
+            {
+                operatorGroup.Children.Add(new PlanNodeProperty(label, InputName(child)));
+            }
         }
 
         result.Add(operatorGroup);

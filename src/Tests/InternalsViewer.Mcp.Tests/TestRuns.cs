@@ -16,7 +16,7 @@ using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
@@ -226,21 +226,13 @@ internal static class TestRuns
 
     private static TraceResult FullTrace(CallTree tree, CallTreeNode caller, CallTreeNode getRow, ExecutionOperatorEvent scan)
     {
-        getRow.CallActivity = [0, 1, 2];
+        getRow.OwnActivityCounts = [0, 1, 2];
 
-        var publish = tree.AddCall(caller, Frame(0x50, "XeSqlPkg::lock_acquired::Publish+0x0"), 1);
+        var builder = new ReplaySpans();
 
-        var builder = new TraceTimeline.Builder();
+        builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35)]);
 
-        builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
-
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Scan, 2), new(0, 0x50, 0, 1)]);
-
-        timeline.MapNodes([caller, getRow, publish]);
-
-        tree.RemoveCallsUnder(node => node.IsInstrumentation);
-
-        timeline.RemoveCallsUnder(node => node.IsInstrumentation);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Scan, 2)], [caller, getRow]);
 
         var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
@@ -252,17 +244,20 @@ internal static class TestRuns
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, frames.OperatorsByInstance, [], []);
 
-        var storeBuilder = new TraceCallStore.Builder();
+        var storeBuilder = new ReplayCallLog();
 
-        storeBuilder.Add(0x30, Scan, TraceCallRows.Chunk(Call(1, 5), Call(2, 6)), 2);
+        storeBuilder.AddChunk(0x30, Scan, TraceCallRows.Chunk(Call(1, 5), Call(2, 6)), 2);
 
         storeBuilder.AddLocator(0x30, Scan, 1, new Locator(2, LocatorValueType.Page, Page336), false);
 
-        var callStore = storeBuilder.Build();
+        var callStore = storeBuilder.Build([caller, getRow]);
 
-        callStore.MapNodes([caller, getRow, publish]);
-
-        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes, OperatorFrames = frames };
+        return new TraceResult(tree, new TraceStore(callStore, timeline))
+        {
+            Allocation = memory,
+            Lifetimes = lifetimes,
+            OperatorFrames = frames
+        };
     }
 
     private static CallFrame Frame(ulong rva, string symbol, ulong instance = 0)
@@ -280,8 +275,8 @@ internal static class TestRuns
         };
     }
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
-        => new(start, 0, end, 0, start, end, callNodeIndex, 7, uint.MaxValue, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, 7, uint.MaxValue, 1);
 
-    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRows.Row(sequence, rcx: rcx, callNodeIndex: 1);
+    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRows.Row(sequence, rcx: rcx, replayNodeIndex: 1);
 }

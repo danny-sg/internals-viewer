@@ -11,6 +11,10 @@ public sealed record BatchState(ulong Address,
                                 int RowCount,
                                 List<BatchVector> Vectors)
 {
+    public int VectorSize { get; init; }
+
+    public ulong GetVectorEntry(int index) => VectorArrayAddress + (ulong)(index * VectorSize);
+
     public int[] GetSelectionIndexes()
     {
         var indexes = new int[RowCount];

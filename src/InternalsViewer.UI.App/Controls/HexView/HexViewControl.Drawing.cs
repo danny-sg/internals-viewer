@@ -283,7 +283,7 @@ public sealed partial class HexViewControl
     /// The pitch the drawing lays out against, taken over the data on show
     /// </summary>
     private double GetLineHeight()
-        => HexLayout.GetLineHeight(HexRichTextBlock.ActualHeight,
+        => HexLayout.GetLineHeight(HexRichTextBlock.DesiredSize.Height,
                                    Data?.Length ?? PageData.Size,
                                    HexRichTextBlock.LineHeight);
 

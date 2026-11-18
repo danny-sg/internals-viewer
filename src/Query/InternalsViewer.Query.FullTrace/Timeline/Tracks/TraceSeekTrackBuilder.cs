@@ -43,7 +43,7 @@ internal static class TraceSeekTrackBuilder
 
             for (var index = 0; index < list.Count; index++)
             {
-                if (timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is not { } location)
+                if (timeline.FindSpan(list, index) is not { } location)
                 {
                     continue;
                 }
@@ -98,9 +98,9 @@ internal static class TraceSeekTrackBuilder
             return descent;
         }
 
-        var index = list.IndexOfEnclosing(descent.From.Position, descent.Thread.ThreadId);
+        var index = list.GetEnclosingCallIndex(descent.Thread.ThreadId, descent.From.Position);
 
-        return index >= 0 && timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is { } location ? location : descent;
+        return index >= 0 && timeline.FindSpan(list, index) is { } location ? location : descent;
     }
 
     private static bool IsRowLookup(CallFrame frame)

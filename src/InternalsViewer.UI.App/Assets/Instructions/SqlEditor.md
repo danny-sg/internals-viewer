@@ -5,11 +5,6 @@ execution.
 
 The command bar includes options for how the query will be executed:
 
-## Simulate
-
-**Simulate** opens the Simulation tab, which steps through the query's plan one operator at a time - the operator selected in the
-Execution Plan, or the whole statement.
-
 ## Track query
 
 **Track query** on the Query menu, on by default, runs the query with a trace. A modification query (insert/update/delete etc.) runs

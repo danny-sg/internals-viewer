@@ -21,11 +21,11 @@ internal static class BatchToRowOperatorBuilder
             return adapters;
         }
 
-        var query = planNodes[0].Query;
+        var query = IteratorPlanLinker.GetQuery(planNodes);
 
         var operators = owners.Values.Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance).ToList();
 
-        var planHandle = operators.FirstOrDefault()?.PlanNodeIdentifier?.PlanHandleId;
+        short? planHandle = operators.Exists(o => o.PlanNodeIdentifier is not null) ? IteratorPlanLinker.GetPlanHandle(operators) : null;
 
         foreach (var helpers in planNodes.Where(n => n.IsBatchHelper && n.Query == query).GroupBy(n => n.NodeId))
         {
@@ -69,9 +69,9 @@ internal static class BatchToRowOperatorBuilder
 
         var pending = new Queue<CallTreeNode>();
 
-        for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < timeline.NodeCount; replayNodeIndex++)
         {
-            if (timeline.GetNode(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
+            if (timeline.GetNode(replayNodeIndex) is { Frame.InstanceAddress: var instance } callNode
                 && helpers.Contains(instance)
                 && seen.Add(callNode))
             {
@@ -81,7 +81,7 @@ internal static class BatchToRowOperatorBuilder
 
         while (pending.TryDequeue(out var callNode))
         {
-            foreach (var child in callNode.ChildNodes)
+            foreach (var child in callNode.Children)
             {
                 if (child.Frame is { InstanceAddress: not 0 } frame && owners.TryGetValue(frame.InstanceAddress, out var owner))
                 {

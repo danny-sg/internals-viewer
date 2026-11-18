@@ -12,8 +12,7 @@ public sealed partial class InstructionsGuideSource : IMcpGuideSource
 {
     private static readonly string[] Pages =
     [
-        "GettingStarted", "SqlEditor", "Timeline", "Events", "Allocations", "ExecutionPlan", "CallTree", "LogRecords", "FullTrace",
-        "Simulation"
+        "GettingStarted", "SqlEditor", "Timeline", "Events", "Allocations", "ExecutionPlan", "CallTree", "LogRecords", "FullTrace"
     ];
 
     public IEnumerable<McpGuide> GetGuides()

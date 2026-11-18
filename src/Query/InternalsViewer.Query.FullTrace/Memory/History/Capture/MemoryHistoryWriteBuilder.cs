@@ -1,17 +1,5 @@
-using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
-using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
-using InternalsViewer.Query.FullTrace.Native;
-using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
 
@@ -281,9 +269,10 @@ internal sealed class MemoryHistoryWriteBuilder(WatchedBlockIndex lookup, WatchH
     {
         var spanId = stacks.GetWriter(hit.Thread, hit.Position);
 
-        if (stacks.GetCallNodeIndex(spanId) is >= 0 and var callNodeIndex && stacks.GetIterator(callNodeIndex) is not 0 and var iterator)
+        if (stacks.GetReplayNodeIndex(spanId) is >= 0 and var replayNodeIndex
+            && stacks.GetIterator(replayNodeIndex) is not 0 and var iterator)
         {
-            Iterators[callNodeIndex] = iterator;
+            Iterators[replayNodeIndex] = iterator;
         }
 
         return spanId;

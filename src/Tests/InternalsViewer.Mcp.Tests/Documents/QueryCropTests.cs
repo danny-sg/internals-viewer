@@ -16,11 +16,11 @@ public class QueryCropTests
     {
         var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x10, Rva = 0x10 }, 1);
 
-        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1);
 
-        var compile = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x30 }, 1);
+        var compile = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x30, Rva = 0x30 }, 1);
 
         var roots = new HashSet<CallTreeNode>([execute], ReferenceEqualityComparer.Instance);
 

@@ -47,16 +47,16 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         set => SetValue(TimelineProperty, value);
     }
 
-    public static readonly DependencyProperty FullTimelineProperty =
-        DependencyProperty.Register(nameof(FullTimeline),
-                                    typeof(TraceTimeline),
+    public static readonly DependencyProperty StoreProperty =
+        DependencyProperty.Register(nameof(Store),
+                                    typeof(TraceStore),
                                     typeof(TraceTimelineControl),
-                                    new PropertyMetadata(null, OnFullTimelineChanged));
+                                    new PropertyMetadata(null, OnStoreChanged));
 
-    public TraceTimeline? FullTimeline
+    public TraceStore? Store
     {
-        get => (TraceTimeline?)GetValue(FullTimelineProperty);
-        set => SetValue(FullTimelineProperty, value);
+        get => (TraceStore?)GetValue(StoreProperty);
+        set => SetValue(StoreProperty, value);
     }
 
     public static readonly DependencyProperty MemoryProperty =
@@ -490,7 +490,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public event Action<string>? SearchRequested;
 
-    public event Action<bool>? CallStackVisibilityRequested;
+    public event Action<TracePoint?>? CallStackRequested;
 
     public event Action? CallStackChanged;
 
@@ -513,6 +513,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is not null && Allocation.HasAllocations;
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
+
+    private ElementTheme? AppliedTheme { get; set; }
 
     public void ZoomToFit()
     {
@@ -625,7 +627,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     public void Dispose()
     {
         ClearValue(TimelineProperty);
-        ClearValue(FullTimelineProperty);
+        ClearValue(StoreProperty);
         ClearValue(MemoryProperty);
         ClearValue(LifetimesProperty);
         ClearValue(MemoryBlocksProperty);
@@ -784,7 +786,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 return null;
             }
 
-            if (!Excludes(matches, row.GetCallNodeIndex(index)))
+            if (!Excludes(matches, row.GetReplayNodeIndex(index)))
             {
                 return row.GetStart(_axis, index);
             }
@@ -802,7 +804,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 return null;
             }
 
-            if (!Excludes(matches, row.GetCallNodeIndex(index)))
+            if (!Excludes(matches, row.GetReplayNodeIndex(index)))
             {
                 return row.GetStart(_axis, index);
             }
@@ -821,14 +823,24 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
 
         _canvas.Invalidate();
+
+        RulerChanged?.Invoke();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (AppliedTheme != ActualTheme)
+        {
+            ApplyTheme();
+        }
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
     private void ApplyTheme()
     {
+        AppliedTheme = ActualTheme;
+
         _paints.Apply(ActualTheme == ElementTheme.Dark);
 
         _minimapMarkers = null;
@@ -1108,6 +1120,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _rooted = null;
             _visible = null;
             _visibleFor = null;
+
+            _operators.Stages = [];
         }
         else if (_visibleFor != (timeline, _root, PrunedCategories, HiddenCategories))
         {
@@ -1116,6 +1130,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _rooted = _root is { } root ? timeline.RootAt(n => ReferenceEquals(n, root)) : null;
 
             var source = _rooted ?? timeline;
+
+            _operators.Stages = Store is { } store ? TraceStage.Build(source, store) : [];
 
             var pruned = PrunedNodes(source) is { } hidden
                 ? source.Filter(n => n < 0 || n >= hidden.Length || !hidden[n])
@@ -1228,21 +1244,23 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         var any = false;
 
-        for (var callNodeIndex = 0; callNodeIndex < hidden.Length; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < hidden.Length; replayNodeIndex++)
         {
-            var parent = timeline.GetParent(callNodeIndex);
+            var parent = timeline.GetParent(replayNodeIndex);
 
-            hidden[callNodeIndex] = (parent >= 0 && hidden[parent])
-                           || (timeline.GetNode(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
+            hidden[replayNodeIndex] = (parent >= 0 && hidden[parent])
+                           || (timeline.GetNode(replayNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
 
-            any |= hidden[callNodeIndex];
+            any |= hidden[replayNodeIndex];
         }
 
         return any ? hidden : null;
     }
 
-    private static FlameHit? FindCall(TraceTimeline timeline, CallTreeNode node, int callIndex)
-        => timeline.FindCall(node, callIndex) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
+    private FlameHit? FindCall(TraceTimeline timeline, CallTreeNode node, int callIndex)
+        => Store?.FindSpan(node, callIndex, timeline) is { } location
+            ? new FlameHit(location.ThreadIndex, location.Depth, location.Index)
+            : null;
 
     private void FindSelectedCall(CallReference? reference, bool bringIntoView)
     {
@@ -1309,7 +1327,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     private CallReference? GetCallReference(FlameHit? hit)
-        => hit is { } at && SpanOf(at) is { } span && _visible?.GetNode(span.CallNodeIndex) is { } node
+        => hit is { } at && SpanOf(at) is { } span && _visible?.GetNode(span.ReplayNodeIndex) is { } node
                ? new CallReference(node, span.CallIndex, true)
                : null;
 
@@ -1317,7 +1335,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         => hit is { } at
            && SpanOf(at) is { } span
            && span.CallIndex == reference.CallIndex
-           && ReferenceEquals(_visible?.GetNode(span.CallNodeIndex), reference.Node);
+           && ReferenceEquals(_visible?.GetNode(span.ReplayNodeIndex), reference.Node);
 
     private void BringIntoView(FlameHit hit)
     {
@@ -1373,7 +1391,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control.SetMemoryBlocks();
     }
 
-    private static void OnFullTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnStoreChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (TraceTimelineControl)d;
 

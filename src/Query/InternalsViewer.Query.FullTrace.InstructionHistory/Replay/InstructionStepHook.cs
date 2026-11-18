@@ -1,13 +1,11 @@
-using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay.Enums;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 
-internal sealed class InstructionStepHook : ITraceHook
+internal sealed class InstructionStepHook : IInstructionHook
 {
-    public IEnumerable<TraceHookFunction> Functions => [];
-
     public TraceInstructionHistory.Builder Builder { get; } = new();
 
     public void OnInstructionChunk(ReadOnlySpan<InstructionStep> steps,

@@ -252,6 +252,31 @@ public class AddressMapTests
     }
 
     [Fact]
+    public void The_Class_Named_By_The_Vtable_Is_Rebuilt_From_What_Is_Written()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew),
+                        Entry(AddressMapOperation.Constructed, call: 20, ScanConstructor) with { VtableClassName = "CQScanRangeDerived" });
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            map.Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var read = AddressMap.Read(reader, GetNode);
+
+        Assert.Equal(("CQScanRangeDerived", "CQScanRangeNew", "CQScanRangeDerived"),
+                     (read.GetVtableClassName(Address, At(0), At(100)),
+                      read.GetEntry(Address, At(25))?.ClassName,
+                      read.GetEntry(Address, At(15))?.VtableClassName));
+    }
+
+    [Fact]
     public void A_Map_Written_Before_Declared_Types_Is_Not_Current()
     {
         using var stream = new MemoryStream();
@@ -268,11 +293,59 @@ public class AddressMapTests
         Assert.False(AddressMap.IsSupported(reader));
     }
 
+    [Fact]
+    public void An_Object_Constructed_Inside_A_Block_Is_Embedded_In_It()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Constructed, call: 20, ScanConstructor, address: Address + 0x48));
+
+        var embedded = Assert.Single(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+
+        Assert.Equal((Address + 0x48, "CQScanRangeNew"), (embedded.Address, embedded.ClassName));
+    }
+
+    [Fact]
+    public void A_Label_From_Before_The_Block_Was_Allocated_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Constructed, call: 5, ScanConstructor, address: Address + 0x48),
+                        Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
+    [Fact]
+    public void An_Object_Only_Called_Inside_A_Block_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Visited, call: 20, ScanMethod, address: Address + 0x48));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
+    [Fact]
+    public void A_Type_Only_Declared_Inside_A_Block_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Declared, call: 20, Factory, className: "AccBindings", address: Address + 0x48));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
+    [Fact]
+    public void A_Separate_Allocation_Inside_A_Block_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Allocated, call: 20, OperatorNew, bytes: 0x20, address: Address + 0x48),
+                        Entry(AddressMapOperation.Constructed, call: 21, ScanConstructor, address: Address + 0x48));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
     private static AddressMap Build(params AddressEntry[] entries) => AddressMap.Build(entries, GetNode);
 
     private static AddressEntry Entry(AddressMapOperation operation,
                                       ulong call,
-                                      int callNodeIndex,
+                                      int replayNodeIndex,
                                       ulong owner = 0,
                                       ulong until = 0,
                                       string? className = null,
@@ -286,7 +359,7 @@ public class AddressMapTests
                owner,
                At(call),
                until == 0 ? TracePosition.Unknown : At(until),
-               callNodeIndex,
+               replayNodeIndex,
                7,
                operation,
                className,
@@ -294,7 +367,7 @@ public class AddressMapTests
                site,
                memoryObject);
 
-    private static CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    private static CallTreeNode? GetNode(int replayNodeIndex) => replayNodeIndex >= 0 && replayNodeIndex < Nodes.Length ? Nodes[replayNodeIndex] : null;
 
     private static CallTreeNode[] GetNodes()
     {

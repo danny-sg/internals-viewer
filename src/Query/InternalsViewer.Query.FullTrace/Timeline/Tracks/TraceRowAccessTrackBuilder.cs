@@ -12,8 +12,7 @@ internal static class TraceRowAccessTrackBuilder
 
     private const string SearchMethod = "SearchPage";
 
-    public static TraceTickSeries Build(TraceTimeline timeline,
-                                        TraceCallStore calls,
+    public static TraceTickSeries Build(TraceStore store,
                                         TracePageAccessList accesses,
                                         TraceBufferPool pool,
                                         TraceOperatorLifetimeList lifetimes,
@@ -30,23 +29,23 @@ internal static class TraceRowAccessTrackBuilder
             var access = accesses[index];
 
             if (access.Offset is not { } offset
-                || GetLocation(timeline, access) is not { } location
+                || GetLocation(store, access) is not { } location
                 || recent.IsRecent(location.Thread.ThreadId, access))
             {
                 continue;
             }
 
-            var isFound = IsInSearch(location.Node, access.CallNodeIndex, searches)
-                          && pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot
-                          && GetSearchResult(timeline, calls, location, access.Position) == slot;
+            var isFound = IsInSearch(location.Node, access.ReplayNodeIndex, searches)
+                          && pool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot
+                          && GetSearchResult(store.Timeline, store.Calls, location, access.Position) == slot;
 
             sources.Add(GetSource(location, access, isFound ? TraceRowAccessType.Found : TraceRowAccessType.Access));
         }
 
-        return TraceTrackBuilder.Build(timeline, sources, lifetimes, enclosing);
+        return TraceTrackBuilder.Build(store.Timeline, sources, lifetimes, enclosing);
     }
 
-    public static TraceTickSeries BuildHeaders(TraceTimeline timeline,
+    public static TraceTickSeries BuildHeaders(TraceStore store,
                                                TracePageAccessList accesses,
                                                TraceOperatorLifetimeList lifetimes,
                                                EnclosingOperatorCallIndex enclosing)
@@ -55,17 +54,17 @@ internal static class TraceRowAccessTrackBuilder
 
         foreach (var header in accesses.HeaderAccesses)
         {
-            if (GetLocation(timeline, header.Access) is { } location)
+            if (GetLocation(store, header.Access) is { } location)
             {
                 sources.Add(GetSource(location, header.Access, TraceRowAccessType.Access));
             }
         }
 
-        return TraceTrackBuilder.Build(timeline, sources, lifetimes, enclosing);
+        return TraceTrackBuilder.Build(store.Timeline, sources, lifetimes, enclosing);
     }
 
-    private static TraceSpanLocation? GetLocation(TraceTimeline timeline, TracePageAccess access)
-        => timeline.GetNode(access.CallNodeIndex) is { } node ? timeline.FindCall(node, access.CallIndex) : null;
+    private static TraceSpanLocation? GetLocation(TraceStore store, TracePageAccess access)
+        => store.Nodes.GetNode(access.ReplayNodeIndex) is { } node ? store.FindSpan(node, access.CallIndex) : null;
 
     private static TraceTickSource GetSource(TraceSpanLocation location, TracePageAccess access, TraceRowAccessType type)
     {
@@ -74,16 +73,16 @@ internal static class TraceRowAccessTrackBuilder
         return TraceTickSource.Create(location, (byte)type, point);
     }
 
-    private static bool IsInSearch(CallTreeNode node, int callNodeIndex, Dictionary<int, bool> searches)
+    private static bool IsInSearch(CallTreeNode node, int replayNodeIndex, Dictionary<int, bool> searches)
     {
-        if (!searches.TryGetValue(callNodeIndex, out var isInSearch))
+        if (!searches.TryGetValue(replayNodeIndex, out var isInSearch))
         {
             for (var current = node; current is not null && !isInSearch; current = current.Parent)
             {
                 isInSearch = IsSearch(current);
             }
 
-            searches[callNodeIndex] = isInSearch;
+            searches[replayNodeIndex] = isInSearch;
         }
 
         return isInSearch;
@@ -96,7 +95,7 @@ internal static class TraceRowAccessTrackBuilder
             var row = location.Thread.Rows[depth];
 
             if (row.GetIndex(position) is not (>= 0 and var index)
-                || timeline.GetNode(row.GetCallNodeIndex(index)) is not { Frame: { } frame } node
+                || timeline.GetNode(row.GetReplayNodeIndex(index)) is not { Frame: { } frame } node
                 || !IsSearch(node))
             {
                 continue;

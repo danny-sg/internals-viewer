@@ -2,7 +2,8 @@ using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches.Enums;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
-using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Batches;
 
@@ -100,8 +101,10 @@ public class BatchReaderTests
                            .Add(SecondBuffer, [0x77, 0, 0, 0, 0, 0, 0, 0]);
     }
 
-    private sealed class Memory : IMemoryReader
+    private sealed class Memory : ITraceMemoryReader
     {
+        public EngineLayout Layout => EngineLayout.Latest;
+
         private List<(ulong Address, byte[] Data)> Regions { get; } = [];
 
         public Memory Add(ulong address, byte[] data)

@@ -65,16 +65,21 @@ public static class LocatorReadLookup
     {
         if (returned || type.ValueType == LocatorValueType.Variant)
         {
-            reads.Add(new LocatorRead(function, argumentSlot, true, type.ValueType, type.Offset, type.Path, countArgumentSlot));
+            reads.Add(new LocatorRead(function, argumentSlot, true, type.ValueType, type.PageSource, countArgumentSlot));
 
             return;
         }
 
         if (type.IsInOut)
         {
-            reads.Add(new LocatorRead(function, argumentSlot, false, type.ValueType, type.Offset, type.Path, countArgumentSlot));
+            reads.Add(new LocatorRead(function, argumentSlot, false, type.ValueType, type.PageSource, countArgumentSlot));
         }
 
-        reads.Add(new LocatorRead(function, argumentSlot, type.IsInOut || type.IsOutput, type.ValueType, type.Offset, type.Path, countArgumentSlot));
+        reads.Add(new LocatorRead(function,
+                                  argumentSlot,
+                                  type.IsInOut || type.IsOutput,
+                                  type.ValueType,
+                                  type.PageSource,
+                                  countArgumentSlot));
     }
 }

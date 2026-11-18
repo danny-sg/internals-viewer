@@ -48,7 +48,7 @@ internal readonly struct TraceCallColumnSet(ulong[] values, int callCount, int s
 
     public ulong GetReturnValue(int callIndex) => Get(ReturnValueIndex, callIndex);
 
-    public int GetCallNodeIndex(int callIndex) => (int)Get(NodeIndex, callIndex);
+    public int GetReplayNodeIndex(int callIndex) => (int)Get(NodeIndex, callIndex);
 
     public TraceArgumentCall GetCall(int callIndex, IReadOnlyList<Locator>? locators = null)
     {
@@ -69,7 +69,7 @@ internal readonly struct TraceCallColumnSet(ulong[] values, int callCount, int s
                                      IsReturned(callIndex),
                                      slots,
                                      GetReturnValue(callIndex),
-                                     GetCallNodeIndex(callIndex))
+                                     GetReplayNodeIndex(callIndex))
         {
             Locators = locators ?? [],
             ToPosition = GetToPosition(callIndex)

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System;
@@ -13,7 +14,10 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack;
@@ -22,14 +26,18 @@ using InternalsViewer.UI.App.Models.Query.Trace.Calls.Values;
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 
 public sealed class CallStoreLookup(TraceCallStore store,
-                                  CallTree? tree,
-                                  IReadOnlyDictionary<ulong, IteratorTarget> iterators,
-                                  HoBtAccessMap hobtAccess,
-                                  AddressMap addressMap,
-                                  MemoryHistoryStore memoryHistory,
-                                  MemoryObjectMap memoryObjects,
-                                  StorageIdMap storageIds,
-                                  SymbolsViewModel symbols) : ITraceSignatureSource
+                                    CallTree? tree,
+                                    IReadOnlyDictionary<ulong, IteratorTarget> iterators,
+                                    HoBtAccessMap hobtAccess,
+                                    AddressMap addressMap,
+                                    MemoryHistoryStore memoryHistory,
+                                    TraceBufferPool bufferPool,
+                                    Func<int, string?> getContentLabel,
+                                    Func<ulong, string?> getModuleLabel,
+                                    Func<ulong, TracePosition, string?> getInterfaceName,
+                                    MemoryObjectMap memoryObjects,
+                                    StorageIdMap storageIds,
+                                    SymbolsViewModel symbols) : ITraceSignatureSource
 {
     private const string ThisType = "this";
 
@@ -74,7 +82,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         var isObject = isPointer || entry is not null;
 
-        var containing = isPointer && value != 0 && entry is null ? addressMap.GetContaining(value, GetPosition(slot, call)) : null;
+        var containing = isPointer && value != 0 && entry is null ? GetContaining(value, GetPosition(slot, call)) : null;
 
         if (GetStorageId(slot, value, call) is { } storageId)
         {
@@ -86,7 +94,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return null;
         }
 
-        var className = entry?.ClassName;
+        var className = entry?.VtableClassName ?? entry?.ClassName;
 
         if (GetIterator(value) is { } iterator)
         {
@@ -97,12 +105,21 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         if (className is not null)
         {
-            return new ValueDescription(address, className) { Origin = entry };
+            return new ValueDescription(address, TextLabel.Shorten(className)) { Origin = entry };
         }
 
-        if (containing is ({ } inside, var offset) && (inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
+        if (isPointer && GetContentLabel(value, GetPosition(slot, call)) is { } content)
         {
-            return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", container) { Origin = inside };
+            return new ValueDescription(address, content) { Origin = entry };
+        }
+
+        if (containing is ({ } inside, var offset) && GetContainerName(inside, GetPosition(slot, call)) is { } container)
+        {
+            var type = getInterfaceName(inside.Address + offset, GetPosition(slot, call)) is { } interfaceName
+                ? $"{TextLabel.Shorten(container)}.{interfaceName}"
+                : TextLabel.Shorten(container);
+
+            return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", type) { Origin = inside };
         }
 
         if (slot.Type == ThisType || value == 0)
@@ -115,12 +132,27 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, declared) { Origin = entry };
         }
 
+        if (GetAllocationType(value, GetPosition(slot, call)) is { } allocated)
+        {
+            return new ValueDescription(address, allocated) { Origin = entry };
+        }
+
+        if (MemoryHistoryPointerReader.ReadArray(memoryHistory, bufferPool, value, GetPosition(slot, call)) is { } array)
+        {
+            return new ValueDescription(address, PointerArrayText.Get([.. array.Select(p => GetTargetName(p, GetPosition(slot, call)))]))
+            {
+                Origin = entry
+            };
+        }
+
         if ((entry?.Site ?? entry?.Allocator) is { } allocation)
         {
             return new ValueDescription(address, allocation) { Origin = entry };
         }
 
-        return DescribeStackObject(value, GetPosition(slot, call)) ?? DescribeMemoryObject(value, GetPosition(slot, call));
+        return DescribeStackObject(value, GetPosition(slot, call))
+               ?? DescribeMemoryObject(value, GetPosition(slot, call))
+               ?? (getModuleLabel(value) is { } module ? new ValueDescription(address, module) : null);
     }
 
     public async Task<CallSignature?> GetSignatureAsync(CallTreeNode node, int callIndex)
@@ -155,11 +187,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
             ? (calls.GetFromPosition(callIndex), calls.GetToPosition(callIndex))
             : (TracePosition.Unknown, TracePosition.Unknown);
 
-    public int GetEnclosingCall(CallTreeNode node, TracePosition position, uint thread)
-        => CallsOf(node)?.IndexOfEnclosing(position, thread) ?? -1;
-
     public CallReference? GetOrigin(AddressMapEntry origin)
-        => Store.GetNode(origin.CallNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
+        => Store.GetNode(origin.ReplayNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
             ? new CallReference(node, origin.CallIndex < calls.Count ? origin.CallIndex : -1)
             : null;
 
@@ -237,7 +266,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     {
         if (memoryHistory.GetBlock(value, position) is not (>= 0 and var index)
             || memoryHistory.Blocks[index] is not { IsStack: true } block
-            || Store.GetNode(block.CallNodeIndex)?.Frame is not { } frame)
+            || Store.GetNode(block.ReplayNodeIndex)?.Frame is not { } frame)
         {
             return null;
         }
@@ -252,6 +281,79 @@ public sealed class CallStoreLookup(TraceCallStore store,
            && (owner.Name ?? addressMap.GetEntry(owner.Address, position)?.ClassName) is { } memoryObject
             ? new ValueDescription(owner.GetText(value), memoryObject)
             : null;
+
+    private string? GetAllocationType(ulong value, TracePosition position)
+        => memoryHistory.GetBlock(value, position) is >= 0 and var block
+           && memoryHistory.Blocks[block] is { IsStack: false } item
+           && item.Address == value
+            ? AllocationTypeReader.GetLabel(Store, item.ReplayNodeIndex, item.Size)
+            : null;
+
+    private string GetTargetName(MemoryHistoryPointer pointer, TracePosition position)
+    {
+        if (pointer.Page is { } page)
+        {
+            return $"Page {page.Page}";
+        }
+
+        if (IteratorText.GetDetail(GetIterator(pointer.Value)) is { } iterator)
+        {
+            return iterator;
+        }
+
+        var entry = addressMap.GetEntry(pointer.Value, position);
+
+        if ((entry?.VtableClassName ?? entry?.ClassName ?? GetContentLabel(pointer.Value, position)) is { } className)
+        {
+            return TextLabel.Shorten(className);
+        }
+
+        if (GetContaining(pointer.Value, position) is ({ } inside, var offset) && GetContainerName(inside, position) is { } container)
+        {
+            return TextLabel.GetFieldText(TextLabel.Shorten(container),
+                                          getInterfaceName(pointer.Value, position)
+                                          ?? memoryHistory.Layout.GetFieldPath(container, (int)offset),
+                                          (long)offset);
+        }
+
+        return entry?.Site ?? $"0x{pointer.Value:X}";
+    }
+
+    private string? GetContentLabel(ulong value, TracePosition position)
+        => memoryHistory.GetBlock(value, position) is >= 0 and var block
+           && memoryHistory.Blocks[block] is { IsStack: false } item
+           && item.Address == value
+            ? getContentLabel(block)
+            : null;
+
+    private string? GetContainerName(AddressMapEntry inside, TracePosition position)
+        => inside.VtableClassName
+           ?? inside.ClassName
+           ?? GetContentLabel(inside.Address, position)
+           ?? TraceReferenceFinder.GetAllocationName(inside);
+
+    private (AddressMapEntry Entry, ulong Offset)? GetContaining(ulong value, TracePosition position)
+    {
+        var containing = addressMap.GetContaining(value, position);
+
+        if (memoryHistory.GetBlock(value, position) is not (>= 0 and var block)
+            || memoryHistory.Blocks[block] is not { IsStack: false } live)
+        {
+            return containing;
+        }
+
+        if (containing is ({ } inside, _) && inside.Address > live.Address && inside.FromPosition >= live.FromPosition)
+        {
+            return containing;
+        }
+
+        if (value != live.Address && addressMap.GetEntry(live.Address, position) is { } entry)
+        {
+            return (entry, value - live.Address);
+        }
+
+        return containing is ({ } outer, _) && outer.Address <= live.Address ? containing : null;
+    }
 
     private ValueCallRow GetCallRow(TraceValueCall valueCall,
                                     TraceValueUse use,

@@ -75,15 +75,15 @@ public sealed class TraceTickIndex
 
         var store = Thread.Store;
 
-        var callNodeIndex = store.CallNodeIndexes[entry.SpanIndex];
+        var replayNodeIndex = store.ReplayNodeIndexes[entry.SpanIndex];
 
         var span = new TraceSpan(Froms[index],
                                  Tos[index],
-                                 callNodeIndex,
+                                 replayNodeIndex,
                                  store.GetCallIndex(entry.SpanIndex),
                                  (TraceSpanFlags)store.Flags[entry.SpanIndex]);
 
-        return new TraceTick(entry.Value, Thread.ThreadId, Timeline.GetNode(callNodeIndex)!, span, Operator, Callers?[index]);
+        return new TraceTick(entry.Value, Thread.ThreadId, Timeline.GetNode(replayNodeIndex)!, span, Operator, Callers?[index]);
     }
 
     public byte GetValue(int index) => Entries[index].Value;

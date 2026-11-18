@@ -32,7 +32,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string TraceDirectoryKey = "TraceDirectory";
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
-    private const string SimulationNestedLayoutKey = "TraceNestedLayout";
     private const string PlanAnnotationsKey = "PlanAnnotations";
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
@@ -58,6 +57,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string PlanAdditionalStepsKey = "PlanAdditionalSteps";
+
+    private const string PlanDetailedStepsKey = "PlanDetailedSteps";
     private const string DecodeValuesKey = "DecodeValues";
     private const string McpServerEnabledKey = "McpServerEnabled";
     private const string McpServerPortKey = "McpServerPort";
@@ -68,7 +69,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string McpServerStoppedStatus = "Stopped";
 
     private const string DefaultCallTreeHiddenCategories =
-        "Compilation;Metadata;Networking;Query Store;Security;Tracing;Transaction Management";
+        "Compilation;Networking;Query Store;Security;Tracing;Transaction Management";
 
     private const string DefaultTraceTimelineHiddenTickTracks = "Open";
 
@@ -94,9 +95,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _autoDeleteTrace = true;
-
-    [ObservableProperty]
-    private bool _simulationNestedLayout = true;
 
     [ObservableProperty]
     private bool _fullColumnstoreResolution = true;
@@ -161,6 +159,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlanAdditionalStepSet))]
     private string _planAdditionalSteps = string.Empty;
+
+    [ObservableProperty]
+    private bool _planDetailedSteps;
 
     [ObservableProperty]
     private bool _decodeValues = true;
@@ -254,10 +255,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         AutoDeleteTrace = savedAutoDelete ?? true;
 
-        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(SimulationNestedLayoutKey);
-
-        SimulationNestedLayout = savedNestedLayout ?? true;
-
         var savedColumnstoreResolution = await SettingsService.ReadSettingAsync<bool?>(ColumnstoreResolutionKey);
 
         FullColumnstoreResolution = savedColumnstoreResolution ?? true;
@@ -308,6 +305,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
                                         ?? DefaultTraceTimelineHiddenTickTracks;
 
         PlanAdditionalSteps = await SettingsService.ReadSettingAsync<string>(PlanAdditionalStepsKey) ?? string.Empty;
+
+        PlanDetailedSteps = await SettingsService.ReadSettingAsync<bool?>(PlanDetailedStepsKey) ?? false;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 
@@ -481,6 +480,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
         _ = SettingsService.SaveSettingAsync(PlanAdditionalStepsKey, value);
     }
 
+    partial void OnPlanDetailedStepsChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(PlanDetailedStepsKey, value);
+    }
+
     partial void OnTraceTimelineHiddenTickTracksChanged(string value)
     {
         TraceTimelineHiddenTickTrackSet = SplitCategories(value);
@@ -571,11 +575,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnFullColumnstoreResolutionChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(ColumnstoreResolutionKey, value);
-    }
-
-    partial void OnSimulationNestedLayoutChanged(bool value)
-    {
-        _ = SettingsService.SaveSettingAsync(SimulationNestedLayoutKey, value);
     }
 
     partial void OnPlanAnnotationsChanged(bool value)

@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Aggregation;
+using InternalsViewer.Query.Plans.Aggregation;
 
 namespace InternalsViewer.Query.Plans.Model;
 

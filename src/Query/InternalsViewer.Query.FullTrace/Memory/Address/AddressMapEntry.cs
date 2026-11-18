@@ -10,9 +10,10 @@ public sealed record AddressMapEntry(ulong Address,
                                      TracePosition FromPosition,
                                      TracePosition ToPosition,
                                      uint Thread,
-                                     int CallNodeIndex,
+                                     int ReplayNodeIndex,
                                      string? ClassName,
                                      string? Allocator,
                                      ulong Bytes = 0,
                                      string? Site = null,
-                                     string? MemoryObject = null);
+                                     string? MemoryObject = null,
+                                     string? VtableClassName = null);

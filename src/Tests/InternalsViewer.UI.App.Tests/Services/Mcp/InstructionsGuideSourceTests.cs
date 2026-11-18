@@ -26,7 +26,6 @@ public class InstructionsGuideSourceTests
         Assert.Equal("app", guide.Topic);
         Assert.Contains("# Timeline", text);
         Assert.Contains("# Full Trace", text);
-        Assert.Contains("# Simulation", text);
         Assert.DoesNotContain("{{", text);
         Assert.DoesNotContain("](view:", text);
         Assert.DoesNotContain("](option:", text);

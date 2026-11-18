@@ -35,6 +35,10 @@ public sealed partial class MemoryReadsPanelView : UserControl
         e.Menu.Items.Add(MenuItems.Create("Filter To Function", () => viewModel.Reads.FilterToFunction(index)));
 
         e.Menu.Items.Add(MenuItems.Create("Filter To Address", () => viewModel.Reads.FilterToAddress(index)));
+
+        e.Menu.Items.Add(new MenuFlyoutSeparator());
+
+        e.Menu.Items.Add(MenuItems.Create("Open As Snapshot", () => viewModel.Reads.OpenSnapshot(index)));
     }
 
     private void OnCellHovered(object? sender, ResultCellHoverEventArgs e)

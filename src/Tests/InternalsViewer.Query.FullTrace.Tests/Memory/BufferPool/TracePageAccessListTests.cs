@@ -145,15 +145,15 @@ public class TracePageAccessListTests
     }
 
     [Fact]
-    public void Reads_While_The_Page_Is_Completed_From_Disk_Are_An_Access_To_The_Page()
+    public void Reads_While_The_Page_Is_Completed_From_Disk_Are_Not_Accesses()
     {
         var calls = new Recording().Call("FCB", "PostRead", sequence: 5, rcx: 0, endSequence: 8).Build();
 
-        var reads = Reads((6, 9, 0x158, 8), (7, 9, 0x198, 8), (9, 9, 0x5B3, 4));
+        var reads = Reads((6, 9, 0x60, 0x2000 - 0x60), (7, 9, 0x198, 8), (9, 9, 0x5B3, 4));
 
         var accesses = Read(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, LaidOutPool(), reads));
 
-        Assert.Equal([(At(6), (int?)null), (At(9), (int?)0x5B3)], accesses.Select(a => (a.Position, a.Offset)));
+        Assert.Equal([(At(9), (int?)0x5B3)], accesses.Select(a => (a.Position, a.Offset)));
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public class TracePageAccessListTests
 
         var accesses = Read(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, Pool()));
 
-        Assert.Equal([(0, 0), (1, 0), (1, 1)], accesses.Select(a => (a.CallNodeIndex, a.CallIndex)));
+        Assert.Equal([(0, 0), (1, 0), (1, 1)], accesses.Select(a => (a.ReplayNodeIndex, a.CallIndex)));
     }
 
     [Fact]
@@ -314,11 +314,11 @@ public class TracePageAccessListTests
 
     private static TraceBufferPool Pool()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
+        builder.AddSighting(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
 
-        builder.Add(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
+        builder.AddSighting(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
 
         return builder.Build();
     }
@@ -330,11 +330,11 @@ public class TracePageAccessListTests
 
     private static TraceBufferPool LaidOutPool(PageType type = PageType.None)
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
+        builder.AddSighting(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
 
-        builder.Add(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
+        builder.AddSighting(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
 
         builder.AddLayout(Page, Database, [0x100, 0x5B3, 0x611], type);
 
@@ -419,7 +419,7 @@ public class TracePageAccessListTests
                                                      rcx: rcx,
                                                      rdx: rdx,
                                                      returnValue: returnValue,
-                                                     callNodeIndex: Nodes.Count - 1,
+                                                     replayNodeIndex: Nodes.Count - 1,
                                                      endSequence: endSequence));
 
             return this;
@@ -427,16 +427,14 @@ public class TracePageAccessListTests
 
         public TraceCallStore Build()
         {
-            var builder = new TraceCallStore.Builder();
+            var builder = new ReplayCallLog();
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
+                builder.AddChunk(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
             }
 
-            var store = builder.Build();
-
-            store.MapNodes([.. Nodes]);
+            var store = builder.Build([.. Nodes]);
 
             return store;
         }

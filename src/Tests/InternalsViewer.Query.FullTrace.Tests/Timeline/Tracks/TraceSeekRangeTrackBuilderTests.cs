@@ -4,7 +4,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -121,7 +121,7 @@ public class TraceSeekRangeTrackBuilderTests
 
     private static SeekRun Create()
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 10, 60),
                      Span(1, 12, 14),
@@ -137,8 +137,6 @@ public class TraceSeekRangeTrackBuilderTests
                      Span(7, 52, 56),
                      Span(8, 53, 55, 2),
                      Span(9, 54, 55, 2)]);
-
-        var timeline = builder.Build(Nodes);
 
         var tree = new CallTree();
 
@@ -169,23 +167,23 @@ public class TraceSeekRangeTrackBuilderTests
             getRow, setRange, evaluate, generalEval, getData, getDataFromVariant, otherGetData, rangeSet, rangeEval, rangeKey
         ];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(GetRowFunction, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(GetRowFunction, RangeIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(SetRangeFunction, 0, Chunk(Call(12, 14, 1, 1), Call(30, 32, 1, 0xDEAD_0000_0000_0003)), 2);
+        store.AddChunk(SetRangeFunction, 0, Chunk(Call(12, 14, 1, 1), Call(30, 32, 1, 0xDEAD_0000_0000_0003)), 2);
 
-        store.Add(EvaluateFunction, 0, Chunk(Call(15, 25, 2), Call(33, 45, 2)), 2);
+        store.AddChunk(EvaluateFunction, 0, Chunk(Call(15, 25, 2), Call(33, 45, 2)), 2);
 
-        store.Add(GeneralEvalFunction, 0, Chunk(Call(16, 24, 3), Call(34, 44, 3), Call(53, 55, 8)), 3);
+        store.AddChunk(GeneralEvalFunction, 0, Chunk(Call(16, 24, 3), Call(34, 44, 3), Call(53, 55, 8)), 3);
 
-        store.Add(RangeSetFunction, 0, Chunk(Call(52, 56, 7)), 1);
+        store.AddChunk(RangeSetFunction, 0, Chunk(Call(52, 56, 7)), 1);
 
-        store.Add(GetDataFunction, 0, Chunk(Call(17, 18, 4), Call(50, 51, 6)), 2);
+        store.AddChunk(GetDataFunction, 0, Chunk(Call(17, 18, 4), Call(50, 51, 6)), 2);
 
-        store.Add(GetDataFromVariantFunction, 0, Chunk(Call(35, 36, 5), Call(37, 38, 5), Call(54, 55, 9)), 3);
+        store.AddChunk(GetDataFromVariantFunction, 0, Chunk(Call(35, 36, 5), Call(37, 38, 5), Call(54, 55, 9)), 3);
 
         store.AddLocator(GetDataFunction, 0, 0, VariantLocator.Create(KeyRegister, VariantStatus.Value, 5, 4), true);
 
@@ -195,11 +193,7 @@ public class TraceSeekRangeTrackBuilderTests
 
         store.AddLocator(GetDataFromVariantFunction, 0, 2, VariantLocator.Create(KeyRegister, VariantStatus.Value, 8, 4), true);
 
-        var calls = store.Build();
-
-        calls.MapNodes(nodes);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build(nodes);
 
         var lifetime = new TraceOperatorLifetime(Thread, Seek, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
         {
@@ -215,8 +209,8 @@ public class TraceSeekRangeTrackBuilderTests
                            calls);
     }
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong range = 0)
-        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, r8: range, callNodeIndex: callNodeIndex, endSequence: end);
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong range = 0)
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, r8: range, replayNodeIndex: replayNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method, string module = "sqlmin") => new()
     {
@@ -234,8 +228,8 @@ public class TraceSeekRangeTrackBuilderTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex = 0)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex = 0)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 
     private sealed record SeekRun(TraceTickSeries Ranges, TraceTickSeries Keys, TraceCallStore Calls);
 }

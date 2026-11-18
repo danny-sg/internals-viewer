@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;

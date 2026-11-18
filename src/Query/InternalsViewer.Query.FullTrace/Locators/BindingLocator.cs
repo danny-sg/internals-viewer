@@ -1,27 +1,14 @@
 using System.Buffers.Binary;
 using System.Globalization;
-using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 public readonly record struct BindingLocator(Locator Locator)
 {
-    public const int Size = 0x58;
-
     public const int MaximumBindings = 64;
-
-    private const int OrdinalOffset = 0x00;
-
-    private const int ValueOffset = 0x08;
-
-    private const int LengthOffset = 0x10;
-
-    private const int StatusOffset = 0x18;
-
-    private const int PartsOffset = 0x38;
-
-    private const int TypeOffset = 0x54;
 
     private const char BindingSeparator = ';';
 
@@ -35,16 +22,18 @@ public readonly record struct BindingLocator(Locator Locator)
 
     public IReadOnlyList<ColumnBinding> Bindings => Parse(Locator.Text);
 
-    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address, ulong count)
+    public static Locator? Read(ITraceMemoryReader memory, int argumentSlot, ulong address, ulong count)
     {
         if (count == 0)
         {
             return null;
         }
 
-        var bytes = new byte[(int)Math.Min(count, MaximumBindings) * Size];
+        var layout = memory.Layout.OleDbBinding;
 
-        var read = memory.Read(address, bytes) / Size;
+        var bytes = new byte[(int)Math.Min(count, MaximumBindings) * layout.Size];
+
+        var read = memory.Read(address, bytes) / layout.Size;
 
         if (read == 0)
         {
@@ -55,7 +44,7 @@ public readonly record struct BindingLocator(Locator Locator)
 
         for (var index = 0; index < read; index++)
         {
-            bindings[index] = ReadBinding(bytes.AsSpan(index * Size, Size));
+            bindings[index] = ReadBinding(layout, bytes.AsSpan(index * layout.Size, layout.Size));
         }
 
         return new Locator(argumentSlot, LocatorValueType.Bindings, (ulong)read, count, Format(bindings));
@@ -68,13 +57,24 @@ public readonly record struct BindingLocator(Locator Locator)
         return IsTruncated ? $"{text}{DisplaySeparator}{Count - Locator.Value} More" : text;
     }
 
-    private static ColumnBinding ReadBinding(ReadOnlySpan<byte> bytes)
-        => new(BinaryPrimitives.ReadUInt64LittleEndian(bytes[OrdinalOffset..]),
-               BinaryPrimitives.ReadUInt16LittleEndian(bytes[TypeOffset..]),
-               BinaryPrimitives.ReadUInt32LittleEndian(bytes[PartsOffset..]),
-               BinaryPrimitives.ReadUInt64LittleEndian(bytes[ValueOffset..]),
-               BinaryPrimitives.ReadUInt64LittleEndian(bytes[LengthOffset..]),
-               BinaryPrimitives.ReadUInt64LittleEndian(bytes[StatusOffset..]));
+    private static ColumnBinding ReadBinding(EngineLayout.OleDbBindingLayout layout, ReadOnlySpan<byte> bytes)
+        => new(GetValue(bytes, layout.OrdinalField),
+               (ushort)GetValue(bytes, layout.TypeField),
+               (uint)GetValue(bytes, layout.PartsField),
+               GetValue(bytes, layout.ValueOffsetField),
+               GetValue(bytes, layout.LengthOffsetField),
+               GetValue(bytes, layout.StatusOffsetField));
+
+    private static ulong GetValue(ReadOnlySpan<byte> bytes, MemoryField field)
+    {
+        Span<byte> value = stackalloc byte[sizeof(ulong)];
+
+        value.Clear();
+
+        bytes.Slice(field.Offset, field.Length).CopyTo(value);
+
+        return BinaryPrimitives.ReadUInt64LittleEndian(value);
+    }
 
     private static string Format(IEnumerable<ColumnBinding> bindings) => string.Join(BindingSeparator, bindings.Select(Format));
 

@@ -292,12 +292,14 @@ public sealed partial class ResultsGridControl : UserControl
         }
     }
 
+    internal void Release() => ReleaseTable();
+
     private void ReleaseTable()
     {
-        DetailHosts.Clear();
-
         if (ResultsTable is not { } table)
         {
+            ReleaseDetails();
+
             return;
         }
 
@@ -318,6 +320,10 @@ public sealed partial class ResultsGridControl : UserControl
             TableScroller = null;
         }
 
+        table.ItemsSource = null;
+
+        ReleaseDetails();
+
         Groups.Clear();
 
         GroupBand.Children.Clear();
@@ -330,9 +336,17 @@ public sealed partial class ResultsGridControl : UserControl
 
         table.ClearSorting -= OnClearSorting;
 
-        table.ItemsSource = null;
-
         ResultsTable = null;
+    }
+
+    private void ReleaseDetails()
+    {
+        foreach (var host in DetailHosts)
+        {
+            ResultDetailsPanel.Clear(host);
+        }
+
+        DetailHosts.Clear();
     }
 
     private void BuildGroups(TableView table, IReadOnlyList<ResultColumn> columns)
@@ -813,7 +827,7 @@ public sealed partial class ResultsGridControl : UserControl
     {
         if (host.DataContext is not ResultRow<long> row || RowDetails is not { } details)
         {
-            host.Children.Clear();
+            ResultDetailsPanel.Clear(host);
 
             return;
         }

@@ -8,7 +8,7 @@ internal static class TracePageFetchTrackBuilder
 {
     private const int PfsInterval = 8088;
 
-    public static TraceTickSeries Build(TraceTimeline timeline,
+    public static TraceTickSeries Build(TraceStore store,
                                         TracePageAccessList accesses,
                                         TraceBufferPool pool,
                                         TraceOperatorLifetimeList lifetimes,
@@ -21,8 +21,8 @@ internal static class TracePageFetchTrackBuilder
             var access = accesses[index];
 
             if (access.Offset is not null
-                || timeline.GetNode(access.CallNodeIndex) is not { } node
-                || timeline.FindCall(node, access.CallIndex) is not { } location)
+                || store.Nodes.GetNode(access.ReplayNodeIndex) is not { } node
+                || store.FindSpan(node, access.CallIndex) is not { } location)
             {
                 continue;
             }
@@ -30,11 +30,11 @@ internal static class TracePageFetchTrackBuilder
             sources.Add(TraceTickSource.Create(location, (byte)GetPageType(access, pool)));
         }
 
-        return TraceTrackBuilder.Build(timeline, sources, lifetimes, enclosing);
+        return TraceTrackBuilder.Build(store.Timeline, sources, lifetimes, enclosing);
     }
 
     internal static PageType GetPageType(TracePageAccess access, TraceBufferPool pool)
-        => pool.GetLayout(access.Page, access.DatabaseId)?.PageHeader.PageType is { } type and not PageType.None
+        => pool.GetPageLayout(access.Page, access.DatabaseId)?.PageHeader.PageType is { } type and not PageType.None
             ? type
             : IsPfs(access.Page.PageId) ? PageType.Pfs : PageType.None;
 

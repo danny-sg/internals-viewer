@@ -14,6 +14,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
 
@@ -249,7 +250,7 @@ public static class ArgumentRowBuilder
                                                bool includeType = false,
                                                string? label = null)
     {
-        var (reading, className, origin, isLocal) = GetDecoded(slot, value, call, describe);
+        var (reading, className, _, isLocal) = GetDecoded(slot, value, call, describe);
 
         return new CallSignaturePart($"0x{value:X}",
                                      CallSignaturePartKind.Value,
@@ -262,7 +263,6 @@ public static class ArgumentRowBuilder
                                      includeType && slot.Type != ThisType ? slot.Type : null,
                                      label,
                                      slot.Type == ThisType ? null : slot.Type,
-                                     origin,
                                      slot.Source,
                                      isLocal);
     }
@@ -298,21 +298,10 @@ public static class ArgumentRowBuilder
 
         if (ArgumentValue.IsPointer(slot.Type))
         {
-            return description.ClassName ?? GetClassName(slot.Type);
+            return description.ClassName ?? TypeNameText.GetBaseType(slot.Type);
         }
 
         return ArgumentValue.IsAddressSized(slot.Type) ? description.ClassName : null;
-    }
-
-    private static string GetClassName(string type)
-    {
-        var indirection = type.IndexOfAny(['*', '&']);
-
-        var words = (indirection < 0 ? type : type[..indirection]).Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                                                                   .Where(w => w is not ("const" or "volatile" or "__ptr64"
-                                                                                        or "enum" or "class" or "struct"));
-
-        return string.Join(' ', words);
     }
 
     private static void AddSeparator(List<CallSignaturePart> parts, int index)

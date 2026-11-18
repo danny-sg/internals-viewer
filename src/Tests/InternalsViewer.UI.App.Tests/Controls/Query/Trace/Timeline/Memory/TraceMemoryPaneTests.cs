@@ -434,13 +434,13 @@ public class TraceMemoryPaneTests
 
     private static TracePoint Point(ulong sequence) => new(new TracePosition(sequence, 0), sequence);
 
-    private static bool[] Scope(params int[] callNodeIndexes)
+    private static bool[] Scope(params int[] replayNodeIndexes)
     {
         var scope = new bool[OtherNode + 1];
 
-        foreach (var callNodeIndex in callNodeIndexes)
+        foreach (var replayNodeIndex in replayNodeIndexes)
         {
-            scope[callNodeIndex] = true;
+            scope[replayNodeIndex] = true;
         }
 
         return scope;
@@ -480,14 +480,14 @@ public class TraceMemoryPaneTests
 
         public double GetOrigin(TraceTimelineAxis axis) => 0;
 
-        public SKColor GetColour(int callNodeIndex) => callNodeIndex switch
+        public SKColor GetColour(int replayNodeIndex) => replayNodeIndex switch
         {
             WriterNode => WriterColour,
             OtherNode => OtherColour,
             _ => SKColors.Gray
         };
 
-        public string GetLabel(int callNodeIndex) => $"Writer {callNodeIndex}";
+        public string GetLabel(int replayNodeIndex) => $"Writer {replayNodeIndex}";
 
         public void Invalidate()
         {

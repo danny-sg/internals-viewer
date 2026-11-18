@@ -6,9 +6,10 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.AccessPaths.Text;
-using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Search;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
+using InternalsViewer.Query.Plans.Values;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace;
@@ -147,11 +148,11 @@ public static partial class TraceTickTracks
     public static List<TraceTrackStep> GetSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string>? hidden)
         => GetRuleSteps(tracks.Where(t => hidden?.Contains(t.Name) != true), static _ => true);
 
-    public static List<TraceTrackStep> GetPlanSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string> additional)
-        => GetRuleSteps(tracks, r => IsPlanStep(r, additional));
+    public static List<TraceTrackStep> GetPlanSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string> additional, bool isDetailed)
+        => GetRuleSteps(tracks, r => IsPlanStep(r, additional, isDetailed));
 
-    public static bool IsPlanStep(TraceTrackRule rule, IReadOnlySet<string> additional)
-        => rule.IsPlanDefault || additional.Contains(rule.GetPlanStepKey());
+    public static bool IsPlanStep(TraceTrackRule rule, IReadOnlySet<string> additional, bool isDetailed)
+        => (rule.IsPlanDefault || additional.Contains(rule.GetPlanStepKey())) && (isDetailed || !rule.IsDetailed);
 
     public static TraceStepNesting[] GetStepNesting(List<TraceTrackStep> steps)
     {
@@ -314,7 +315,7 @@ public static partial class TraceTickTracks
 
     public static Locator? GetRowId(TraceResult trace, TraceTick tick)
         => tick.Node.Frame is not null
-           && trace.CallStore.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is { } list
+           && trace.Store.Calls.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is { } list
            && tick.CallIndex < list.Count
             ? list[tick.CallIndex].Locators.Where(l => l.ValueType == LocatorValueType.Row).Select(l => (Locator?)l).FirstOrDefault()
             : null;
@@ -504,12 +505,12 @@ public static partial class TraceTickTracks
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position)?.Page
            ?? trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position)?.Access.Page
            ?? trace.PageAccesses.GetFetch(tick.Span.From.Position)?.Page
-           ?? GetRead(tick, trace.CallStore)?.Page
+           ?? GetRead(tick, trace.Store.Calls)?.Page
            ?? GetRowId(trace, tick)?.Page;
 
     private static int? GetSlot(TraceResult trace, TraceTick tick)
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position) is { Offset: { } offset } access
-            ? trace.BufferPool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset)
+            ? trace.BufferPool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset)
             : GetRowId(trace, tick)?.Slot;
 
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceTick tick, TraceCallStore calls)
@@ -599,7 +600,7 @@ public static partial class TraceTickTracks
         TraceTickSourceType.RowAccess => GetRowAccessDetails(tick, trace.PageAccesses, trace.BufferPool),
         TraceTickSourceType.PageHeaderAccess => GetHeaderAccessDetails(tick, trace.PageAccesses),
         TraceTickSourceType.Seek or TraceTickSourceType.PageFetch => GetSeekDetails(tick, trace.PageAccesses),
-        TraceTickSourceType.Call => GetReadDetails(tick, trace.CallStore),
+        TraceTickSourceType.Call => GetReadDetails(tick, trace.Store.Calls),
         _ => []
     };
 
@@ -620,7 +621,7 @@ public static partial class TraceTickTracks
 
         yield return $"Page {access.Page}";
 
-        yield return pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
+        yield return pool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
     }
 
     private static List<TraceTrackStep> GetRuleSteps(IEnumerable<TraceTickTrack> tracks, Func<TraceTrackRule, bool> isIncluded)

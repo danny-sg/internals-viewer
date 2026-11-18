@@ -48,7 +48,7 @@ public sealed class TraceWatch
             }
         }
 
-        return sources.Count == 0 ? Empty : new TraceWatch(TraceTickSeries.Create(trace.Timeline, sources), changes);
+        return sources.Count == 0 ? Empty : new TraceWatch(TraceTickSeries.Create(trace.Store.Timeline, sources), changes);
     }
 
     public static string? GetClassName(TraceResult trace, TraceOperatorLifetime lifetime, ulong instance)
@@ -79,13 +79,13 @@ public sealed class TraceWatch
     {
         var found = ReadChanges(trace.MemoryHistory, definition, lifetime, instance + (ulong)definition.Offset);
 
-        var timeline = trace.Timeline;
+        var timeline = trace.Store.Timeline;
 
         for (var index = 0; index < found.Count; index++)
         {
             var (write, value) = found[index];
 
-            var location = (timeline.GetNode(write.CallNodeIndex) is { } node ? timeline.FindCall(node, write.CallIndex) : null)
+            var location = (timeline.GetNode(write.ReplayNodeIndex) is { } node ? trace.Store.FindSpan(node, write.CallIndex) : null)
                            ?? timeline.FindSpan(lifetime.Thread, lifetime.Calls[0]);
 
             if (location is not { } at)

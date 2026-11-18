@@ -9,13 +9,14 @@ internal readonly record struct AddressEntry(ulong Address,
                                              ulong Owner,
                                              TracePosition FromPosition,
                                              TracePosition ToPosition,
-                                             int CallNodeIndex,
+                                             int ReplayNodeIndex,
                                              uint Thread,
                                              AddressMapOperation Operation,
                                              string? ClassName = null,
                                              ulong Bytes = 0,
                                              string? Site = null,
-                                             string? MemoryObject = null)
+                                             string? MemoryObject = null,
+                                             string? VtableClassName = null)
 {
     public bool IsAlive => !ToPosition.IsKnown;
 }

@@ -61,8 +61,6 @@ public sealed partial class CallSignatureLine : UserControl
         Unloaded += (_, _) => Settings.PropertyChanged -= OnSettingsPropertyChanged;
     }
 
-    public event EventHandler<CallSignaturePart>? ValueSelected;
-
     public event EventHandler<CallSignaturePart>? MemorySelected;
 
     private StackPanel Line { get; } = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -145,8 +143,6 @@ public sealed partial class CallSignatureLine : UserControl
 
         if (part is { Kind: CallSignaturePartKind.Value, Value: { } value })
         {
-            text.Tapped += (_, _) => ValueSelected?.Invoke(this, part);
-
             text.ContextFlyout = ValueMenu(part, value);
         }
 

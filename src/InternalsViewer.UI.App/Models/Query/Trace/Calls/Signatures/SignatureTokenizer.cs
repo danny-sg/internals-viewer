@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures;
@@ -9,12 +11,10 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures;
 /// </summary>
 public static class SignatureTokenizer
 {
-    private static readonly HashSet<string> Keywords = new(StringComparer.Ordinal)
-    {
-        "const", "volatile", "unsigned", "signed", "void", "int", "long", "short", "char", "bool", "float", "double",
-        "__int64", "wchar_t", "char16_t", "char32_t", "static", "virtual", "enum", "class", "struct", "union",
-        "__ptr64", "__cdecl", "__thiscall", "__stdcall", "__fastcall", "__clrcall", "__vectorcall"
-    };
+    private static readonly string[] SignatureWords =
+        ["static", "virtual", "__cdecl", "__thiscall", "__stdcall", "__fastcall", "__clrcall", "__vectorcall"];
+
+    private static readonly HashSet<string> Keywords = new(TypeNameText.Words.Concat(SignatureWords), StringComparer.Ordinal);
 
     public static IReadOnlyList<SignatureToken> Tokenize(string signature)
     {

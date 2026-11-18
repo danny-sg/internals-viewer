@@ -39,11 +39,6 @@ public sealed class DocumentContext
             return frame.QualifiedName;
         }
 
-        if (node.Key.Length > 0)
-        {
-            return node.Key;
-        }
-
         return node.IsRoot ? "(root)" : $"node {Nodes.GetId(node)}";
     }
 

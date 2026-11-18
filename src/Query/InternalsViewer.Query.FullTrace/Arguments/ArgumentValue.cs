@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Engine.Indexes.Enums;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Parsing;
@@ -33,7 +34,9 @@ public static class ArgumentValue
 
     private const string HoBtIdType = "HoBtId";
 
-    private const int MaximumStackType = 256;
+    private const int MaximumStackType = TypeNameText.MaximumStackType;
+
+    private const int AddressSize = sizeof(ulong);
 
     private const string FlagSeparator = " | ";
 
@@ -101,51 +104,24 @@ public static class ArgumentValue
         "std::align_val_t"
     };
 
-    private static readonly HashSet<string> ReadableTypes = new(StringComparer.Ordinal)
-    {
-        "bool", "short", "__int16", "unsigned short", "unsigned __int16", "int", "long", "__int32", "unsigned int", "unsigned long",
-        "unsigned __int32", "__int64", "long long", "unsigned __int64", "unsigned long long", "float", "double", HoBtIdType
-    };
-
-    private static readonly HashSet<string> BufferTypes = new(StringComparer.Ordinal)
-    {
-        "void", "char", "signed char", "unsigned char", "wchar_t", "char8_t", "char16_t", "char32_t", "__int8", "unsigned __int8"
-    };
-
-    private static readonly HashSet<string> AddressSizedTypes = new(StringComparer.Ordinal)
-    {
-        "__int64", "long long", "unsigned __int64", "unsigned long long"
-    };
-
-    private static readonly string[] ClassKeywords = ["class ", "struct "];
-
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>>.AlternateLookup<ReadOnlySpan<char>> KnownEnumLookup =
         KnownEnums.GetAlternateLookup<ReadOnlySpan<char>>();
 
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>>.AlternateLookup<ReadOnlySpan<char>> KnownFlagLookup =
         KnownFlags.GetAlternateLookup<ReadOnlySpan<char>>();
 
-    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> ReadableTypeLookup =
-        ReadableTypes.GetAlternateLookup<ReadOnlySpan<char>>();
-
-    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> AddressSizedTypeLookup =
-        AddressSizedTypes.GetAlternateLookup<ReadOnlySpan<char>>();
-
-    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> BufferTypeLookup =
-        BufferTypes.GetAlternateLookup<ReadOnlySpan<char>>();
-
     public static bool IsFloating(string type)
     {
         var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
-        return Normalise(type, buffer) is "float" or "double" or "long double";
+        return TypeNameText.GetPrimitive(TypeNameText.Normalise(type, buffer)) is { Kind: PrimitiveTypeKind.Float };
     }
 
     public static bool IsAddressSized(string type)
     {
         var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
-        return AddressSizedTypeLookup.Contains(Normalise(type, buffer));
+        return TypeNameText.GetPrimitive(TypeNameText.Normalise(type, buffer)) is { IsInteger: true, Size: AddressSize };
     }
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
@@ -175,19 +151,20 @@ public static class ArgumentValue
     {
         var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
-        var normalised = Normalise(type, buffer);
+        var normalised = TypeNameText.Normalise(type, buffer);
 
         return normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
             ? KnownEnumLookup.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
               || KnownFlagLookup.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
-            : ReadableTypeLookup.Contains(normalised);
+            : normalised is HoBtIdType
+              || TypeNameText.GetPrimitive(normalised) is { IsCharacter: false, Kind: not PrimitiveTypeKind.Void };
     }
 
     public static string? GetUnknownEnum(string type)
     {
         var indirection = type.IndexOfAny(['*', '&']);
 
-        var target = Normalise(indirection < 0 ? type : type[..indirection]);
+        var target = TypeNameText.Normalise(indirection < 0 ? type : type[..indirection]);
 
         if (!target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
         {
@@ -212,7 +189,7 @@ public static class ArgumentValue
     {
         var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
-        return Normalise(type, buffer) is HoBtIdType ? raw << HoBtIdShift : null;
+        return TypeNameText.Normalise(type, buffer) is HoBtIdType ? raw << HoBtIdShift : null;
     }
 
     public static string Format(string type, ulong raw)
@@ -232,23 +209,23 @@ public static class ArgumentValue
             return raw;
         }
 
-        var normalised = Normalise(type);
+        var normalised = TypeNameText.Normalise(type);
 
-        if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
+        if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal) || normalised is FunctionSignature.EnumKeyword)
         {
             return (int)raw;
         }
 
-        return normalised switch
+        if (normalised is HoBtIdType)
         {
-            "bool" or "unsigned char" or "unsigned __int8" => (byte)raw,
-            "char" or "signed char" or "__int8" => (sbyte)raw,
-            "short" or "__int16" => (short)raw,
-            "unsigned short" or "unsigned __int16" or "wchar_t" => (ushort)raw,
-            "int" or "long" or "__int32" or "enum" => (int)raw,
-            "unsigned int" or "unsigned long" or "unsigned __int32" => (uint)raw,
-            "__int64" or "long long" => (long)raw,
-            HoBtIdType => (Int128)raw << HoBtIdShift,
+            return (Int128)raw << HoBtIdShift;
+        }
+
+        return TypeNameText.GetPrimitive(normalised) switch
+        {
+            { Kind: PrimitiveTypeKind.Bool } => (byte)raw,
+            { Kind: PrimitiveTypeKind.SignedInteger } primitive => ToSigned(raw, primitive.Size),
+            { Kind: PrimitiveTypeKind.UnsignedInteger } primitive => ToUnsigned(raw, primitive.Size),
             _ => raw
         };
     }
@@ -265,7 +242,7 @@ public static class ArgumentValue
 
     private static string? Read(string type, ulong raw, bool withHex)
     {
-        var normalised = Normalise(type);
+        var normalised = TypeNameText.Normalise(type);
 
         if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
         {
@@ -286,23 +263,39 @@ public static class ArgumentValue
                 : ToNumber((int)raw, withHex);
         }
 
-        return normalised switch
+        if (normalised is HoBtIdType)
         {
-            "bool" => (raw & 0xFF) != 0 ? "true" : "false",
-            "char" or "signed char" or "__int8" => ToNumber((sbyte)raw, withHex),
-            "unsigned char" or "unsigned __int8" => ToNumber((byte)raw, withHex),
-            "short" or "__int16" => ToNumber((short)raw, withHex),
-            "unsigned short" or "unsigned __int16" or "wchar_t" => ToNumber((ushort)raw, withHex),
-            "int" or "long" or "__int32" or "enum" => ToNumber((int)raw, withHex),
-            "unsigned int" or "unsigned long" or "unsigned __int32" => ToNumber((uint)raw, withHex),
-            "__int64" or "long long" => ToNumber((long)raw, withHex),
-            "unsigned __int64" or "unsigned long long" => ToNumber(raw, withHex),
-            "float" => BitConverter.Int32BitsToSingle((int)raw).ToString(CultureInfo.InvariantCulture),
-            "double" or "long double" => BitConverter.Int64BitsToDouble((long)raw).ToString(CultureInfo.InvariantCulture),
-            HoBtIdType => ToNumber(raw << HoBtIdShift, withHex),
+            return ToNumber(raw << HoBtIdShift, withHex);
+        }
+
+        return TypeNameText.GetPrimitive(normalised) switch
+        {
+            { Kind: PrimitiveTypeKind.Bool } => (raw & 0xFF) != 0 ? "true" : "false",
+            { Kind: PrimitiveTypeKind.SignedInteger } primitive => ToNumber(ToSigned(raw, primitive.Size), withHex),
+            { Kind: PrimitiveTypeKind.UnsignedInteger } primitive => ToNumber(ToUnsigned(raw, primitive.Size), withHex),
+            { Kind: PrimitiveTypeKind.Float, Size: sizeof(float) }
+                => BitConverter.Int32BitsToSingle((int)raw).ToString(CultureInfo.InvariantCulture),
+            { Kind: PrimitiveTypeKind.Float } => BitConverter.Int64BitsToDouble((long)raw).ToString(CultureInfo.InvariantCulture),
+            null when normalised is FunctionSignature.EnumKeyword => ToNumber((int)raw, withHex),
             _ => null
         };
     }
+
+    private static long ToSigned(ulong raw, int size) => size switch
+    {
+        sizeof(sbyte) => (sbyte)raw,
+        sizeof(short) => (short)raw,
+        sizeof(int) => (int)raw,
+        _ => (long)raw
+    };
+
+    private static ulong ToUnsigned(ulong raw, int size) => size switch
+    {
+        sizeof(byte) => (byte)raw,
+        sizeof(ushort) => (ushort)raw,
+        sizeof(uint) => (uint)raw,
+        _ => raw
+    };
 
     private static Dictionary<int, string> GetEnumNames<T>() where T : struct, Enum
         => Enum.GetValues<T>()
@@ -351,13 +344,6 @@ public static class ArgumentValue
             ? value.ToString(CultureInfo.InvariantCulture)
             : $"{value.ToString(CultureInfo.InvariantCulture)} (0x{value:X})";
 
-    private static string Normalise(string type)
-    {
-        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
-
-        return Normalise(type, buffer).ToString();
-    }
-
     private static bool TryGetPointeeClass(ReadOnlySpan<char> type, Span<char> buffer, out ReadOnlySpan<char> className)
     {
         className = default;
@@ -369,20 +355,12 @@ public static class ArgumentValue
             return false;
         }
 
-        var target = Normalise(type[..indirection], buffer);
-
-        foreach (var keyword in ClassKeywords)
-        {
-            if (target.StartsWith(keyword, StringComparison.Ordinal))
-            {
-                target = target[keyword.Length..];
-            }
-        }
+        var target = TypeNameText.RemoveClassKeyword(TypeNameText.Normalise(type[..indirection], buffer));
 
         if (target.IsEmpty
             || target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
-            || ReadableTypeLookup.Contains(target)
-            || BufferTypeLookup.Contains(target))
+            || target is HoBtIdType
+            || TypeNameText.GetPrimitive(target) is not null)
         {
             return false;
         }
@@ -390,31 +368,5 @@ public static class ArgumentValue
         className = target;
 
         return true;
-    }
-
-    private static ReadOnlySpan<char> Normalise(ReadOnlySpan<char> type, Span<char> destination)
-    {
-        var length = 0;
-
-        foreach (var range in type.Split(' '))
-        {
-            var part = type[range];
-
-            if (part.IsEmpty || part is "const" or "volatile" or "__ptr64")
-            {
-                continue;
-            }
-
-            if (length > 0)
-            {
-                destination[length++] = ' ';
-            }
-
-            part.CopyTo(destination[length..]);
-
-            length += part.Length;
-        }
-
-        return destination[..length];
     }
 }

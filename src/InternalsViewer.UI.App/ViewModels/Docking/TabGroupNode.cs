@@ -22,9 +22,13 @@ public sealed partial class TabGroupNode : LayoutNode
         }
 
         SelectedDocument = Documents.Count > 0 ? Documents[0] : null;
+
+        IsTool = Documents.Count > 0 && Documents.All(d => d.IsTool);
     }
 
     public ObservableCollection<DocumentViewModel> Documents { get; } = [];
+
+    public bool IsTool { get; private set; }
 
     private List<DocumentViewModel> SelectionHistory { get; } = [];
 
@@ -40,6 +44,11 @@ public sealed partial class TabGroupNode : LayoutNode
         }
 
         Documents.Remove(document);
+
+        if (IsTool && !Documents.Any(d => d.IsTool))
+        {
+            IsTool = false;
+        }
     }
 
     partial void OnSelectedDocumentChanged(DocumentViewModel? value)

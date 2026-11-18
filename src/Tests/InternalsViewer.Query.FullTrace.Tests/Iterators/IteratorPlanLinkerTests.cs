@@ -49,6 +49,19 @@ public class IteratorPlanLinkerTests
     }
 
     [Fact]
+    public void The_Last_Statement_Is_Linked_When_An_Internal_Statement_Ran_Before_It()
+    {
+        var link = Link([Node(0xA1, 0xA0, 0, query: 0xF1) with { Constructed = new TracePoint(new(1, 0), 0) },
+                         Node(0xB1, 0xB0, 0, query: 0xF2) with { Constructed = new TracePoint(new(9, 0), 0) }],
+                        Operator(2, -1, "SELECT", 10),
+                        Operator(2, 0, "Stream Aggregate", 10),
+                        Operator(1, -1, "SELECT", 90),
+                        Operator(1, 0, "Hash Match", 90));
+
+        Assert.Equal((0xB1ul, (short)1), (link.Instances.Keys.Single(), link.GetNode(0xB1)!.PlanHandleId));
+    }
+
+    [Fact]
     public void A_Batch_Iterator_Links_Both_Of_Its_Plan_Objects()
     {
         var link = Link([Node(0xA1, 0xA0, 1, batchPlanObject: 0xAB)], Operator(1, 1, "Filter"));
@@ -104,10 +117,11 @@ public class IteratorPlanLinkerTests
     private static List<(ulong Address, int NodeId)> NodesOf(IReadOnlyDictionary<ulong, PlanNodeIdentifier> links)
         => [.. links.Select(l => (l.Key, (int)l.Value.NodeId)).OrderBy(l => l.Key)];
 
-    private static ExecutionOperatorEvent Operator(short planHandle, short node, string physicalOperator) => new()
+    private static ExecutionOperatorEvent Operator(short planHandle, short node, string physicalOperator, long time = 0) => new()
     {
         Name = physicalOperator,
         OperatorDescription = physicalOperator,
-        PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = planHandle, NodeId = node }
+        PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = planHandle, NodeId = node },
+        TimeUs = time
     };
 }

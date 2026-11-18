@@ -11,13 +11,12 @@
         <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
         <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.140.0" />
         <PackageReference Include="Microsoft.SqlServer.Types" Version="170.1000.7" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.13" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="11.0.0" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
         <ProjectReference Include="..\..\InternalsViewer.TransactionLog\InternalsViewer.TransactionLog.csproj" />
-        <ProjectReference Include="..\..\InternalsViewer.Execution\InternalsViewer.Execution.csproj" />
         <ProjectReference Include="..\InternalsViewer.Query.SourceGenerators\InternalsViewer.Query.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
     <ItemGroup>

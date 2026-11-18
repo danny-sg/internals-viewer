@@ -11,10 +11,10 @@ public class TraceValueSearchTests
     [Fact]
     public async Task A_Value_Is_Found_In_The_Calls_Of_Every_Function()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0), Row(2, rcx: 0xB0)), 2);
-        builder.Add(0x2000, 0, Chunk(Row(3, rcx: 0xB0)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1, rcx: 0xA0), Row(2, rcx: 0xB0)), 2);
+        builder.AddChunk(0x2000, 0, Chunk(Row(3, rcx: 0xB0)), 1);
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xB0, CancellationToken.None);
 
@@ -24,9 +24,9 @@ public class TraceValueSearchTests
     [Fact]
     public async Task A_Return_Value_Is_Only_Searched_When_The_Call_Returned()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallColumnSet.ReturnedFlag, returnValue: 0xD0)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallColumnSet.ReturnedFlag, returnValue: 0xD0)), 2);
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xD0, CancellationToken.None));
 
@@ -36,10 +36,10 @@ public class TraceValueSearchTests
     [Fact]
     public async Task Every_Use_In_One_Place_Is_Counted_From_Its_First_Call_To_Its_Last()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(0, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
-        builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(10, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
+        builder.AddChunk(0x1000, 0, Chunk([.. Enumerable.Range(0, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
+        builder.AddChunk(0x1000, 0, Chunk([.. Enumerable.Range(10, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None));
 
@@ -51,10 +51,10 @@ public class TraceValueSearchTests
     [Fact]
     public async Task The_Calls_Behind_One_Use_Are_Listed_With_Their_Threads()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallColumnSet.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallColumnSet.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
 
         var search = new TraceValueSearch(builder.Build());
 
@@ -70,16 +70,14 @@ public class TraceValueSearchTests
     {
         var tree = new CallTree();
 
-        var kept = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var dropped = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var kept = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1);
+        var dropped = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, callNodeIndex: 0), Row(2, rcx: 0xA0, callNodeIndex: 1), Row(3, rcx: 0xA0, callNodeIndex: 0)), 3);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1, rcx: 0xA0, replayNodeIndex: 0), Row(2, rcx: 0xA0, replayNodeIndex: 1), Row(3, rcx: 0xA0, replayNodeIndex: 0)), 3);
 
-        var store = builder.Build();
-
-        store.MapNodes([kept, dropped]);
+        var store = builder.Build([kept, dropped]);
 
         bool Include(CallTreeNode? node) => !ReferenceEquals(node, dropped);
 
@@ -91,16 +89,16 @@ public class TraceValueSearchTests
 
         Assert.Equal(2, use.CallCount);
         Assert.Equal([0, 2], calls.Select(c => c.CallIndex));
-        Assert.Equal([0, 2], store.GetIncludedCalls(store.GetCallList(0x1000, 0)!, Include, CancellationToken.None));
+        Assert.Equal([0, 2], store.GetIncludedCallIndexes(store.GetCallList(0x1000, 0)!, Include, CancellationToken.None));
     }
 
     [Fact]
     public async Task Uses_Are_Listed_In_The_Order_They_First_Happened()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
-        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceCallColumnSet.ReturnedFlag, returnValue: 0xA0)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
+        builder.AddChunk(0x2000, 0, Chunk(Row(10, flags: TraceCallColumnSet.ReturnedFlag, returnValue: 0xA0)), 1);
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None);
 

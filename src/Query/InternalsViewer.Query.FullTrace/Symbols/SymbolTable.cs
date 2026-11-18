@@ -2,7 +2,6 @@ using System.IO.Compression;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;
@@ -80,6 +79,8 @@ internal sealed class SymbolTable
 
     public int FunctionCount { get; }
 
+    public uint LastRva => ByAddress.Length == 0 ? 0 : Rvas[ByAddress[^1]];
+
     private uint[] Rvas { get; }
 
     private int[] ByAddress { get; }
@@ -144,6 +145,8 @@ internal sealed class SymbolTable
 
     public string GetSignature(int index) => GetText(index, SignatureField);
 
+    public string GetDecoratedName(int index) => GetText(index, DecoratedField);
+
     public FunctionSignature? GetParsedSignature(int index)
     {
         if (ParameterCounts[index] < 0)
@@ -182,6 +185,23 @@ internal sealed class SymbolTable
         }
 
         return found < 0 ? null : new Symbol(this, found);
+    }
+
+    public int FindAtOrBelow(uint rva)
+    {
+        var at = (rva == uint.MaxValue ? ByAddress.Length : GetLowerBound(rva + 1)) - 1;
+
+        if (at < 0)
+        {
+            return -1;
+        }
+
+        while (at > 0 && Rvas[ByAddress[at - 1]] == Rvas[ByAddress[at]])
+        {
+            at--;
+        }
+
+        return ByAddress[at];
     }
 
     public Reader Read() => new(this);

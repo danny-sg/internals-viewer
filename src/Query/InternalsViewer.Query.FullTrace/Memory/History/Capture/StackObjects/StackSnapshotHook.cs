@@ -2,10 +2,11 @@ using System.Buffers;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 
@@ -182,7 +183,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
         {
             var target = Candidates[index];
 
-            target.EndPosition = call.Position;
+            target.ToPosition = call.Position;
 
             target.ReleaseImage();
 
@@ -211,9 +212,9 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
                 objects.Add(new StackObject(target.Address,
                                             target.Size,
                                             target.Thread,
-                                            target.OwnerCallNodeIndex,
-                                            target.FirstPosition,
-                                            target.EndPosition));
+                                            target.OwnerReplayNodeIndex,
+                                            target.FromPosition,
+                                            target.ToPosition));
             }
         }
 
@@ -339,7 +340,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         owned.Add(index);
 
-        Candidates.Add(new Candidate(address, size, thread, frame.CallNodeIndex, position));
+        Candidates.Add(new Candidate(address, size, thread, frame.ReplayNodeIndex, position));
 
         return index;
     }
@@ -438,7 +439,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
         DataLength = 0;
     }
 
-    private sealed class Candidate(ulong address, int size, uint thread, int ownerCallNodeIndex, TracePosition firstPosition)
+    private sealed class Candidate(ulong address, int size, uint thread, int ownerReplayNodeIndex, TracePosition fromPosition)
     {
         public ulong Address { get; } = address;
 
@@ -446,11 +447,11 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         public uint Thread { get; } = thread;
 
-        public int OwnerCallNodeIndex { get; } = ownerCallNodeIndex;
+        public int OwnerReplayNodeIndex { get; } = ownerReplayNodeIndex;
 
-        public TracePosition FirstPosition { get; } = firstPosition;
+        public TracePosition FromPosition { get; } = fromPosition;
 
-        public TracePosition EndPosition { get; set; } = TracePosition.Unknown;
+        public TracePosition ToPosition { get; set; } = TracePosition.Unknown;
 
         public byte[]? Image { get; private set; }
 

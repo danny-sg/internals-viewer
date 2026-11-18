@@ -2,9 +2,7 @@ using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -12,10 +10,10 @@ public sealed partial class TraceTimeline
 {
     public const string ShutdownSymbol = "CXStmtQuery::ShutdownNormal";
 
-    internal TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, int[] parents, TraceScale scale)
+    internal TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, TraceNodeMap nodes, TraceScale scale)
     {
         Threads = threads;
-        Parents = parents;
+        Nodes = nodes;
         Scale = scale;
         SpanCount = threads.Sum(t => t.CallCount);
 
@@ -32,13 +30,11 @@ public sealed partial class TraceTimeline
     private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, TraceTimeline source, bool fit = false)
     {
         Threads = threads;
-        Parents = source.Parents;
         Nodes = source.Nodes;
         Scale = source.Scale;
         SpanCount = threads.Sum(t => t.CallCount);
         Start = source.Start;
         End = source.End;
-        Calls = source.Calls;
 
         if (!fit || threads.Count == 0)
         {
@@ -55,19 +51,13 @@ public sealed partial class TraceTimeline
 
     public TracePoint Start { get; private set; }
 
-    public TracePoint End { get; private set; }
+    public TracePoint End { get; }
 
-    public int NodeCount => Parents.Length;
+    public int NodeCount => Nodes.Count;
 
-    public long SpanCount { get; private set; }
+    public long SpanCount { get; }
 
-    internal CallTreeNode?[] MappedNodes => Nodes;
-
-    private int[] Parents { get; }
-
-    private CallTreeNode?[] Nodes { get; set; } = [];
-
-    private TraceCallStore? Calls { get; set; }
+    internal TraceNodeMap Nodes { get; }
 
     private double[]? InstructionCuts { get; set; }
 
@@ -85,31 +75,24 @@ public sealed partial class TraceTimeline
     public TracePoint GetPoint(TracePosition position)
         => new(position, Threads.Select(t => t.Clock.GetInstructions(position)).DefaultIfEmpty().Max());
 
-    public CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    public CallTreeNode? GetNode(int replayNodeIndex) => Nodes.GetNode(replayNodeIndex);
 
-    public TraceSpanLocation? FindCall(CallTreeNode node, int callIndex)
-        => node.Frame is { } frame ? FindCall(frame.Address, frame.InstanceAddress, callIndex) : null;
+    public TraceSpanLocation? FindSpan(TraceCallList calls, int callIndex)
+        => callIndex >= 0 && callIndex < calls.Count
+            ? Find(calls.GetThreadId(callIndex), calls.GetFromPosition(callIndex), calls.GetReplayNodeIndex(callIndex), callIndex)
+            : null;
 
-    public TraceSpanLocation? FindCall(ulong functionAddress, ulong instanceAddress, int callIndex)
+    public TraceSpanLocation? FindSpan(uint thread, TraceSpan span)
+        => Find(thread, span.From.Position, span.ReplayNodeIndex, span.CallIndex);
+
+    private TraceSpanLocation? Find(uint thread, TracePosition from, int replayNodeIndex, int callIndex)
     {
-        if (Calls?.GetCallList(functionAddress, instanceAddress) is not { } calls || callIndex < 0 || callIndex >= calls.Count)
+        if (GetNode(replayNodeIndex) is not { } callNode)
         {
             return null;
         }
 
-        return Find(calls.GetThread(callIndex), calls.GetFromPosition(callIndex), calls.GetCallNodeIndex(callIndex), callIndex);
-    }
-
-    public TraceSpanLocation? FindSpan(uint thread, TraceSpan span) => Find(thread, span.From.Position, span.CallNodeIndex, span.CallIndex);
-
-    private TraceSpanLocation? Find(uint thread, TracePosition from, int callNodeIndex, int callIndex)
-    {
-        if (GetNode(callNodeIndex) is not { } callNode)
-        {
-            return null;
-        }
-
-        var depth = GetDepth(callNodeIndex);
+        var depth = GetDepth(replayNodeIndex);
 
         for (var lane = 0; lane < Threads.Count; lane++)
         {
@@ -120,14 +103,14 @@ public sealed partial class TraceTimeline
 
             var rows = Threads[lane].Rows;
 
-            if (depth < rows.Count && rows[depth].GetIndex(from, callNodeIndex, callIndex) is >= 0 and var expected)
+            if (depth < rows.Count && rows[depth].GetIndex(from, replayNodeIndex, callIndex) is >= 0 and var expected)
             {
                 return new TraceSpanLocation(lane, Threads[lane], depth, rows[depth], expected, callNode);
             }
 
             for (var row = 0; row < rows.Count; row++)
             {
-                if (row != depth && rows[row].GetIndex(from, callNodeIndex, callIndex) is >= 0 and var index)
+                if (row != depth && rows[row].GetIndex(from, replayNodeIndex, callIndex) is >= 0 and var index)
                 {
                     return new TraceSpanLocation(lane, Threads[lane], row, rows[row], index, callNode);
                 }
@@ -137,7 +120,7 @@ public sealed partial class TraceTimeline
         return null;
     }
 
-    public TraceSpan? GetInnermostCall(uint thread, TracePosition position)
+    public TraceSpan? GetInnermostSpan(uint thread, TracePosition position)
     {
         for (var laneIndex = 0; laneIndex < Threads.Count; laneIndex++)
         {
@@ -199,7 +182,7 @@ public sealed partial class TraceTimeline
 
                 for (var index = 0; index < row.Count; index++)
                 {
-                    if (GetNode(row.GetCallNodeIndex(index)) is { } node)
+                    if (GetNode(row.GetReplayNodeIndex(index)) is { } node)
                     {
                         yield return new TraceSpanLocation(threadIndex, thread, depth, row, index, node);
                     }
@@ -239,9 +222,9 @@ public sealed partial class TraceTimeline
         return [.. totals.OrderBy(t => t.Key).Select(t => new TraceSelfAllocation(t.Key.Thread, t.Key.Depth, t.Key.Index, t.Value))];
     }
 
-    public int GetParent(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Parents.Length ? Parents[callNodeIndex] : -1;
+    public int GetParent(int replayNodeIndex) => Nodes.GetParent(replayNodeIndex);
 
-    public (TraceSpan Span, uint ThreadId)? GetFirstRootCall()
+    public (TraceSpan Span, uint ThreadId)? GetFirstRootSpan()
     {
         (TraceSpan Span, uint ThreadId)? first = null;
 
@@ -258,11 +241,11 @@ public sealed partial class TraceTimeline
         return first;
     }
 
-    public TracePosition? GetFirstCallStart(string symbol)
+    public TracePosition? GetFirstSpanStart(string symbol)
     {
         TracePosition? first = null;
 
-        foreach (var (_, span) in GetCalls(symbol))
+        foreach (var (_, span) in GetSpans(symbol))
         {
             if (first is not { } found || span.From.Position < found)
             {
@@ -273,11 +256,24 @@ public sealed partial class TraceTimeline
         return first;
     }
 
-    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetCalls(string symbol)
-    {
-        var isMatch = Array.ConvertAll(Nodes, n => n?.Symbol == symbol);
+    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetSpans(string symbol) => GetSpans(n => n.Symbol == symbol);
 
-        if (!isMatch.Contains(true))
+    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetSpans(Func<CallTreeNode, bool> predicate)
+    {
+        var isMatch = new bool[NodeCount];
+
+        var anyMatch = false;
+
+        for (var index = 0; index < isMatch.Length; index++)
+        {
+            if (GetNode(index) is { } node && predicate(node))
+            {
+                isMatch[index] = true;
+                anyMatch = true;
+            }
+        }
+
+        if (!anyMatch)
         {
             yield break;
         }
@@ -288,57 +284,14 @@ public sealed partial class TraceTimeline
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var callNodeIndex = row.GetCallNodeIndex(index);
+                    var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-                    if (callNodeIndex >= 0 && callNodeIndex < isMatch.Length && isMatch[callNodeIndex])
+                    if (replayNodeIndex >= 0 && replayNodeIndex < isMatch.Length && isMatch[replayNodeIndex])
                     {
                         yield return (thread.ThreadId, row.GetSpan(index));
                     }
                 }
             }
-        }
-    }
-
-    internal void RemoveCallsUnder(Func<CallTreeNode, bool> boundary)
-    {
-        var removed = new bool[NodeCount];
-
-        var any = false;
-
-        for (var callNodeIndex = 0; callNodeIndex < removed.Length; callNodeIndex++)
-        {
-            var parent = Parents[callNodeIndex];
-
-            removed[callNodeIndex] = (parent >= 0 && removed[parent]) || (GetNode(callNodeIndex) is { } callNode && boundary(callNode));
-
-            any |= removed[callNodeIndex];
-        }
-
-        if (!any)
-        {
-            return;
-        }
-
-        Func<int, bool> isRemoved = n => n >= 0 && n < removed.Length && removed[n];
-
-        foreach (var thread in Threads)
-        {
-            thread.Clock.AddDeadSpans(thread.GetMaterialDeadSpans([], isRemoved, Scale));
-
-            thread.RemoveAll(isRemoved);
-        }
-
-        SpanCount = Threads.Sum(t => t.CallCount);
-
-        SpanIds = null;
-
-        InstructionCuts = null;
-
-        SetCuts();
-
-        if (Threads.Count > 0)
-        {
-            End = new TracePoint(Threads.Max(t => t.End.Position), Threads.Max(t => t.End.Instructions));
         }
     }
 
@@ -359,10 +312,6 @@ public sealed partial class TraceTimeline
 
         Scale.SetCuts(cuts);
     }
-
-    internal void MapNodes(CallTreeNode?[] nodes) => Nodes = nodes;
-
-    internal void SetCalls(TraceCallStore calls) => Calls = calls;
 
     internal Dictionary<CallTreeNode, int[]> GetCallActivity(int buckets)
     {
@@ -396,11 +345,11 @@ public sealed partial class TraceTimeline
         return activity;
     }
 
-    private int GetDepth(int callNodeIndex)
+    private int GetDepth(int replayNodeIndex)
     {
         var depth = 0;
 
-        for (var current = callNodeIndex >= 0 && callNodeIndex < Parents.Length ? Parents[callNodeIndex] : -1; current >= 0; current = Parents[current])
+        for (var current = GetParent(replayNodeIndex); current >= 0; current = GetParent(current))
         {
             depth++;
         }

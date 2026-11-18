@@ -1,4 +1,0 @@
-﻿# InternalsViewer.Execution
-
-## Project Structure
-

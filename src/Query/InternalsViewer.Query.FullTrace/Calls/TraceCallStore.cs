@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using System.IO.Compression;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
@@ -14,58 +13,51 @@ public sealed partial class TraceCallStore
     private const long CachedColumns = CachedColumnBytes / sizeof(ulong);
 
     private TraceCallStore(Dictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> functions,
-                           Dictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable> locators,
-                           Locator[] uniqueLocators)
+                           TraceLocatorSet locators,
+                           TraceNodeMap nodes)
     {
-        Functions = functions;
+        Chunks = functions;
         Locators = locators;
-        UniqueLocators = uniqueLocators;
+        Nodes = nodes;
         Lists = functions.ToDictionary(f => f.Key,
                                        f => new TraceCallList(f.Key.FunctionAddress,
                                                               f.Key.InstanceAddress,
                                                               f.Value,
                                                               Columns,
-                                                              locators.GetValueOrDefault(f.Key)));
+                                                              locators.GetTable(f.Key.FunctionAddress, f.Key.InstanceAddress)));
 
         CallCount = functions.Values.Sum(f => f.Sum(c => (long)c.CallCount));
-        Size = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
-        LocatorCount = locators.Values.Sum(l => (long)l.Count);
+        CompressedSize = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
     }
 
-    public int FunctionCount => Functions.Count;
+    public int FunctionCount => Chunks.Count;
 
     public long CallCount { get; }
 
-    public long Size { get; }
+    public long CompressedSize { get; }
 
-    public long LocatorCount { get; }
+    internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> Chunks { get; }
 
-    public int UniqueLocatorCount => UniqueLocators.Length;
-
-    internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> Functions { get; }
-
-    internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable> Locators { get; }
-
-    private Locator[] UniqueLocators { get; }
+    internal TraceLocatorSet Locators { get; }
 
     private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), TraceCallList> Lists { get; }
 
-    private CallTreeNode?[] Nodes { get; set; } = [];
+    private TraceNodeMap Nodes { get; }
 
     private ChunkCache Columns { get; } = new(CachedColumns);
 
     public TraceCallList? GetCallList(ulong functionAddress, ulong instanceAddress)
         => Lists.GetValueOrDefault((functionAddress, instanceAddress));
 
-    public CallTreeNode? GetNode(TraceArgumentCall call) => GetNode(call.CallNodeIndex);
+    public CallTreeNode? GetNode(TraceArgumentCall call) => GetNode(call.ReplayNodeIndex);
 
-    public CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    public CallTreeNode? GetNode(int replayNodeIndex) => Nodes.GetNode(replayNodeIndex);
 
-    public CallTreeNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetCallNodeIndex(0));
+    public CallTreeNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetReplayNodeIndex(0));
 
     public IEnumerable<TraceCallList> GetCallLists()
     {
-        foreach (var (functionAddress, instanceAddress) in FunctionKeys)
+        foreach (var (functionAddress, instanceAddress) in Chunks.Keys)
         {
             if (GetCallList(functionAddress, instanceAddress) is { Count: > 0 } list)
             {
@@ -74,7 +66,7 @@ public sealed partial class TraceCallStore
         }
     }
 
-    public IReadOnlyList<int> GetIncludedCalls(TraceCallList calls, Func<CallTreeNode?, bool> include, CancellationToken cancellationToken)
+    public IReadOnlyList<int> GetIncludedCallIndexes(TraceCallList calls, Func<CallTreeNode?, bool> include, CancellationToken cancellationToken)
     {
         var included = new List<int>(calls.Count);
 
@@ -85,7 +77,7 @@ public sealed partial class TraceCallStore
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            if (include(GetNode(calls.GetCallNodeIndex(index))))
+            if (include(GetNode(calls.GetReplayNodeIndex(index))))
             {
                 included.Add(index);
             }
@@ -94,15 +86,11 @@ public sealed partial class TraceCallStore
         return included;
     }
 
-    internal void MapNodes(CallTreeNode?[] nodes) => Nodes = nodes;
+    internal void ClearColumnCache() => Columns.Clear();
 
-    internal void ReleaseColumns() => Columns.Clear();
-
-    internal IEnumerable<(ulong FunctionAddress, ulong InstanceAddress)> FunctionKeys => Functions.Keys;
-
-    internal void AnnotateNodes()
+    internal void AddNodeLocators()
     {
-        foreach (var ((functionAddress, instanceAddress), table) in Locators)
+        foreach (var ((functionAddress, instanceAddress), table) in Locators.Tables)
         {
             if (GetCallList(functionAddress, instanceAddress) is not { } calls)
             {
@@ -116,7 +104,7 @@ public sealed partial class TraceCallStore
                     continue;
                 }
 
-                if (callIndex < calls.Count && GetNode(calls.GetCallNodeIndex(callIndex)) is { } node)
+                if (callIndex < calls.Count && GetNode(calls.GetReplayNodeIndex(callIndex)) is { } node)
                 {
                     (node.Locators ??= new LocatorSet()).Add(locator);
                 }

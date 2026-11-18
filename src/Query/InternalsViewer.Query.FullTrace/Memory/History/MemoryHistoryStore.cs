@@ -44,6 +44,8 @@ public sealed partial class MemoryHistoryStore
 
     public int ReadCount => Reads.Count;
 
+    public EngineLayout Layout { get; private init; } = EngineLayout.Latest;
+
     private MemoryHistoryBlock[] BlockArray { get; }
 
     private MemoryHistoryAccessTable Writes { get; }
@@ -74,7 +76,7 @@ public sealed partial class MemoryHistoryStore
             ? new WriteList(this, BlockArray[block].FirstWrite, BlockArray[block].WriteCount)
             : [];
 
-    public ulong GetIterator(MemoryHistoryWrite write) => Iterators.GetValueOrDefault(write.CallNodeIndex);
+    public ulong GetIterator(MemoryHistoryWrite write) => Iterators.GetValueOrDefault(write.ReplayNodeIndex);
 
     public (int First, int Count) GetReadRange(int block)
         => block >= 0 && block + 1 < ReadStarts.Length ? (ReadStarts[block], ReadStarts[block + 1] - ReadStarts[block]) : (0, 0);
@@ -97,9 +99,9 @@ public sealed partial class MemoryHistoryStore
     {
         var read = Reads[index];
 
-        var (callNodeIndex, callIndex) = GetCall(read.SpanId);
+        var (replayNodeIndex, callIndex) = GetCall(read.SpanId);
 
-        return new MemoryHistoryRead(read.Position, callNodeIndex, callIndex, read.Offset, read.Length, read.Count);
+        return new MemoryHistoryRead(read.Position, replayNodeIndex, callIndex, read.Offset, read.Length, read.Count);
     }
 
     public TracePoint GetReadPoint(int index)
@@ -188,6 +190,27 @@ public sealed partial class MemoryHistoryStore
     public int GetBlock(ulong address, TracePosition position)
         => GetBlock(StackAddresses, address, position) is >= 0 and var stack ? stack : GetBlock(Addresses, address, position);
 
+    public int GetFreedBlock(ulong address, TracePosition position)
+    {
+        var found = -1;
+
+        foreach (var at in Addresses.Addresses.GetCandidates(address))
+        {
+            var block = Addresses.Blocks[at];
+
+            var item = BlockArray[block];
+
+            if (address < item.Address + (ulong)item.Size
+                && item.ToPosition <= position
+                && (found < 0 || BlockArray[found].ToPosition < item.ToPosition))
+            {
+                found = block;
+            }
+        }
+
+        return found;
+    }
+
     public bool IsLive(int block, TracePosition position)
         => BlockArray[block] is { InstanceCount: > 0 }
             ? GetInstance(block, position) >= 0
@@ -202,7 +225,7 @@ public sealed partial class MemoryHistoryStore
     {
         ReadOnlySpan<MemoryHistoryInstance> instances = Instances.AsSpan(BlockArray[block].FirstInstance, BlockArray[block].InstanceCount);
 
-        var index = SortedSearch.FirstAfter<MemoryHistoryInstance, TracePosition>(instances, position, i => i.FromPosition) - 1;
+        var index = SortedSearch.FirstAfter(instances, position, i => i.FromPosition) - 1;
 
         return index >= 0 && position < instances[index].ToPosition ? index : -1;
     }
@@ -256,18 +279,23 @@ public sealed partial class MemoryHistoryStore
         => GetCreatedPosition(block) is var created && from <= created && created <= to;
 
     public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
-        => timeline.GetNode(BlockArray[block].CallNodeIndex)?.GetAncestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
+        => timeline.GetNode(BlockArray[block].ReplayNodeIndex)?.GetAncestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
+
+    internal MemoryHistoryStore WithLayout(EngineLayout layout)
+        => ReferenceEquals(layout, Layout)
+            ? this
+            : new(BlockArray, Writes, Iterators, Timeline, Reads, ReadStarts, Instances) { Layout = layout };
 
     private WriteRange GetBlockWrites(int block) => new(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount);
 
     private MemoryHistoryWrite GetWrite(int index, MemoryHistoryAccessEntry write)
     {
-        var (callNodeIndex, callIndex) = GetCall(write.SpanId);
+        var (replayNodeIndex, callIndex) = GetCall(write.SpanId);
 
-        return new MemoryHistoryWrite(index, write.Position, callNodeIndex, callIndex, write.Offset, (ushort)write.Length, write.Type);
+        return new MemoryHistoryWrite(index, write.Position, replayNodeIndex, callIndex, write.Offset, (ushort)write.Length, write.Type);
     }
 
-    private (int CallNodeIndex, int CallIndex) GetCall(int spanId) => Timeline?.GetSpanCall(spanId) ?? (-1, -1);
+    private (int ReplayNodeIndex, int CallIndex) GetCall(int spanId) => Timeline?.GetSpanCall(spanId) ?? (-1, -1);
 
     private ulong GetInstructions(int spanId, TracePosition position) => Timeline?.GetInstructions(spanId, position) ?? 0;
 

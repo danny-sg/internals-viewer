@@ -10,6 +10,10 @@ internal static class IteratorSymbolLookup
 
     public const string BatchHelperClass = "CQScanBatchHelper";
 
+    public const string ProfileClass = "CQScanProfileNew";
+
+    public const string LightProfileClass = "CQScanLightProfileNew";
+
     public const string QueryScanClass = "CQueryScan";
 
     public const string RowPlanObjectPrefix = "CXte";
@@ -48,6 +52,10 @@ internal static class IteratorSymbolLookup
 
     public static bool IsIteratorConstructor(CallFrame? frame)
         => frame?.Function is { ClassName: { } className } resolved && IsIterator(className) && resolved.MethodName == className;
+
+    public static bool IsProfilingIterator(CallFrame? frame) => IsProfilingClass(frame?.Function?.ClassName);
+
+    public static bool IsProfilingClass(string? className) => className is ProfileClass or LightProfileClass;
 
     public static bool IsQueryScan(ReadOnlySpan<char> className) => className.StartsWith(QueryScanClass, StringComparison.Ordinal);
 

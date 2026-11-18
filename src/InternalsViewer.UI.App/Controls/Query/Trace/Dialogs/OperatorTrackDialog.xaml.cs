@@ -116,6 +116,8 @@ public sealed partial class OperatorTrackDialog
 
         PlanDefaultBox.IsChecked = existing?.IsPlanDefault != false;
 
+        DetailedBox.IsChecked = existing?.IsDetailed == true;
+
         var background = ColourHelpers.FromHex(existing?.Background);
 
         BackgroundPicker.Color = background ?? Colors.White;
@@ -589,6 +591,7 @@ public sealed partial class OperatorTrackDialog
             IsCounter = CounterBox.IsChecked == true,
             IsPhase = PhaseBox.IsChecked == true,
             IsPlanDefault = PlanDefaultBox.IsChecked == true,
+            IsDetailed = DetailedBox.IsChecked == true,
             Background = GetBackgroundText(),
             Source = Existing?.Source ?? TraceTickSourceType.Call,
             Value = Existing?.Value ?? 0

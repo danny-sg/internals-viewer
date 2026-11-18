@@ -46,7 +46,7 @@ public class MemoryChangeRunsTests
 
         Assert.Equal(MemoryChangeState.Changed, run.State);
 
-        Assert.Equal(7, run.CallNodeIndex);
+        Assert.Equal(7, run.ReplayNodeIndex);
     }
 
     [Fact]
@@ -73,9 +73,24 @@ public class MemoryChangeRunsTests
         Assert.Equal(Size - 1, run.End);
     }
 
+    [Fact]
+    public void A_Read_Takes_The_Function_That_Last_Read_It()
+    {
+        var runs = MemoryChangeRuns.GetReadRuns([Read(1, 4, 4, 7), Read(2, 6, 4, 9)], new TracePosition(5, 0), Size);
+
+        Assert.Equal([new MemoryChangeRun(4, 5, MemoryChangeState.Read, 7), new MemoryChangeRun(6, 9, MemoryChangeState.Read, 9)], runs);
+    }
+
+    [Fact]
+    public void A_Read_After_The_Playhead_Is_Not_Shown()
+        => Assert.Empty(MemoryChangeRuns.GetReadRuns([Read(9, 4, 4, 7)], new TracePosition(5, 0), Size));
+
+    private static MemoryHistoryRead Read(ulong sequence, int offset, int length, int replayNodeIndex)
+        => new(new TracePosition(sequence, 0), replayNodeIndex, 0, offset, length, 1);
+
     private static MemoryHistoryWrite Write(int offset,
                                             int length,
-                                            int callNodeIndex,
+                                            int replayNodeIndex,
                                             MemoryHistoryAccessType type = MemoryHistoryAccessType.Changed)
-        => new(0, TracePosition.Unknown, callNodeIndex, 0, offset, (ushort)length, type);
+        => new(0, TracePosition.Unknown, replayNodeIndex, 0, offset, (ushort)length, type);
 }

@@ -30,6 +30,9 @@ public sealed partial class DocumentViewModel(string title,
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private string _title = title;
+
     /// <summary>Stable identifier used to persist/restore which documents are open and where</summary>
     public string Key { get; } = key ?? title;
 
@@ -42,7 +45,16 @@ public sealed partial class DocumentViewModel(string title,
     /// <summary>
     /// The object set as the view's <c>DataContext</c> (e.g. the shared query view model)
     /// </summary>
-    public object Content { get; } = content;
+    public object Content
+    {
+        get;
+        set
+        {
+            field = value;
+
+            _cachedView?.DataContext = value;
+        }
+    } = content;
 
     /// <summary>
     /// Builds a view instance for this document
@@ -59,11 +71,11 @@ public sealed partial class DocumentViewModel(string title,
     /// </summary>
     public bool KeepAlive { get; } = keepAlive;
 
-    public string Title { get; } = title;
-
     public bool CanClose { get; } = canClose;
 
     public double MinWidth { get; init; }
+
+    public bool IsTool { get; init; }
 
     public List<DocumentMenuItem> MenuItems { get; init; } = [];
 
@@ -103,6 +115,18 @@ public sealed partial class DocumentViewModel(string title,
         _currentHolder = holder;
 
         return holder;
+    }
+
+    public void Realize()
+    {
+        if (!KeepAlive || _cachedView is not null)
+        {
+            return;
+        }
+
+        _cachedView = ViewFactory();
+
+        _cachedView.DataContext = Content;
     }
 
     /// <summary>

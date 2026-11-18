@@ -43,14 +43,14 @@ public sealed class TraceMemoryWrites
             {
                 var read = store.GetRead(First + index);
 
-                return new TraceMemoryWrite(store.GetReadPoint(First + index), read.Offset, read.Length, read.CallNodeIndex);
+                return new TraceMemoryWrite(store.GetReadPoint(First + index), read.Offset, read.Length, read.ReplayNodeIndex);
             }
 
             var write = store.GetWrite(First + index);
 
             var (offset, length) = store.GetChangedExtent(write);
 
-            return new TraceMemoryWrite(store.GetPoint(First + index), offset, length, write.CallNodeIndex);
+            return new TraceMemoryWrite(store.GetPoint(First + index), offset, length, write.ReplayNodeIndex);
         }
     }
 
@@ -59,25 +59,8 @@ public sealed class TraceMemoryWrites
            : IsReads ? store.GetReadPoint(First + index)
            : store.GetPoint(First + index);
 
-    public int GetCallNodeIndex(int index)
-        => Store is not { } store ? Writes[index].CallNodeIndex
-           : IsReads ? store.GetRead(First + index).CallNodeIndex
-           : store.GetWrite(First + index).CallNodeIndex;
-
-    public (int Offset, int Length) GetExtent(int index)
-    {
-        if (Store is not { } store)
-        {
-            return (Writes[index].Offset, Writes[index].Length);
-        }
-
-        if (IsReads)
-        {
-            var read = store.GetRead(First + index);
-
-            return (read.Offset, read.Length);
-        }
-
-        return store.GetChangedExtent(store.GetWrite(First + index));
-    }
+    public int GetReplayNodeIndex(int index)
+        => Store is not { } store ? Writes[index].ReplayNodeIndex
+           : IsReads ? store.GetRead(First + index).ReplayNodeIndex
+           : store.GetWrite(First + index).ReplayNodeIndex;
 }

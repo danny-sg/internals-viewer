@@ -93,7 +93,7 @@ public sealed partial class MemoryReadsViewModel(PlayheadMemoryViewModel owner) 
     {
         if (GetRead(index) is { } read)
         {
-            FunctionFilter = Owner.History.GetWriterLabel(read.CallNodeIndex);
+            FunctionFilter = Owner.History.GetWriterLabel(read.ReplayNodeIndex);
         }
     }
 
@@ -102,6 +102,14 @@ public sealed partial class MemoryReadsViewModel(PlayheadMemoryViewModel owner) 
         if (GetRead(index) is { } read)
         {
             AddressFilter = $"{HexPrefix}{Owner.History.Store.Blocks[Owner.Block].Address + (ulong)read.Offset:X16}";
+        }
+    }
+
+    public void OpenSnapshot(int index)
+    {
+        if (GetRead(index) is { } read)
+        {
+            Owner.OpenSnapshot(read.Position);
         }
     }
 
@@ -158,7 +166,7 @@ public sealed partial class MemoryReadsViewModel(PlayheadMemoryViewModel owner) 
         {
             var read = reads[index];
 
-            var label = Owner.History.GetWriterLabel(read.CallNodeIndex);
+            var label = Owner.History.GetWriterLabel(read.ReplayNodeIndex);
 
             if (function.Length > 0 && !label.Contains(function, StringComparison.OrdinalIgnoreCase))
             {
@@ -176,8 +184,8 @@ public sealed partial class MemoryReadsViewModel(PlayheadMemoryViewModel owner) 
 
             var row = new ResultRow<long>([
                 new ActionLinks([new ActionLink(TracePositionText.GetHexText(read.Position), () => Owner.GoToRead(readIndex))]),
-                new SwatchText(label, Owner.GetReadColour(read.CallNodeIndex).ToColor()),
-                Owner.History.GetWriter(read.CallNodeIndex) is { } reader ? new CallValue(reader, read.CallIndex) : null,
+                new SwatchText(label, Owner.GetReadColour(read.ReplayNodeIndex).ToColor()),
+                Owner.History.GetWriter(read.ReplayNodeIndex) is { } reader ? new CallValue(reader, read.CallIndex) : null,
                 $"{HexPrefix}{start:X16}",
                 read.Length,
                 $"{read.Count:N0}"

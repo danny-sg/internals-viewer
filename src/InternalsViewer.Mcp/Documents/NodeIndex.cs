@@ -68,7 +68,7 @@ public sealed class NodeIndex
 
             yield return node;
 
-            foreach (var child in node.Children.Values.Reverse())
+            foreach (var child in node.Children.Reverse())
             {
                 stack.Push(child);
             }

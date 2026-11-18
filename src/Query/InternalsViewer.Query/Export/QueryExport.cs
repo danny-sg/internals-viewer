@@ -31,6 +31,7 @@ public sealed class QueryExport(IEnumerable<IQueryExportSection> sections)
 
     public Task<QueryExportContent> ReadAsync(Stream stream,
                                               Func<long, AllocationUnit?> allocationUnitOf,
+                                              string? symbolsPath,
                                               CancellationToken cancellationToken)
-        => Task.Run(() => QueryExportReader.Read(stream, allocationUnitOf, Sections, cancellationToken), cancellationToken);
+        => Task.Run(() => QueryExportReader.Read(stream, allocationUnitOf, symbolsPath, Sections, cancellationToken), cancellationToken);
 }

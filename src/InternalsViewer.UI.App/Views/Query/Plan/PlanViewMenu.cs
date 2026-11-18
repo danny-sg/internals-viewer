@@ -17,6 +17,8 @@ public static class PlanViewMenu
 
             menu.Items.Add(MenuItems.Toggle("Indicators", viewModel.IsGuideIndicatorVisible, v => viewModel.IsGuideIndicatorVisible = v));
 
+            menu.Items.Add(MenuItems.Toggle("Detailed", viewModel.IsGuideDetailed, viewModel.SetGuideDetailed));
+
             AddAdditionalSteps(menu, viewModel);
         }
 

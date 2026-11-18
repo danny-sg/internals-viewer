@@ -1,9 +1,10 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Predicates.Enums;
+using InternalsViewer.Query.Plans.Search;
+using InternalsViewer.Query.Plans.Values;
 
 namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
@@ -87,8 +88,7 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
             StartValue = startValue.IsEmpty ? AccessKey.Unbounded : new AccessKey(startValue),
             IsStartInclusive = isStartInclusive,
             EndValue = endValue.IsEmpty ? AccessKey.Unbounded : new AccessKey(endValue),
-            IsEndInclusive = isEndInclusive,
-            CompareWidth = Math.Max(startValue.Length, endValue.Length)
+            IsEndInclusive = isEndInclusive
         };
     }
 

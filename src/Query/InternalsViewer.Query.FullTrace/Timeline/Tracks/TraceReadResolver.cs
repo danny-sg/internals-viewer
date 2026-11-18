@@ -3,7 +3,6 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;

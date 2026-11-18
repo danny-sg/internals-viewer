@@ -1,5 +1,5 @@
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;

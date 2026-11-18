@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -12,7 +12,7 @@ internal static class TraceCallRowHelper
                               ulong rdx = 0,
                               ulong r8 = 0,
                               ulong returnValue = 0,
-                              int callNodeIndex = 0,
+                              int replayNodeIndex = 0,
                               ulong steps = 0,
                               ulong endSequence = ulong.MaxValue,
                               ulong endSteps = 0)
@@ -26,7 +26,7 @@ internal static class TraceCallRowHelper
         row[TraceCallColumnSet.IntegerOffset + 1] = rdx;
         row[TraceCallColumnSet.IntegerOffset + 2] = r8;
         row[TraceCallColumnSet.ReturnValueIndex] = returnValue;
-        row[TraceCallColumnSet.NodeIndex] = (ulong)callNodeIndex;
+        row[TraceCallColumnSet.NodeIndex] = (ulong)replayNodeIndex;
         row[TraceCallColumnSet.ToSequenceIndex] = endSequence;
         row[TraceCallColumnSet.ToStepsIndex] = endSteps;
 
@@ -35,19 +35,19 @@ internal static class TraceCallRowHelper
 
     public static TraceCallStore CallsFor(IReadOnlyList<CallNode> nodes, IEnumerable<CallSpan> spans)
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.CallNodeIndex))
+        foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.ReplayNodeIndex))
         {
             ulong[][] rows = [.. calls.OrderBy(s => s.CallIndex)
-                                      .Select(s => Row(s.StartSequence,
+                                      .Select(s => Row(s.FromSequence,
                                                        flags: s.Thread,
-                                                       callNodeIndex: s.CallNodeIndex,
-                                                       steps: s.StartSteps,
-                                                       endSequence: s.EndSequence,
-                                                       endSteps: s.EndSteps))];
+                                                       replayNodeIndex: s.ReplayNodeIndex,
+                                                       steps: s.FromSteps,
+                                                       endSequence: s.ToSequence,
+                                                       endSteps: s.ToSteps))];
 
-            builder.Add(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
+            builder.AddChunk(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
         }
 
         return builder.Build();
@@ -68,7 +68,7 @@ internal static class TraceCallRowHelper
         return columns;
     }
 
-    public static void Add(this TraceCallStore.Builder builder,
+    public static void AddChunk(this ReplayCallLog builder,
                            ulong functionAddress,
                            ulong instanceAddress,
                            ReadOnlySpan<ulong> columns,
@@ -82,7 +82,7 @@ internal static class TraceCallRowHelper
 
         try
         {
-            builder.Add(functionAddress, instanceAddress, handle.AddrOfPinnedObject(), calls);
+            builder.AddChunk(functionAddress, instanceAddress, handle.AddrOfPinnedObject(), calls);
         }
         finally
         {

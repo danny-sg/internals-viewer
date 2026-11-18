@@ -13,6 +13,8 @@ public sealed record FrameModule(string Name, string Pdb = "", string Guid = "",
 
     public ModuleCategory Category => CategoryRuleTable.Default.GetModuleCategory(Name);
 
+    public bool IsSqlServer => Category is not (ModuleCategory.Unknown or ModuleCategory.System);
+
     public bool HasSymbols => !string.IsNullOrWhiteSpace(Pdb)
                               && !string.IsNullOrWhiteSpace(Guid)
                               && Guid != "00000000-0000-0000-0000-000000000000"

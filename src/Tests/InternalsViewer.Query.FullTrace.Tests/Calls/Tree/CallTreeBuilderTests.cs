@@ -1,5 +1,5 @@
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls.Tree;
@@ -19,8 +19,8 @@ public class CallTreeBuilderTests
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
-        var root = Assert.Single(tree.Root.ChildNodes);
-        var child = Assert.Single(root.ChildNodes);
+        var root = Assert.Single(tree.Root.Children);
+        var child = Assert.Single(root.Children);
 
         Assert.Equal("sqlmin", root.Frame?.Module.Name);
         Assert.Equal(0x100u, root.Frame?.Rva);
@@ -38,7 +38,7 @@ public class CallTreeBuilderTests
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
-        var children = Assert.Single(tree.Root.ChildNodes).ChildNodes.OrderBy(c => c.Order).ToList();
+        var children = Assert.Single(tree.Root.Children).Children.OrderBy(c => c.Order).ToList();
 
         Assert.Equal([0xA0ul, 0xB0ul], children.Select(c => c.Frame!.InstanceAddress));
         Assert.Equal([3L, 4L], children.Select(c => c.CallCount));
@@ -51,7 +51,7 @@ public class CallTreeBuilderTests
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
-        var node = Assert.Single(tree.Root.ChildNodes);
+        var node = Assert.Single(tree.Root.Children);
 
         Assert.Equal("Unknown@0x1234", node.Frame?.Module.Name);
         Assert.Equal(0x1234ul, node.Frame?.Address);
@@ -64,7 +64,7 @@ public class CallTreeBuilderTests
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
-        var node = Assert.Single(tree.Root.ChildNodes);
+        var node = Assert.Single(tree.Root.Children);
 
         Assert.Equal($"Unknown@0x{SqlMinBase + 0x10000:X}", node.Frame?.Module.Name);
     }

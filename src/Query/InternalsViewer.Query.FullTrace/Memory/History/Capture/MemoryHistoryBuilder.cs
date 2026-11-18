@@ -1,17 +1,8 @@
-using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
 
@@ -21,7 +12,8 @@ internal sealed class MemoryHistoryBuilder
                                   IReadOnlyList<ulong> owners,
                                   IReadOnlyDictionary<ulong, TracePosition> iterators,
                                   TraceTimeline? timeline,
-                                  StackSnapshotResult? stack = null)
+                                  StackSnapshotResult? stack = null,
+                                  Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
     {
         Stacks = new WatchHitCallResolver(timeline);
 
@@ -50,6 +42,8 @@ internal sealed class MemoryHistoryBuilder
 
         Lookup = new WatchedBlockIndex(Blocks);
 
+        Lookup.EndReusedBlocks(getPageOwner);
+
         Lookup.ClipToContainers();
 
         Lookup.AddIterators(iterators);
@@ -57,7 +51,7 @@ internal sealed class MemoryHistoryBuilder
         foreach (var block in Blocks)
         {
             block.IsBufferPool = block is { IsIterator: false, IsBuffer: false, IsStack: false }
-                                 && Stacks.IsBufferPool(Stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
+                                 && Stacks.IsBufferPool(Stacks.GetReplayNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
         }
 
         Reads = new MemoryHistoryReadBuilder(Lookup, timeline);
@@ -153,13 +147,13 @@ internal sealed class MemoryHistoryBuilder
         {
             var item = Stack.Objects[index];
 
-            var from = Stacks.GetFrameStart(item.Thread, item.FirstPosition, item.OwnerCallNodeIndex) ?? item.FirstPosition;
+            var from = Stacks.GetFrameStart(item.Thread, item.FromPosition, item.OwnerReplayNodeIndex) ?? item.FromPosition;
 
-            if (!sites.TryGetValue((item.Thread, item.OwnerCallNodeIndex, item.Address, item.Size), out var site))
+            if (!sites.TryGetValue((item.Thread, item.OwnerReplayNodeIndex, item.Address, item.Size), out var site))
             {
                 site = Blocks.Count;
 
-                sites[(item.Thread, item.OwnerCallNodeIndex, item.Address, item.Size)] = site;
+                sites[(item.Thread, item.OwnerReplayNodeIndex, item.Address, item.Size)] = site;
 
                 Blocks.Add(new WatchedBlock(0,
                                             item.Address,
@@ -169,12 +163,12 @@ internal sealed class MemoryHistoryBuilder
                                             isClerkPage: false,
                                             item.Thread,
                                             from,
-                                            item.EndPosition,
+                                            item.ToPosition,
                                             isStack: true,
-                                            callNodeIndex: item.OwnerCallNodeIndex));
+                                            replayNodeIndex: item.OwnerReplayNodeIndex));
             }
 
-            Blocks[site].AddInstance(from, item.EndPosition);
+            Blocks[site].AddInstance(from, item.ToPosition);
 
             blocks[index] = site;
         }
@@ -204,7 +198,7 @@ internal sealed class MemoryHistoryBuilder
 
             var block = blocks[index];
 
-            var callNodeIndex = block.IsStack ? block.CallNodeIndex : stacks.GetCallNodeIndex(block.Thread, block.FromPosition);
+            var replayNodeIndex = block.IsStack ? block.ReplayNodeIndex : stacks.GetReplayNodeIndex(block.Thread, block.FromPosition);
 
             var firstInstance = instances.Count;
 
@@ -222,7 +216,7 @@ internal sealed class MemoryHistoryBuilder
                                             block.IsIterator,
                                             block.IsInline,
                                             block.Thread,
-                                            callNodeIndex,
+                                            replayNodeIndex,
                                             block.FromPosition,
                                             block.ToPosition,
                                             stacks.GetInstructions(block.Thread, block.FromPosition),

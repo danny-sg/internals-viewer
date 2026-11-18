@@ -127,7 +127,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     private static void LoadRecordStructure(DataRecord dataRecord, byte[] data, int? nonSparseColumnCount, bool isAllSparse)
     {
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
-        var columnCountOffsetPosition = dataRecord.Offset + sizeof(byte) + sizeof(byte);
+        var columnCountOffsetPosition = dataRecord.Offset + FixedVarRecord.ColumnCountOffsetPosition;
 
         // Column count offset determines the offset of the column count after the fixed length data
         dataRecord.ColumnCountOffset = BitConverter.ToInt16(data, columnCountOffsetPosition);

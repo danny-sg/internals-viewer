@@ -11,7 +11,7 @@ internal sealed class WatchedBlock(ulong iterator,
                                    TracePosition toPosition,
                                    bool isBuffer = false,
                                    bool isStack = false,
-                                   int callNodeIndex = -1,
+                                   int replayNodeIndex = -1,
                                    bool isArray = false)
 {
     public ulong Iterator { get; } = iterator;
@@ -32,7 +32,7 @@ internal sealed class WatchedBlock(ulong iterator,
 
     public bool IsArray { get; } = isArray;
 
-    public int CallNodeIndex { get; } = callNodeIndex;
+    public int ReplayNodeIndex { get; } = replayNodeIndex;
 
     public List<(TracePosition From, TracePosition To)> Instances { get; } = [];
 

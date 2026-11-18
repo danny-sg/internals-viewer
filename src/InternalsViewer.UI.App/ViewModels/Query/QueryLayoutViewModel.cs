@@ -11,6 +11,7 @@ using InternalsViewer.UI.App.Views.Query.Sql;
 using InternalsViewer.UI.App.Views.Query.Timeline;
 using InternalsViewer.UI.App.Views.Query.Trace.Calls;
 using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.Views.Query.Trace.Summary;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Plan.QueryPlanTabCommands;
@@ -34,6 +35,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string TimelineKey = "Timeline";
     private const string TraceTimelineKey = "FlameChart";
     private const string OperatorTracksKey = "OperatorTracks";
+
+    private const string TraceSummaryKey = "TraceSummary";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -141,7 +144,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             [OperatorTracksKey] = DocumentViewModel.Create<QueryOperatorTracksTabView>("Operator Tracks",
                                                                                        content,
                                                                                        keepAlive: true,
-                                                                                       key: OperatorTracksKey)
+                                                                                       key: OperatorTracksKey),
+
+            [TraceSummaryKey] = new DocumentViewModel("Trace Summary",
+                                                      content,
+                                                      static () => new QueryTraceSummaryTabView(),
+                                                      keepAlive: true,
+                                                      key: TraceSummaryKey)
+            {
+                IsTool = true
+            }
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot());
@@ -254,6 +266,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public void ShowBelowPlan(DocumentViewModel document) => Dock.DockBelow(document, _documentsByKey[PlanKey]);
 
+    public void ShowBesideTraceTimeline(DocumentViewModel document) => Dock.ShowBeside(document, _documentsByKey[TraceTimelineKey]);
+
     public void ShowCallTree()
     {
         IsCallTreeVisible = true;
@@ -275,6 +289,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             Dock.Activate(_documentsByKey[PlanKey]);
         }
     }
+
+    public void ShowTraceSummary() => Dock.DockLeft(_documentsByKey[TraceSummaryKey]);
 
     public void ShowOperatorTracks()
     {
@@ -406,6 +422,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Dock.SetRoot(new TabGroupNode(documents));
 
         Dock.Activate(selected ?? _documentsByKey[SqlKey]);
+
+        if (IsTrace)
+        {
+            _documentsByKey[TraceTimelineKey].Realize();
+        }
     }
 
     private void SetGuideTimeline(bool isTrace)
@@ -415,11 +436,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         if (!isTrace)
         {
             Dock.Close(timeline);
+
+            return;
         }
-        else if (!Dock.Contains(timeline))
+
+        if (!Dock.Contains(timeline))
         {
             Dock.ShowBeside(timeline, _documentsByKey[SqlKey], select: false);
         }
+
+        timeline.Realize();
     }
 
     private void ExitGuide()

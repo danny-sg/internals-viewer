@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -39,7 +39,7 @@ public class IteratorLifetimeBuilderTests
         var helper = tree.AddCall(getRow, Frame(0x40, Hash), 1);
         var close = tree.AddCall(caller, Frame(0x50, Hash), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100),
                      Span(1, 0, 10),
@@ -52,9 +52,7 @@ public class IteratorLifetimeBuilderTests
                                       new(0, 0x20, Hash, 1),
                                       new(0, 0x30, Hash, 2),
                                       new(2, 0x40, Hash, 1),
-                                      new(0, 0x50, Hash, 1)]);
-
-        timeline.MapNodes([caller, open, getRow, helper, close]);
+                                      new(0, 0x50, Hash, 1)], [caller, open, getRow, helper, close]);
 
         var hashMatch = new ExecutionOperatorEvent
         {
@@ -82,7 +80,7 @@ public class IteratorLifetimeBuilderTests
         var scanRow = tree.AddCall(getRow, Frame(0x60, Scan), 1);
         var close = tree.AddCall(caller, Frame(0x50, Hash), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100),
                      Span(1, 0, 10),
@@ -94,11 +92,10 @@ public class IteratorLifetimeBuilderTests
                                       new(0, 0x20, Hash, 1),
                                       new(0, 0x30, Hash, 1),
                                       new(2, 0x60, Scan, 1),
-                                      new(0, 0x50, Hash, 1)]);
+                                      new(0, 0x50, Hash, 1)], [caller, open, getRow, scanRow, close]);
 
-        timeline.MapNodes([caller, open, getRow, scanRow, close]);
-
-        var memory = AllocationIndex.Build([new(7, At(5), At(6), 100, 0xA), new(7, At(22), At(23), 50, 0xB)], [new(7, At(41), At(42), 0xA)]);
+        var memory = AllocationIndex.Build([new(7, At(5), At(6), 100, 0xA), new(7, At(22), At(23), 50, 0xB)],
+                                           [new(7, At(41), At(42), 0xA)]);
 
         var hashMatch = Operator("Hash Match", 1);
 
@@ -125,13 +122,12 @@ public class IteratorLifetimeBuilderTests
         var helperRow = tree.AddCall(caller, Frame(0x70, BatchHelper), 1);
         var scanBatch = tree.AddCall(helperRow, Frame(0x60, Scan), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 50), Span(2, 20, 30)]);
 
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x70, BatchHelper, 1), new(1, 0x60, Scan, 1)]);
-
-        timeline.MapNodes([caller, helperRow, scanBatch]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x70, BatchHelper, 1), new(1, 0x60, Scan, 1)],
+                                     [caller, helperRow, scanBatch]);
 
         var scan = Operator("Columnstore Index Scan", 2) with { NodeLevel = 2 };
 
@@ -156,16 +152,14 @@ public class IteratorLifetimeBuilderTests
         var filterBatch = tree.AddCall(helperRow, Frame(0x80, BatchFilter), 1);
         var scanBatch = tree.AddCall(filterBatch, Frame(0x60, Scan), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 50), Span(2, 15, 45), Span(3, 20, 30)]);
 
         var timeline = builder.Build([new(-1, 0x10, 0, 1),
                                       new(0, 0x70, BatchHelper, 1),
                                       new(1, 0x80, BatchFilter, 1),
-                                      new(2, 0x60, Scan, 1)]);
-
-        timeline.MapNodes([caller, helperRow, filterBatch, scanBatch]);
+                                      new(2, 0x60, Scan, 1)], [caller, helperRow, filterBatch, scanBatch]);
 
         var scan = Operator("Columnstore Index Scan", 2) with { NodeLevel = 2 };
 
@@ -218,13 +212,11 @@ public class IteratorLifetimeBuilderTests
         var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
         var getRow = tree.AddCall(caller, Frame(0x30, Hash), 2);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 40, 45)]);
 
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Hash, 2)]);
-
-        timeline.MapNodes([caller, getRow]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Hash, 2)], [caller, getRow]);
 
         return (timeline, Operator("Hash Match", 1));
     }
@@ -242,6 +234,6 @@ public class IteratorLifetimeBuilderTests
     private static CallFrame Frame(ulong address, ulong instance)
         => new() { Module = new("sqlmin"), Rva = (uint)address, Address = address, InstanceAddress = instance };
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, uint.MaxValue, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, uint.MaxValue, 1);
 }

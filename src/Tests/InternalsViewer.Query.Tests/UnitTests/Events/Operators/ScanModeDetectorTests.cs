@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Execution.AccessPaths.Search;
+﻿using InternalsViewer.Query.Plans.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.Operators;
@@ -75,7 +75,7 @@ public class ScanModeDetectorTests
     {
         var node = ScanNode();
 
-        node.PredicateInfo = new PredicateInfo { SeekBounds = [SeekBounds.All] };
+        node.PredicateInfo = new PredicateInfo { SeekBounds = [new SeekBounds()] };
 
         Assert.Null(ScanModeDetector.Detect(node, Unit(indexId: 1), []));
     }

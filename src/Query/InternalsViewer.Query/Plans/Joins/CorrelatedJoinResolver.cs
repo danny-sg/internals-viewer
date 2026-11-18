@@ -15,56 +15,10 @@ namespace InternalsViewer.Query.Plans.Joins;
 /// </remarks>
 public static class CorrelatedJoinResolver
 {
-    public static CorrelatedJoin? Resolve(PlanNode node)
-    {
-        if (!OperatorClassifier.IsNestedLoop(node) || node.Children.Count < 2)
-        {
-            return null;
-        }
-
-        var outer = node.Children[0];
-
-        var inner = node.Children[1];
-
-        if (!OperatorClassifier.IsRead(inner))
-        {
-            return null;
-        }
-
-        // RID Lookup - no check needed as it is a physical location
-        if (IsRidLookup(inner))
-        {
-            return new CorrelatedJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));
-        }
-
-        if (inner.PredicateInfo is not { IsCorrelatedSeek: true } predicateInfo)
-        {
-            return null;
-        }
-
-        if (!predicateInfo.CorrelatedSeekColumns.All(c => OutputsColumn(outer, c)))
-        {
-            return null;
-        }
-
-        return new CorrelatedJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));
-    }
-
     /// <summary>
     /// Whether the inner side fetches from a heap by row identifier rather than seeking an index by key
     /// </summary>
     public static bool IsRidLookup(PlanNode inner)
         => OperatorClassifier.IsLookup(inner)
            && inner.PhysicalOperator.Contains("RID", StringComparison.OrdinalIgnoreCase);
-
-    private static bool OutputsColumn(PlanNode outer, CorrelatedSeekColumn column)
-    {
-        return outer.OutputColumns.Any(o => string.Equals(Trim(o.Table), column.OuterTable, StringComparison.OrdinalIgnoreCase)
-                                            && string.Equals(Trim(o.Column), column.OuterColumn, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static string Trim(string name)
-    {
-        return name.Trim('[', ']');
-    }
 }

@@ -582,7 +582,7 @@ public sealed class MemoryHistoryGraph
     }
 
     private static string GetAllocationKey(MemoryHistoryStore store, int block)
-        => store.Blocks[block] is { CallNodeIndex: >= 0 } info ? $"{info.CallNodeIndex:X}:{info.Size:X}" : $"#{block:X}";
+        => store.Blocks[block] is { ReplayNodeIndex: >= 0 } info ? $"{info.ReplayNodeIndex:X}:{info.Size:X}" : $"#{block:X}";
 
     private static MemoryHistoryGraphTarget[] GetReferrerTargets(MemoryHistoryStore store, List<Reference> references)
     {
@@ -676,7 +676,7 @@ public sealed class MemoryHistoryGraph
             }
         }
 
-        if (!timeline.ContainsKey(BufferDescriptor.FrameOffset) && pool.IsBuffer(info.Address))
+        if (!timeline.ContainsKey(pool.Layout.Buffer.FrameField.Offset) && pool.IsBuffer(info.Address))
         {
             AddFrames(pool, timeline, info.Address, from, to, isWanted);
         }
@@ -713,7 +713,7 @@ public sealed class MemoryHistoryGraph
 
         if (frames.Count > 0)
         {
-            timeline[BufferDescriptor.FrameOffset] = frames;
+            timeline[pool.Layout.Buffer.FrameField.Offset] = frames;
         }
     }
 
@@ -852,7 +852,7 @@ public sealed class MemoryHistoryGraph
                 && slot.References.TryGetValue(segment.Origin, out var write)
                 && counted.Add((segment.Owner, segment.Origin)))
             {
-                moves.Add(new MemoryHistoryGraphMark(segment.Target.From, write.CallNodeIndex, true));
+                moves.Add(new MemoryHistoryGraphMark(segment.Target.From, write.ReplayNodeIndex, true));
             }
 
             previous = segment.Target.Value;
@@ -874,7 +874,7 @@ public sealed class MemoryHistoryGraph
         {
             var writes = GetChangeCounts(store, pool, block, from, to, changes).Values.SelectMany(s => s.Data).DistinctBy(w => w.Position);
 
-            marks.AddRange(writes.Select(w => new MemoryHistoryGraphMark(w.Position, w.CallNodeIndex, false)));
+            marks.AddRange(writes.Select(w => new MemoryHistoryGraphMark(w.Position, w.ReplayNodeIndex, false)));
         }
 
         return marks;
@@ -1012,7 +1012,7 @@ public sealed class MemoryHistoryGraph
     }
 
     private static bool IsSameCall(MemoryHistoryWrite write, MemoryHistoryWrite other)
-        => write.CallNodeIndex >= 0 && write.CallNodeIndex == other.CallNodeIndex && write.CallIndex == other.CallIndex;
+        => write.ReplayNodeIndex >= 0 && write.ReplayNodeIndex == other.ReplayNodeIndex && write.CallIndex == other.CallIndex;
 
     private readonly record struct Reference(int Block, int Offset, MemoryHistoryGraphTarget Target);
 

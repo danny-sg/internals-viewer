@@ -19,22 +19,22 @@ public static class ActivityBandBrush
 
     public static Brush Fill(object? content, bool isExpanded)
     {
-        if (Frame(content) is not { Activity: not null } node || node.ActivityCounts.Length == 0)
+        if (Frame(content) is not { ActivityBand: not null } node || node.SubtreeActivityCounts.Length == 0)
         {
             return new SolidColorBrush(Colors.Transparent);
         }
 
-        var peak = node.ActivityCounts.Max();
+        var peak = node.SubtreeActivityCounts.Max();
 
         var slices = isExpanded
-            ? Layer(node, peak, new Color[node.ActivityCounts.Length])
+            ? Layer(node, peak, new Color[node.SubtreeActivityCounts.Length])
             : Overlay(node, peak);
 
         return Build(slices);
     }
 
     public static Visibility Visibility(object? content)
-        => Frame(content) is { Activity: not null } node && node.ActivityCounts.Any(count => count > 0)
+        => Frame(content) is { ActivityBand: not null } node && node.SubtreeActivityCounts.Any(count => count > 0)
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
 
@@ -45,7 +45,7 @@ public static class ActivityBandBrush
             return null;
         }
 
-        var total = node.ActivityCounts.Sum(count => (long)count);
+        var total = node.SubtreeActivityCounts.Sum(count => (long)count);
 
         return total > node.CallCount ? $"{node.CallsLabel}\n{total:N0} Calls Including Children" : node.CallsLabel;
     }
@@ -54,7 +54,7 @@ public static class ActivityBandBrush
 
     private static Color[] Overlay(CallTreeNode node, int peak)
     {
-        var slices = new Color[node.ActivityCounts.Length];
+        var slices = new Color[node.SubtreeActivityCounts.Length];
 
         Visit(node);
 
@@ -62,12 +62,12 @@ public static class ActivityBandBrush
 
         void Visit(CallTreeNode frame)
         {
-            if (frame.ActivityCounts.Length == slices.Length)
+            if (frame.SubtreeActivityCounts.Length == slices.Length)
             {
                 Layer(frame, peak, slices);
             }
 
-            foreach (var child in frame.Activity?.Children ?? [])
+            foreach (var child in frame.ActivityBand?.Children ?? [])
             {
                 Visit(child);
             }
@@ -85,7 +85,7 @@ public static class ActivityBandBrush
 
         for (var bucket = 0; bucket < slices.Length; bucket++)
         {
-            var count = frame.ActivityCounts[bucket];
+            var count = frame.SubtreeActivityCounts[bucket];
 
             if (count == 0)
             {

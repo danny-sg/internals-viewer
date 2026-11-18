@@ -1,7 +1,7 @@
 ﻿using System.Xml.Linq;
-using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
+using InternalsViewer.Query.Plans.Predicates.Enums;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Plans.Parsers.Predicates;
 
@@ -216,7 +216,6 @@ public class SeekPredicateParserTests
 
         var seek = Assert.Single(bounds);
 
-        Assert.Equal(1, seek.CompareWidth);
         Assert.True(seek.IsStartInclusive);
         Assert.True(seek.IsEndInclusive);
         Assert.Equal(42, seek.StartValue.Values[0].Numeric);

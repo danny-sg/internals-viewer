@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
@@ -19,7 +18,9 @@ public sealed partial class AddressMap
 
         Labels = [.. labels.OrderBy(l => l.Value).Select(l => l.Key)];
 
-        Blocks = new AddressIndex([.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()],
+        Addresses = [.. Entries.Keys.Order()];
+
+        Blocks =new AddressIndex([.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()],
                                   Entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max());
     }
 
@@ -30,6 +31,8 @@ public sealed partial class AddressMap
     private Dictionary<ulong, StoredEntry[]> Entries { get; }
 
     private Label[] Labels { get; }
+
+    private ulong[] Addresses { get; }
 
     private AddressIndex Blocks { get; }
 
@@ -50,6 +53,9 @@ public sealed partial class AddressMap
 
     public string? GetClassName(ulong address, TracePosition from, TracePosition to)
         => GetLabelValue(address, from, to, static l => l.ClassName);
+
+    public string? GetVtableClassName(ulong address, TracePosition from, TracePosition to)
+        => GetLabelValue(address, from, to, static l => l.VtableClassName);
 
     public (AddressMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
     {
@@ -80,7 +86,38 @@ public sealed partial class AddressMap
         return innermost is { } containing ? (ToEntry(containing.Address, containing.Entry), containing.Offset) : null;
     }
 
+    public List<AddressMapEntry> GetEmbedded(ulong address, int size, TracePosition from, TracePosition position)
+    {
+        var embedded = new List<AddressMapEntry>();
+
+        if (!position.IsKnown)
+        {
+            return embedded;
+        }
+
+        var end = address + (ulong)size;
+
+        for (var index = SortedSearch.FirstAfter(Addresses, address); index < Addresses.Length && Addresses[index] < end; index++)
+        {
+            var entries = Entries[Addresses[index]];
+
+            if (GetEntryIndex(entries, position) is >= 0 and var found
+                && entries[found] is { Bytes: 0 } entry
+                && entry.FromPosition >= from
+                && IsObject(Labels[entry.LabelIndex]))
+            {
+                embedded.Add(ToEntry(Addresses[index], entry));
+            }
+        }
+
+        return embedded;
+    }
+
     internal IEnumerable<AddressMapEntry> GetEntries() => Entries.SelectMany(e => e.Value.Select(entry => ToEntry(e.Key, entry)));
+
+    internal AddressMap WithVtableClasses(Func<AddressMapEntry, string?> getClassName)
+        => new(Entries.ToDictionary(e => e.Key,
+                                    e => Array.ConvertAll(e.Value, stored => WithVtableClass(ToEntry(e.Key, stored), getClassName))));
 
     internal int GetSiteCount()
         => Entries.Values.Sum(e => e.Count(entry => Labels[entry.LabelIndex] is { Operation: AddressMapOperation.Allocated, Site: not null }));
@@ -136,7 +173,7 @@ public sealed partial class AddressMap
     {
         var operation = entry.Operation;
 
-        var node = getNode(entry.CallNodeIndex);
+        var node = getNode(entry.ReplayNodeIndex);
 
         var allocates = operation == AddressMapOperation.Allocated;
 
@@ -151,13 +188,17 @@ public sealed partial class AddressMap
                                   entry.FromPosition,
                                   entry.ToPosition,
                                   entry.Thread,
-                                  entry.CallNodeIndex,
+                                  entry.ReplayNodeIndex,
                                   entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Function?.ClassName)),
                                   allocates ? GetName(node?.Symbol) : null,
                                   bytes,
                                   site,
-                                  memoryObject);
+                                  memoryObject,
+                                  entry.VtableClassName);
     }
+
+    private static AddressMapEntry WithVtableClass(AddressMapEntry entry, Func<AddressMapEntry, string?> getClassName)
+        => entry with { VtableClassName = getClassName(entry) };
 
     private static AddressMapEntry[] Link(AddressMapEntry[] entries)
     {
@@ -184,7 +225,11 @@ public sealed partial class AddressMap
 
             if (previous.Operation == AddressMapOperation.Allocated)
             {
-                entries[index] = previous with { ClassName = next.ClassName ?? previous.ClassName };
+                entries[index] = previous with
+                {
+                    ClassName = next.ClassName ?? previous.ClassName,
+                    VtableClassName = next.VtableClassName ?? previous.VtableClassName
+                };
             }
 
             if (previous.Allocator is not null && IsLiveAt(previous, next.FromPosition))
@@ -222,6 +267,9 @@ public sealed partial class AddressMap
 
     private static bool IsLiveAt(AddressMapEntry entry, TracePosition position) => !entry.ToPosition.IsKnown || position <= entry.ToPosition;
 
+    private static bool IsObject(Label label)
+        => label is { VtableClassName: not null } or { Operation: AddressMapOperation.Constructed, ClassName: not null };
+
     private static bool IsWithin(StoredEntry entry, TracePosition from, TracePosition to)
         => entry.FromPosition >= from && entry.FromPosition < to;
 
@@ -229,7 +277,7 @@ public sealed partial class AddressMap
 
     private static StoredEntry Store(AddressMapEntry entry, Dictionary<Label, int> labels)
     {
-        var label = new Label(entry.Operation, entry.ClassName, entry.Allocator, entry.Site, entry.MemoryObject);
+        var label = new Label(entry.Operation, entry.ClassName, entry.Allocator, entry.Site, entry.MemoryObject, entry.VtableClassName);
 
         ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(labels, label, out var exists);
 
@@ -244,7 +292,7 @@ public sealed partial class AddressMap
                                entry.Bytes,
                                entry.CallIndex,
                                entry.Thread,
-                               entry.CallNodeIndex,
+                               entry.ReplayNodeIndex,
                                index);
     }
 
@@ -274,12 +322,13 @@ public sealed partial class AddressMap
                                   entry.FromPosition,
                                   entry.ToPosition,
                                   entry.Thread,
-                                  entry.CallNodeIndex,
+                                  entry.ReplayNodeIndex,
                                   label.ClassName,
                                   label.Allocator,
                                   entry.Bytes,
                                   label.Site,
-                                  label.MemoryObject);
+                                  label.MemoryObject,
+                                  label.VtableClassName);
     }
 
     private readonly record struct StoredEntry(ulong Owner,
@@ -288,12 +337,13 @@ public sealed partial class AddressMap
                                                ulong Bytes,
                                                int CallIndex,
                                                uint Thread,
-                                               int CallNodeIndex,
+                                               int ReplayNodeIndex,
                                                int LabelIndex);
 
     private readonly record struct Label(AddressMapOperation Operation,
                                          string? ClassName,
                                          string? Allocator,
                                          string? Site,
-                                         string? MemoryObject);
+                                         string? MemoryObject,
+                                         string? VtableClassName);
 }

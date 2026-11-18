@@ -105,7 +105,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
     {
         if (GetWrite(index) is { } write)
         {
-            FunctionFilter = Owner.History.GetWriterLabel(write.CallNodeIndex);
+            FunctionFilter = Owner.History.GetWriterLabel(write.ReplayNodeIndex);
         }
     }
 
@@ -114,6 +114,14 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         if (GetWrite(index) is { } write)
         {
             AddressFilter = $"{HexPrefix}{Owner.History.Store.Blocks[Owner.Block].Address + (ulong)write.Offset:X16}";
+        }
+    }
+
+    public void OpenSnapshot(int index)
+    {
+        if (GetWrite(index) is { } write)
+        {
+            Owner.OpenSnapshot(write.Position);
         }
     }
 
@@ -205,7 +213,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
             store.Apply(write, image, known);
 
-            var label = Owner.History.GetWriterLabel(write.CallNodeIndex);
+            var label = Owner.History.GetWriterLabel(write.ReplayNodeIndex);
 
             if (function.Length > 0 && !label.Contains(function, StringComparison.OrdinalIgnoreCase))
             {
@@ -228,8 +236,8 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
             var row = new ResultRow<long>(
             [
                 new ActionLinks([new ActionLink(TracePositionText.GetHexText(write.Position), () => Owner.GoToWrite(writeIndex))]),
-                new SwatchText(label, Owner.GetCategoryColour(write.CallNodeIndex).ToColor()),
-                Owner.History.GetWriter(write.CallNodeIndex) is { } writer ? new CallValue(writer, write.CallIndex) : null,
+                new SwatchText(label, Owner.GetCategoryColour(write.ReplayNodeIndex).ToColor()),
+                Owner.History.GetWriter(write.ReplayNodeIndex) is { } writer ? new CallValue(writer, write.CallIndex) : null,
                 new ActionText($"{HexPrefix}{start:X16}",
                                [new ActionLink("Pin", 
                                                () => Owner.PinRange(write.Offset, write.Length)) { Glyph = HexTipPin.GetGlyph(false) }]),

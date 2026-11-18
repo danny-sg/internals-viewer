@@ -76,11 +76,6 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             q => q.Layout.IsTraceTimelineVisible,
             (q, v) => q.Layout.IsTraceTimelineVisible = v,
             q => q.Layout.IsTrace ? McpOptionUnavailable.None : McpOptionUnavailable.NeedsFullTrace),
-        new("simulation",
-            "Simulation",
-            "View",
-            q => q.IsSimulationVisible,
-            (q, v) => q.IsSimulationVisible = v),
         new("instructions",
             "Instructions",
             "View",
@@ -270,7 +265,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
     {
         Layout.ShowTraceTimeline();
 
-        var point = CurrentRun?.ExtraOf<TraceResult>()?.Timeline.GetPoint(position) ?? new TracePoint(position, 0);
+        var point = CurrentRun?.ExtraOf<TraceResult>()?.Store.Timeline.GetPoint(position) ?? new TracePoint(position, 0);
 
         TraceTimelineTab.RequestPlayhead(point);
 
@@ -290,7 +285,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         {
             if (Trace is not { } trace
                 || TraceTimeline is not { } timeline
-                || TraceStartCall.Find(trace.CallStore, timeline) is not { } start)
+                || TraceStartCall.Find(trace.Store.Calls, timeline) is not { } start)
             {
                 throw new InvalidOperationException("The trace has no first call to start the Object Graph from.");
             }

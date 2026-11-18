@@ -86,7 +86,6 @@ Some choices are remembered without appearing on the Settings page, stored along
 - **Call Tree** - the categories hidden by the [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and the modules excluded from **Search symbols**
 - **Trace Timeline** - whether **Memory** is on, and whether it shows **Allocated** or **In Use** - see [Memory](/docs/user-guide/query/TraceTimeline#memory)
 - **Execution Plan** - whether **Annotations** are shown
-- **Simulation** - whether the [Simulation](/docs/user-guide/query/Simulation) pane uses the nested or the flat **Layout**
 - **Allocations** - whether the map's **Tooltip** is on
 
 When Internals Viewer is installed as a package, settings are kept in the package's local settings. Otherwise they are in `%LOCALAPPDATA%\InternalsViewer\ApplicationData\LocalSettings.json`.

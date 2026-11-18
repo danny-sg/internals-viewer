@@ -42,13 +42,23 @@ public sealed partial class SqlTextBlock : UserControl
 
         ActualThemeChanged += (_, _) => Render();
 
-        Loaded += (_, _) => Render();
+        Loaded += (_, _) =>
+        {
+            if (RenderedTheme != ActualTheme)
+            {
+                Render();
+            }
+        };
     }
 
     private static SqlTokenizer Tokenizer { get; } = new();
 
+    private ElementTheme? RenderedTheme { get; set; }
+
     private void Render()
     {
+        RenderedTheme = ActualTheme;
+
         TextHost.Blocks.Clear();
 
         var paragraph = new Paragraph();

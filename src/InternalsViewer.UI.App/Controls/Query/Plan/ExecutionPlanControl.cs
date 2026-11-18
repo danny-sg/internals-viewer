@@ -48,13 +48,13 @@ public sealed class ExecutionPlanControl : Canvas
     private const double CurrentArrowMoveSeconds = 0.3;
     private const double CurrentArrowOvershoot = 0.3;
     private const double ClickTolerance = 4;
-    private const double StepLabelGap = 2;
-    private const double StepLabelRoom = 56;
+    private const double StepLabelGap = 8;
+    private const double StepLabelRoom = 62;
     private const double CallArrowRotation = -90;
     private const double ReturnArrowRotation = 90;
     private const double CalculatorWidth = 14;
     private const double CalculatorHeight = 17;
-    private const double CalculatorGap = 4;
+    private const double CalculatorGap = 2;
     private const double ExpressionSpacing = 4;
     private const int RenderSettleMilliseconds = 100;
 
@@ -99,7 +99,6 @@ public sealed class ExecutionPlanControl : Canvas
     private static readonly Color CurrentArrowColour = Color.FromArgb(255, 0xF7, 0x63, 0x0C);
 
     private static readonly Point[] CurrentArrowPoints = [new(10, 2), new(10, 17), new(3, 10), new(10, 17), new(17, 10)];
-
 
     public static readonly DependencyProperty PlanProperty =
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
@@ -170,6 +169,12 @@ public sealed class ExecutionPlanControl : Canvas
         get => (bool)GetValue(IsFullTraceProperty);
         set => SetValue(IsFullTraceProperty, value);
     }
+
+    public Func<PlanNode, bool>? CanOpenHashTable { get; set; }
+
+    public Func<PlanNode, bool>? CanOpenSortTable { get; set; }
+
+    public Func<PlanNode, bool>? CanSkipTo { get; set; }
 
     public static readonly DependencyProperty CurrentStepProperty =
         DependencyProperty.Register(nameof(CurrentStep), typeof(PlanStepMarker), typeof(ExecutionPlanControl),
@@ -252,13 +257,17 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
-    public event EventHandler<PlanNode>? SimulationOpenRequested;
+    public event EventHandler<PlanNode>? HashTableOpenRequested;
+
+    public event EventHandler<PlanNode>? SortTableOpenRequested;
 
     public event EventHandler<PlanNode>? CallTreeOpenRequested;
 
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
 
     public event EventHandler<PlanNode>? CounterToggleRequested;
+
+    public event EventHandler<PlanNode>? SkipToRequested;
 
     public event EventHandler<PlanPage>? PageOpenRequested;
 
@@ -668,9 +677,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
         // child end of the line.
-        if (OperatorClassifier.IsHashJoin(parentNode))
+        if (InputLabel.Get(parentNode, GetOperator(childNode)) is { } label)
         {
-            var label = OperatorClassifier.RoleOf(parentNode, GetOperator(childNode)) == InputRole.Blocking ? "Build" : "Probe";
             AddBranchLabel(label, elbowX, start.Y);
         }
 
@@ -725,10 +733,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         IteratorConnectors[childNode] = new IteratorConnector(request.Glow, response.Glow, middleX);
 
-        if (OperatorClassifier.IsHashJoin(parentNode))
+        if (InputLabel.Get(parentNode, parentNode.Children[lane]) is { } label)
         {
-            var label = OperatorClassifier.RoleOf(parentNode, parentNode.Children[lane]) == InputRole.Blocking ? "Build" : "Probe";
-
             AddBranchLabel(label, elbowX + offset, childY - offset);
         }
 
@@ -930,6 +936,17 @@ public sealed class ExecutionPlanControl : Canvas
         {
             var flyout = new MenuFlyout();
 
+            if (CanSkipTo?.Invoke(node) == true)
+            {
+                var skipTo = new MenuFlyoutItem { Text = "Skip To" };
+
+                skipTo.Click += (_, _) => SkipToRequested?.Invoke(this, node);
+
+                flyout.Items.Add(skipTo);
+
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
             if (!string.IsNullOrEmpty(node.Index) &&
                 OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
             {
@@ -940,22 +957,22 @@ public sealed class ExecutionPlanControl : Canvas
                 flyout.Items.Add(openIndex);
             }
 
-            var canSimulate = node.IsStatement
-                           || OperatorClassifier.IsTop(node)
-                           || OperatorClassifier.IsConcatenation(node)
-                           || OperatorClassifier.IsSort(node)
-                           || (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
-                           || CorrelatedJoinResolver.Resolve(node) is not null
-                           || MergeJoinResolver.Resolve(node) is not null
-                           || HashJoinResolver.Resolve(node) is not null;
-
-            if (canSimulate)
+            if (IsFullTrace && CanOpenHashTable?.Invoke(node) == true)
             {
-                var openSimulation = new MenuFlyoutItem { Text = "Simulate" };
+                var openHashTable = new MenuFlyoutItem { Text = "Hash Table" };
 
-                openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(this, node);
+                openHashTable.Click += (_, _) => HashTableOpenRequested?.Invoke(this, node);
 
-                flyout.Items.Add(openSimulation);
+                flyout.Items.Add(openHashTable);
+            }
+
+            if (IsFullTrace && CanOpenSortTable?.Invoke(node) == true)
+            {
+                var openSortTable = new MenuFlyoutItem { Text = "Sort Table" };
+
+                openSortTable.Click += (_, _) => SortTableOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openSortTable);
             }
 
             var openCallTree = new MenuFlyoutItem { Text = "Call Tree" };
@@ -1148,11 +1165,13 @@ public sealed class ExecutionPlanControl : Canvas
             return;
         }
 
-        foreach (var pulls in ExpressionPullResolver.Resolve(Plan).Where(p => p.OutputValues.Count > 0).GroupBy(p => p.Puller))
+        foreach (var evaluations in ExpressionEvaluationResolver.Resolve(Plan)
+                                                                .Where(p => p.OutputValues.Count > 0)
+                                                                .GroupBy(p => p.Evaluator))
         {
-            if (NodeControls.ContainsKey(pulls.Key))
+            if (NodeControls.ContainsKey(evaluations.Key))
             {
-                Calculators[pulls.Key] = AddCalculator(pulls.Key, pulls.SelectMany(p => p.OutputValues).Distinct());
+                Calculators[evaluations.Key] = AddCalculator(evaluations.Key, evaluations.SelectMany(p => p.OutputValues).Distinct());
             }
         }
 
@@ -1162,11 +1181,11 @@ public sealed class ExecutionPlanControl : Canvas
         }
     }
 
-    private EvaluationCalculator AddCalculator(PlanNode puller, IEnumerable<DefinedValueInfo> values)
+    private EvaluationCalculator AddCalculator(PlanNode evaluator, IEnumerable<DefinedValueInfo> values)
     {
-        var idle = AddCalculatorImage(puller, isInactive: true);
+        var idle = AddCalculatorImage(evaluator, isInactive: true);
 
-        var lit = AddCalculatorImage(puller, isInactive: false);
+        var lit = AddCalculatorImage(evaluator, isInactive: false);
 
         lit.IsHitTestVisible = false;
 
@@ -1175,7 +1194,7 @@ public sealed class ExecutionPlanControl : Canvas
         return new EvaluationCalculator(idle, lit, new PlanHighlight(lit));
     }
 
-    private Image AddCalculatorImage(PlanNode puller, bool isInactive)
+    private Image AddCalculatorImage(PlanNode evaluator, bool isInactive)
     {
         var image = new Image
         {
@@ -1185,11 +1204,11 @@ public sealed class ExecutionPlanControl : Canvas
             Source = CreateCalculatorSource(isInactive)
         };
 
-        var iconLeft = GetLeft(NodeControls[puller]) + BaseNodeWidth / 2 - PlanNodeControl.IconHalfWidth;
+        var iconRight = GetLeft(NodeControls[evaluator]) + BaseNodeWidth / 2 + PlanNodeControl.GetIconRight(evaluator);
 
-        SetLeft(image, iconLeft - CalculatorGap - CalculatorWidth);
+        SetLeft(image, iconRight + CalculatorGap);
 
-        SetTop(image, GetTop(NodeControls[puller]) + PlanNodeControl.IconCentre - CalculatorHeight / 2);
+        SetTop(image, GetTop(NodeControls[evaluator]) + PlanNodeControl.IconCentre - CalculatorHeight / 2);
 
         Children.Add(image);
 
@@ -1202,7 +1221,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var value in values)
         {
-            list.Children.Add(new PredicateTextBox
+            list.Children.Add(new ExpressionTextBox
             {
                 Text = value.GetText(Plan?.Expressions),
                 HasBackground = false,
@@ -1334,7 +1353,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         var isFlying = isMoving && (shownLeft != left || shownTop != top || shownRotation != rotation);
 
-        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - CurrentArrowSize * scale / 2 - StepLabelGap);
+        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - (CurrentArrowSize / 2 + StepLabelGap) * scale);
 
         if (isMoving)
         {

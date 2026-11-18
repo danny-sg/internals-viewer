@@ -1,7 +1,7 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Predicates.Enums;
+using InternalsViewer.Query.Plans.Search;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Plans.Model;
 
@@ -35,7 +35,7 @@ public class PredicateInfoTests
     [Fact]
     public void A_Seek_With_Constant_Ranges_Is_Not_A_Correlated_Equality()
     {
-        var info = new PredicateInfo { SeekBounds = [SeekBounds.All], CorrelatedSeekColumns = [Column("Id")] };
+        var info = new PredicateInfo { SeekBounds = [new SeekBounds()], CorrelatedSeekColumns = [Column("Id")] };
 
         Assert.False(info.IsCorrelatedEquality);
     }

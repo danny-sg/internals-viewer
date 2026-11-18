@@ -77,13 +77,11 @@ public class TraceReferenceFinderTests
 
         var getRow = tree.AddCall(tree.Root, Frame(0x10, "CQScanTableScanNew::GetRow"), 2);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(getRow.Frame!.Address, 0, Chunk(Row(1, rcx: Value, callNodeIndex: 0), Row(2, rcx: Value, callNodeIndex: 0)), 2);
+        builder.AddChunk(getRow.Frame!.Address, 0, Chunk(Row(1, rcx: Value, replayNodeIndex: 0), Row(2, rcx: Value, replayNodeIndex: 0)), 2);
 
-        var store = builder.Build();
-
-        store.MapNodes([getRow]);
+        var store = builder.Build([getRow]);
 
         return (store, tree, getRow);
     }

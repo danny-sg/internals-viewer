@@ -134,26 +134,6 @@ public sealed partial class EventTimelineControl
             flyout.Items.Add(openIndex);
         }
 
-        var canSimulate = op.PlanNodeIdentifier.NodeId < 0
-                       || op.Name.Equals("Top", StringComparison.OrdinalIgnoreCase)
-                       || op.Name.Equals("Concatenation", StringComparison.OrdinalIgnoreCase)
-                       || op.Name.Equals("Sort", StringComparison.OrdinalIgnoreCase)
-                       || op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
-                       || (op.Category == OperatorCategory.Join
-                           && (op.Name.Contains("Nested Loops", StringComparison.OrdinalIgnoreCase)
-                               || op.Name.Contains("Merge Join", StringComparison.OrdinalIgnoreCase)
-                               || (op.Name.Contains("Hash Match", StringComparison.OrdinalIgnoreCase)
-                                   && op.LogicalOperator.Contains("Join", StringComparison.OrdinalIgnoreCase))));
-
-        if (canSimulate)
-        {
-            var openSimulation = new MenuFlyoutItem { Text = "Simulate" };
-
-            openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(op);
-
-            flyout.Items.Add(openSimulation);
-        }
-
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
 
         e.Handled = true;

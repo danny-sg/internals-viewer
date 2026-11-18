@@ -139,7 +139,10 @@ public class QueryExportTests
     {
         using var stream = new MemoryStream(export);
 
-        return await new QueryExport([]).ReadAsync(stream, id => id == Orders.AllocationUnitId ? Orders : null, CancellationToken.None);
+        return await new QueryExport([]).ReadAsync(stream,
+                                                   id => id == Orders.AllocationUnitId ? Orders : null,
+                                                   null,
+                                                   CancellationToken.None);
     }
 
     private static Dictionary<string, byte[]> Entries(byte[] export)

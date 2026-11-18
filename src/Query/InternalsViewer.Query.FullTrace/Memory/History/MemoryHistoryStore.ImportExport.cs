@@ -36,7 +36,7 @@ public sealed partial class MemoryHistoryStore
 
             writer.Write(block.Thread);
 
-            writer.Write(block.CallNodeIndex);
+            writer.Write(block.ReplayNodeIndex);
 
             WritePosition(writer, block.FromPosition);
 
@@ -63,9 +63,9 @@ public sealed partial class MemoryHistoryStore
 
         writer.Write(Iterators.Count);
 
-        foreach (var (callNodeIndex, iterator) in Iterators)
+        foreach (var (replayNodeIndex, iterator) in Iterators)
         {
-            writer.Write(callNodeIndex);
+            writer.Write(replayNodeIndex);
 
             writer.Write(iterator);
         }
@@ -88,7 +88,7 @@ public sealed partial class MemoryHistoryStore
         }
     }
 
-    internal static MemoryHistoryStore Read(BinaryReader reader, TraceTimeline? timeline)
+    internal static MemoryHistoryStore Read(BinaryReader reader, TraceStore? store)
     {
         var version = ReadVersion(reader);
 
@@ -107,7 +107,7 @@ public sealed partial class MemoryHistoryStore
                                                    IsIterator: reader.ReadBoolean(),
                                                    IsInline: reader.ReadBoolean(),
                                                    Thread: reader.ReadUInt32(),
-                                                   CallNodeIndex: reader.ReadInt32(),
+                                                   ReplayNodeIndex: reader.ReadInt32(),
                                                    FromPosition: ReadPosition(reader),
                                                    ToPosition: ReadPosition(reader),
                                                    FromInstructions: reader.ReadUInt64(),
@@ -124,7 +124,7 @@ public sealed partial class MemoryHistoryStore
 
         if (version < FormatVersion)
         {
-            return ReadCalls(reader, version, blocks, new SpanResolver(timeline));
+            return ReadCalls(reader, version, blocks, new SpanResolver(store));
         }
 
         var writes = MemoryHistoryAccessTable.Read(reader, WriteCacheSlots);
@@ -135,7 +135,7 @@ public sealed partial class MemoryHistoryStore
 
         var reads = MemoryHistoryAccessTable.Read(reader, ReadCacheSlots);
 
-        return new MemoryHistoryStore(blocks, writes, iterators, timeline, reads, readStarts, ReadInstances(reader));
+        return new MemoryHistoryStore(blocks, writes, iterators, store?.Timeline, reads, readStarts, ReadInstances(reader));
     }
 
     private static bool IsSupported(int version) => version is (>= WritesOnlyVersion and <= InstancesVersion) or FormatVersion;
@@ -246,30 +246,32 @@ public sealed partial class MemoryHistoryStore
 
     private static TracePosition ReadPosition(BinaryReader reader) => new(reader.ReadUInt64(), reader.ReadUInt64());
 
-    private sealed class SpanResolver(TraceTimeline? timeline)
+    private sealed class SpanResolver(TraceStore? store)
     {
-        public TraceTimeline? Timeline => timeline;
+        public TraceTimeline? Timeline => store?.Timeline;
 
-        private Dictionary<(int CallNodeIndex, int CallIndex), int> Calls { get; } = [];
+        private Dictionary<(int ReplayNodeIndex, int CallIndex), int> Calls { get; } = [];
 
-        public int Get(int callNodeIndex, int callIndex, TracePosition position)
+        public int Get(int replayNodeIndex, int callIndex, TracePosition position)
         {
-            if (timeline is null)
+            if (store?.Timeline is not { } timeline)
             {
                 return -1;
             }
 
-            if (Calls.TryGetValue((callNodeIndex, callIndex), out var spanId)
-                && timeline.IsSpanAt(spanId, callNodeIndex, callIndex, position))
+            if (Calls.TryGetValue((replayNodeIndex, callIndex), out var spanId)
+                && timeline.IsSpanAt(spanId, replayNodeIndex, callIndex, position))
             {
                 return spanId;
             }
 
-            spanId = timeline.FindSpanId(callNodeIndex, callIndex, position);
+            var calls = callIndex >= 0 && store.Nodes.GetNode(replayNodeIndex) is { } node ? store.GetCallList(node) : null;
+
+            spanId = timeline.FindSpanId(replayNodeIndex, callIndex, position, calls);
 
             if (spanId >= 0)
             {
-                Calls[(callNodeIndex, callIndex)] = spanId;
+                Calls[(replayNodeIndex, callIndex)] = spanId;
             }
 
             return spanId;

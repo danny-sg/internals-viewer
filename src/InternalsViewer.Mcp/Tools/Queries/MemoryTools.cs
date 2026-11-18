@@ -39,7 +39,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         var memory = trace.Allocation;
 
-        var timeline = trace.Timeline;
+        var timeline = trace.Store.Timeline;
 
         var builder = new StringBuilder();
 
@@ -124,48 +124,6 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         return builder.ToString();
     }
 
-    [McpServerTool(Name = "query_objectpool", ReadOnly = true)]
-    [Description("Full Trace: the columnstore object pool snapshot at the end of the run")]
-    public async Task<string> ObjectPool([Description("Maximum entries to list")] int limit = 100,
-                                         [Description(DocumentDescription)] string? document = null,
-                                         CancellationToken cancellationToken = default)
-    {
-        var scope = await Documents.ResolveAsync(document, cancellationToken);
-
-        var trace = scope.RequireTrace();
-
-        var entries = trace.ObjectPool.Entries;
-
-        if (entries.Count == 0)
-        {
-            return "no object pool snapshot in the trace";
-        }
-
-        var builder = new StringBuilder();
-
-        builder.AppendLine($"{entries.Count} columnstore object pool entries at the end of the run");
-
-        var table = new TextTable("Type", "Db", "Hobt", "Column", "Object", "Size", "Pages KB", "Data");
-
-        foreach (var entry in entries.Take(limit))
-        {
-            table.Add(entry.ObjectType,
-                      entry.DatabaseId,
-                      entry.HobtId,
-                      entry.ColumnId,
-                      entry.ObjectId,
-                      Format.Bytes(entry.ObjectSize),
-                      entry.PagesKb,
-                      Format.Hex(entry.DataAddress));
-        }
-
-        table.Write(builder);
-
-        builder.AppendIfNotEmpty(Format.More(entries.Count, limit, "raise limit"));
-
-        return builder.ToString();
-    }
-
     [McpServerTool(Name = "query_memoryhistory", ReadOnly = true)]
     [Description("Full Trace memory history: the blocks the query wrote to, and for one block every write with its writer, value " +
                  "and field offset")]
@@ -214,7 +172,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             _ => throw new McpException($"sort must be index or writes, not '{sort}'.")
         };
 
-        var timeline = trace.Timeline;
+        var timeline = trace.Store.Timeline;
 
         var fromPosition = from is null ? (TracePosition?)null : Parse.Position(from);
 
@@ -256,7 +214,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         {
             var pattern = Parse.Pattern(allocatedIn);
 
-            selected = selected.Where(b => pattern.IsMatch(GetFunctionName(scope, timeline, b.Block.CallNodeIndex)));
+            selected = selected.Where(b => pattern.IsMatch(GetFunctionName(scope, timeline, b.Block.ReplayNodeIndex)));
         }
 
         if (wantedKind is not null)
@@ -296,7 +254,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
                       Format.Position(entry.FromPosition),
                       Format.Position(entry.ToPosition),
                       entry.WriteCount,
-                      Format.Truncate(GetFunctionName(scope, timeline, entry.CallNodeIndex), width));
+                      Format.Truncate(GetFunctionName(scope, timeline, entry.ReplayNodeIndex), width));
         }
 
         table.Write(builder);
@@ -335,7 +293,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         var pattern = grep is null ? null : Parse.Pattern(grep);
 
-        var timeline = trace.Timeline;
+        var timeline = trace.Store.Timeline;
 
         var groups = new Dictionary<string, Group>();
 
@@ -422,7 +380,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
                                $"thread {entry.Thread} " +
                                $"{Format.Position(entry.FromPosition)} to {Format.Position(entry.ToPosition)} " +
                                $"owner {Format.Hex(entry.Owner)} " +
-                               $"in {GetFunctionName(scope, timeline, entry.CallNodeIndex)}");
+                               $"in {GetFunctionName(scope, timeline, entry.ReplayNodeIndex)}");
         }
 
         builder.AppendIfNotEmpty(Format.More(matched.Count, limit, "raise limit or narrow grep"));
@@ -453,7 +411,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         foreach (var write in writes)
         {
-            var writer = GetFunctionName(scope, timeline, write.CallNodeIndex);
+            var writer = GetFunctionName(scope, timeline, write.ReplayNodeIndex);
 
             byWriter[writer] = byWriter.GetValueOrDefault(writer) + 1;
 
@@ -501,7 +459,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
             builder.AppendLine($"  {Format.Position(write.Position)} +0x{write.Offset:X} {write.Type} {Convert.ToHexStringLower(data)}" +
                                (value is { } number ? $" (= {Format.Hex(number)})" : string.Empty) +
-                               $" by {GetFunctionName(scope, timeline, write.CallNodeIndex)} call {write.CallIndex}");
+                               $" by {GetFunctionName(scope, timeline, write.ReplayNodeIndex)} call {write.CallIndex}");
 
             shown++;
 
@@ -523,8 +481,8 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         _ => null
     };
 
-    private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
-        => timeline.GetNode(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
+    private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int replayNodeIndex)
+        => timeline.GetNode(replayNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {replayNodeIndex}";
 
     private static string GetKind(MemoryHistoryBlock block)
         => block.IsIterator ? "iterator" : block.IsInline ? "inline" : block.IsStack ? "stack" : string.Empty;

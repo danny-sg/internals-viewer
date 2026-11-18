@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;

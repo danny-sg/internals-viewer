@@ -3,6 +3,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Helpers;
@@ -13,10 +14,6 @@ namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 public sealed class TraceRowReturnMarkMap
 {
     private const uint RowStatus = 0;
-
-    private const uint EndStatus = 0x40EC6;
-
-    private const uint FakeRowStatus = 0x4FFFF;
 
     private const string FilterOperator = "Filter";
 
@@ -45,6 +42,7 @@ public sealed class TraceRowReturnMarkMap
     internal static TraceRowReturnMarkMap Build(TraceTimeline timeline,
                                               TraceCallStore calls,
                                               TraceOperatorLifetimeList lifetimes,
+                                              EngineLayout layout,
                                               EnclosingOperatorCallIndex? enclosingCalls = null)
     {
         var owners = lifetimes.OperatorsByInstance;
@@ -83,8 +81,14 @@ public sealed class TraceRowReturnMarkMap
 
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
-                if (timeline.FindCall(call.FunctionAddress, group.InstanceAddress, call.CallIndex) is not { } location
-                    || GetReturnType(group, index, parent, caller?.Name == FilterOperator, operatorEvent.IsBlockingInput) is not { } type)
+                if (calls.GetCallList(call.FunctionAddress, group.InstanceAddress) is not { } list
+                    || timeline.FindSpan(list, call.CallIndex) is not { } location
+                    || GetReturnType(layout.Iterator,
+                                     group,
+                                     index,
+                                     parent,
+                                     caller?.Name == FilterOperator,
+                                     operatorEvent.IsBlockingInput) is not { } type)
                 {
                     continue;
                 }
@@ -191,14 +195,23 @@ public sealed class TraceRowReturnMarkMap
         }
     }
 
-    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered, bool isBlockingInput)
+    private static RowReturnType? GetReturnType(EngineLayout.BaseIteratorLayout iterator,
+                                                CallGroup group,
+                                                int index,
+                                                CallGroup? parent,
+                                                bool isFiltered,
+                                                bool isBlockingInput)
         => group.Calls[index].Status switch
         {
-            null => null,
-            RowStatus when parent is null || isBlockingInput || IsPassedUp(group, index, parent) => RowReturnType.Returned,
+            null 
+                => null,
+            RowStatus when parent is null || isBlockingInput || IsPassedUp(group, index, parent) 
+                => RowReturnType.Returned,
             RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.Skipped,
-            EndStatus => RowReturnType.End,
-            FakeRowStatus => RowReturnType.FakeRow,
+            { } status when status == iterator.EndOfRowsStatus 
+                => RowReturnType.End,
+            { } status when status == iterator.FakeRowStatus 
+                => RowReturnType.FakeRow,
             _ => RowReturnType.Other
         };
 
@@ -233,7 +246,7 @@ public sealed class TraceRowReturnMarkMap
 
         public int? GetCallAt(TracePosition position)
         {
-            var index = SortedSearch.FirstAfter<GetRowCall, TracePosition>(Calls, position, static c => c.FromPosition) - 1;
+            var index = SortedSearch.FirstAfter(Calls, position, static c => c.FromPosition) - 1;
 
             return index >= 0 && Calls[index].ToPosition.CompareTo(position) >= 0 ? index : null;
         }

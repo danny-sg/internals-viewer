@@ -473,7 +473,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
             foreach (var (node, index, _) in search.Calls)
             {
-                if (trace.Timeline.FindCall(node, index) is { } location)
+                if (trace.Store.FindSpan(node, index) is { } location)
                 {
                     points.Add(location.From);
                 }
@@ -484,7 +484,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         if (positions is { Count: > 0 })
         {
-            points.AddRange(positions.Select(p => trace.Timeline.GetPoint(Parse.Position(p))));
+            points.AddRange(positions.Select(p => trace.Store.Timeline.GetPoint(Parse.Position(p))));
 
             pinned.Add($"{Format.Number(positions.Count)} positions");
         }
@@ -763,10 +763,10 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         if (choice is not (PlayheadStart or "end"))
         {
-            return trace.Timeline.GetPoint(Parse.Position(playhead));
+            return trace.Store.Timeline.GetPoint(Parse.Position(playhead));
         }
 
-        if (trace.Timeline.FindCall(first.Node, first.CallIndex) is not { } location)
+        if (trace.Store.FindSpan(first.Node, first.CallIndex) is not { } location)
         {
             return null;
         }
@@ -778,7 +778,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var end = location.To.Position;
 
-        return trace.Timeline.GetPoint(end.Steps > 0 ? new TracePosition(end.Sequence, end.Steps - 1) : end);
+        return trace.Store.Timeline.GetPoint(end.Steps > 0 ? new TracePosition(end.Sequence, end.Steps - 1) : end);
     }
 
     private static bool IsAll(IndicatorTarget target)
@@ -805,7 +805,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     private static TracePosition? GetReferencePosition(McpDocumentScope scope)
     {
         if (scope.Query.Timeline is { SelectedNode.Frame: { } frame, SelectedCallIndex: >= 0 and var index }
-            && scope.Trace?.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is { } calls
+            && scope.Trace?.Store.Calls.GetCallList(frame.Address, frame.InstanceAddress) is { } calls
             && index < calls.Count)
         {
             return calls.GetFromPosition(index);
@@ -907,7 +907,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         foreach (var node in members)
         {
-            if (node.Frame is not { } frame || trace.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is not { } list)
+            if (node.Frame is not { } frame || trace.Store.Calls.GetCallList(frame.Address, frame.InstanceAddress) is not { } list)
             {
                 continue;
             }
@@ -918,7 +918,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
             {
                 var call = list[index];
 
-                if (trace.CallStore.GetNode(call) != node || trace.Timeline.FindCall(node, index) is null)
+                if (trace.Store.Calls.GetNode(call) != node || trace.Store.Timeline.FindSpan(list, index) is null)
                 {
                     continue;
                 }

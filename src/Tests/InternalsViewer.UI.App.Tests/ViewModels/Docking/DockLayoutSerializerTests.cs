@@ -102,6 +102,20 @@ public class DockLayoutSerializerTests
         Assert.IsType<FixedNode>(DockLayoutSerializer.Deserialize(saved, Resolver()));
     }
 
+    [Fact]
+    public void Restores_A_Group_Of_Tools_As_A_Tool_Group()
+    {
+        var sql = Document("sql");
+        var tool = new DocumentViewModel("tool", content: "tool", viewFactory: () => null!, key: "tool") { IsTool = true };
+
+        var saved = DockLayoutSerializer.Serialize(new SplitNode(Orientation.Horizontal, new TabGroupNode(tool), new TabGroupNode(sql)));
+
+        var restored = Assert.IsType<SplitNode>(DockLayoutSerializer.Deserialize(saved, Resolver(tool, sql)));
+
+        Assert.True(Assert.IsType<TabGroupNode>(restored.First).IsTool);
+        Assert.False(Assert.IsType<TabGroupNode>(restored.Second).IsTool);
+    }
+
     private static DocumentViewModel Document(string key, bool persist = true)
         => new(key, content: key, viewFactory: () => null!, key: key, persist: persist);
 

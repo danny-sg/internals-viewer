@@ -1,20 +1,11 @@
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Query.Extensions;
-using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 
 public static class DeepDataReader
 {
-    public const int PageHeaderSize = 0x18;
-
     public const uint PageMagic = 0x53445042;
-
-    public const int PageMagicOffset = 0x10;
-
-    private const ulong NextPageOffset = 0x08;
-
-    private const ulong PageCapacityOffset = 0x14;
 
     private const ulong LargestInlineTag = 0xF;
 
@@ -26,7 +17,7 @@ public static class DeepDataReader
 
     public static bool IsReference(ulong slot) => (slot & 1) == 1 && slot > LargestInlineTag;
 
-    public static List<ulong> GetPages(IMemoryReader memory, ulong firstPage)
+    public static List<ulong> GetPages(ITraceMemoryReader memory, ulong firstPage)
     {
         var pages = new List<ulong>();
 
@@ -38,15 +29,20 @@ public static class DeepDataReader
         return pages;
     }
 
-    public static ulong GetNextPage(IMemoryReader memory, ulong page) => memory.TryRead(page + NextPageOffset, out ulong next) ? next : 0;
+    public static ulong GetNextPage(ITraceMemoryReader memory, ulong page)
+        => memory.TryRead(page + (ulong)memory.Layout.DeepDataPage.NextPageField.Offset, out ulong next) ? next : 0;
 
-    public static List<DeepDataEntry> ReadEntries(IMemoryReader memory, ulong page, int size)
+    public static List<DeepDataEntry> ReadEntries(ITraceMemoryReader memory, ulong page, int size)
     {
-        var end = memory.TryRead(page + PageCapacityOffset, out ushort capacity) ? Math.Min(size, PageHeaderSize + capacity) : size;
+        var layout = memory.Layout.DeepDataPage;
+
+        var end = memory.TryRead(page + (ulong)layout.CapacityField.Offset, out ushort capacity)
+            ? Math.Min(size, layout.HeaderSize + capacity)
+            : size;
 
         var entries = new List<DeepDataEntry>();
 
-        var offset = PageHeaderSize;
+        var offset = layout.HeaderSize;
 
         while (offset + DeepDataEntry.HeaderSize <= end
                && ReadEntry(memory, page + (ulong)offset) is { Length: > 0 } entry
@@ -60,13 +56,13 @@ public static class DeepDataReader
         return entries;
     }
 
-    public static DeepDataEntry? ReadValue(IMemoryReader memory, ulong slot)
+    public static DeepDataEntry? ReadValue(ITraceMemoryReader memory, ulong slot)
         => IsReference(slot) ? ReadEntry(memory, (slot & ~1UL) - DeepDataEntry.HeaderSize) : null;
 
-    private static bool IsPage(IMemoryReader memory, ulong page)
-        => memory.TryRead(page + PageMagicOffset, out uint magic) && magic == PageMagic;
+    private static bool IsPage(ITraceMemoryReader memory, ulong page)
+        => memory.TryRead(page + (ulong)memory.Layout.DeepDataPage.MagicField.Offset, out uint magic) && magic == PageMagic;
 
-    private static DeepDataEntry? ReadEntry(IMemoryReader memory, ulong address)
+    private static DeepDataEntry? ReadEntry(ITraceMemoryReader memory, ulong address)
     {
         var lengthAddress = address + DeepDataEntry.HeaderSize - (ulong)ColumnstoreValueConverter.DeepDataPrefixSize;
 

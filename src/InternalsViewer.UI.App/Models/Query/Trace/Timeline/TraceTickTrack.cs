@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.Plans.Text;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using SkiaSharp;
 

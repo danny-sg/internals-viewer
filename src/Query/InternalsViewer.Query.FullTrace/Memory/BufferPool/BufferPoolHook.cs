@@ -4,9 +4,10 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
@@ -43,10 +44,6 @@ namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 /// </remarks>
 internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functions) : ITraceHook
 {
-    private const ulong HeaderPageIdOffset = 0x20;
-
-    private const ulong HeaderFileIdOffset = 0x24;
-
     private const int FileControlBlockArgument = 0;
 
     private const int FrameArgument = 1;
@@ -61,7 +58,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
                                                            ? TraceHookEvents.Entry
                                                            : TraceHookEvents.Entry | TraceHookEvents.Return));
 
-    private TraceBufferPool.Builder Pages { get; } = new();
+    private ReplayBufferPool Pages { get; } = new();
 
     private Dictionary<(uint Thread, ulong Id), CallStart> Starts { get; } = [];
 
@@ -71,7 +68,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private Dictionary<ulong, ushort> FileDatabases { get; } = [];
 
-    private Dictionary<ulong, (uint Thread, TracePosition Position)> Buffers { get; } = [];
+    private Dictionary<ulong, (uint Thread, TracePosition Position, int Size)> Buffers { get; } = [];
 
     private HashSet<(ulong Frame, PageAddress Page)> Layouts { get; } = [];
 
@@ -79,13 +76,13 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private static int MaximumSlotCount => (PageData.Size - PageHeader.Size) / sizeof(ushort);
 
-    public TraceBufferPool Build()
+    public ReplayBufferPool Build()
     {
         foreach (var read in Reads)
         {
             if (FileDatabases.TryGetValue(read.FileControlBlock, out var databaseId))
             {
-                Pages.Add(new TraceBufferPage(read.Frame, read.Page, databaseId, read.Position));
+                Pages.AddSighting(new TraceBufferPage(read.Frame, read.Page, databaseId, read.Position));
 
                 if (read.Layout is { Offsets: { } offsets } layout && Layouts.Add((read.Frame, read.Page)))
                 {
@@ -99,11 +96,11 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             FinishLayout(buffer);
         }
 
-        return Pages.Build();
+        return Pages;
     }
 
-    public MemoryBlock[] GetBuffers()
-        => [.. Buffers.Select(b => new MemoryBlock(b.Key, BufferDescriptor.Size, b.Value.Thread, b.Value.Position, TracePosition.Unknown))];
+    public MemoryBlock[] GetBufferBlocks()
+        => [.. Buffers.Select(b => new MemoryBlock(b.Key, (ulong)b.Value.Size, b.Value.Thread, b.Value.Position, TracePosition.Unknown))];
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
@@ -144,9 +141,9 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
     {
         if (start.Frame == 0
             || start.Frame % PageData.Size != 0
-            || !replay.TryRead(start.Frame + HeaderPageIdOffset, out uint pageId)
+            || !replay.TryRead(start.Frame + PageHeaderParser.PageAddressOffset, out uint pageId)
             || pageId != start.PageNumber
-            || !replay.TryRead(start.Frame + HeaderFileIdOffset, out short fileId))
+            || !replay.TryRead(start.Frame + PageHeaderParser.PageAddressOffset + sizeof(uint), out short fileId))
         {
             return;
         }
@@ -168,13 +165,15 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
     {
         var buffer = call.ReturnValue;
 
+        var layout = replay.Layout.Buffer;
+
         if (buffer == 0
-            || !replay.TryRead(buffer + BufferDescriptor.FrameOffset, out ulong frame)
+            || !replay.TryRead(buffer + (ulong)layout.FrameField.Offset, out ulong frame)
             || frame == 0
             || frame % PageData.Size != 0
-            || !replay.TryRead(buffer + BufferDescriptor.PageIdOffset, out int pageId)
-            || !replay.TryRead(buffer + BufferDescriptor.FileIdOffset, out short fileId)
-            || !replay.TryRead(buffer + BufferDescriptor.DatabaseIdOffset, out ushort databaseId))
+            || !replay.TryRead(buffer + (ulong)layout.PageIdField.Offset, out int pageId)
+            || !replay.TryRead(buffer + (ulong)layout.FileIdField.Offset, out short fileId)
+            || !replay.TryRead(buffer + (ulong)layout.DatabaseIdField.Offset, out ushort databaseId))
         {
             return;
         }
@@ -186,13 +185,13 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             FileDatabases[read.FileControlBlock] = databaseId;
         }
 
-        Pages.Add(new TraceBufferPage(frame, page, databaseId, start, buffer));
+        Pages.AddSighting(new TraceBufferPage(frame, page, databaseId, start, buffer));
 
         TrackLayout(buffer, frame, page, databaseId, replay);
 
         if (!Buffers.TryGetValue(buffer, out var first) || start < first.Position)
         {
-            Buffers[buffer] = (call.Thread, start);
+            Buffers[buffer] = (call.Thread, start, layout.Size);
         }
     }
 
@@ -221,7 +220,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
     private void OnLatchRelease(in TraceHookCall call, ITraceReplay replay)
     {
         if (call.Arguments.Length > LatchArgument
-            && call.Arguments[LatchArgument] - BufferDescriptor.LatchWaitersOffset is var buffer
+            && call.Arguments[LatchArgument] - (ulong)replay.Layout.Buffer.LatchWaitersField.Offset is var buffer
             && PendingLayouts.TryGetValue(buffer, out var layout))
         {
             UpdateLayout(buffer, layout, replay);

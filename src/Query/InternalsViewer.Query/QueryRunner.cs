@@ -47,6 +47,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
     private const string ReadingEventsStep = "Reading Events";
 
+    private const string ClearPlanCacheSql = "ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE";
+
     private static readonly ProgressStep[] DirectSteps = [new(RunningStep, 100)];
 
     public bool ResolveColumnstorePages { get; set; } = true;
@@ -179,8 +181,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var memoryClerks = MemoryClerkSnapshot.Empty;
 
-        var objectPool = ObjectPoolSnapshot.Empty;
-
         var recordable = eventOptions.RecordTimeTravel && TimeTravelRecorder is not null;
 
         var messages = new StepLoggerProgress(progress, Logger);
@@ -223,8 +223,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             if (fullTrace is not null)
             {
                 memoryClerks = clerksBefore.Merge(await ReadMemoryClerks(connectionString, details, cancellationToken));
-
-                objectPool = await ReadObjectPool(connectionString, details, cancellationToken);
             }
 
             steps.Begin(ReadingEventsStep);
@@ -349,7 +347,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             CropEndUs = cropEnd,
             TraceRequest = fullTrace is null
                 ? null
-                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, objectPool, threadIds)
+                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, threadIds)
                 {
                     RecordMemoryHistory = payload.QueryOptions.RecordMemoryHistory,
                     CaptureHeapReads = eventOptions.CaptureHeapReads,
@@ -480,24 +478,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
     }
 
-    private async Task<ObjectPoolSnapshot> ReadObjectPool(string connectionString,
-                                                          IProgress<ProgressDetail>? progress,
-                                                          CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await ObjectPoolReader.ReadAsync(connectionString, cancellationToken);
-        }
-        catch (SqlException exception)
-        {
-            Logger.LogWarning(exception, "Columnstore object pool could not be read");
-
-            progress?.Report($"Columnstore object pool could not be read: {exception.Message}");
-
-            return ObjectPoolSnapshot.Empty;
-        }
-    }
-
     private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets, TimeTravelTraceFile? timeTravelTrace)>
         RunQueryWithEventSession(string sessionName,
                                  string[] preCommandSql,
@@ -577,6 +557,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             // Removes all pages from the buffer pool so pages will come from I/O rather than the cache
             await connection.ExecuteSql("DBCC DROPCLEANBUFFERS", cancellationToken, Logger);
+        }
+
+        if (recording is not null)
+        {
+            await connection.ExecuteSql(ClearPlanCacheSql, cancellationToken, Logger);
         }
 
         if (queryOptions.DisableReadAhead)

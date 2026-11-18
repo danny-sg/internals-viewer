@@ -26,8 +26,6 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string MemoryObjectsEntry = "fulltrace/memoryobjects.bin";
 
-    internal const string ObjectPoolSnapshotEntry = "fulltrace/objectpool.bin";
-
     internal const string PlanNodesEntry = "fulltrace/plannodes.bin";
 
     internal const string MemoryHistoryEntry = "fulltrace/memoryhistory.bin";
@@ -36,21 +34,23 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string PageReadsEntry = "fulltrace/pagereads.bin";
 
+    internal const string ServerVersionEntry = "fulltrace/serverversion.bin";
+
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
     public void Write(QueryExportWriter writer, QueryExportContent content)
     {
         var fullTrace = content.ExtraOf<TraceResult>()!;
 
-        var nodeIds = TraceCallTreeExport.Write(writer, fullTrace.CallTree, fullTrace.Timeline.MappedNodes);
+        var nodeIds = TraceCallTreeExport.Write(writer, fullTrace.CallTree);
 
-        writer.WriteBinary(CallStoreEntry, CompressionLevel.NoCompression, fullTrace.CallStore.Write);
+        writer.WriteBinary(CallStoreEntry, CompressionLevel.NoCompression, fullTrace.Store.Calls.Write);
 
         writer.WriteBinary(TimelineEntry,
                            CompressionLevel.Fastest,
                            w =>
                            {
-                               fullTrace.Timeline.Write(w, n => nodeIds[n]);
+                               fullTrace.Store.Timeline.Write(w, n => nodeIds[n]);
 
                                fullTrace.Allocation.Write(w);
                            });
@@ -59,8 +59,6 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         writer.WriteBinary(MemoryObjectsEntry, CompressionLevel.Fastest, fullTrace.MemoryObjects.Write);
 
-        writer.WriteBinary(ObjectPoolSnapshotEntry, CompressionLevel.Fastest, fullTrace.ObjectPool.Write);
-
         writer.WriteBinary(PlanNodesEntry, CompressionLevel.Fastest, w => IteratorPlanNode.Write(w, fullTrace.PlanNodes));
 
         writer.WriteBinary(MemoryHistoryEntry, CompressionLevel.Fastest, fullTrace.MemoryHistory.Write);
@@ -68,6 +66,11 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(BufferPoolEntry, CompressionLevel.Fastest, fullTrace.BufferPool.Write);
 
         writer.WriteBinary(PageReadsEntry, CompressionLevel.Fastest, fullTrace.PageReads.Write);
+
+        if (fullTrace.ServerVersion is { } serverVersion)
+        {
+            writer.WriteBinary(ServerVersionEntry, CompressionLevel.NoCompression, w => w.Write(serverVersion.ToString()));
+        }
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -79,37 +82,36 @@ internal sealed class TraceExportSection : IQueryExportSection
             return null;
         }
 
-        var callStore = reader.ReadBinary(CallStoreEntry, TraceCallStore.Read);
-
         var (timeline, memory) = reader.ReadBinary(TimelineEntry, r => (TraceTimeline.Read(r, nodes), AllocationIndex.Read(r)));
 
-        callStore.MapNodes(timeline.MappedNodes);
+        var store = new TraceStore(reader.ReadBinary(CallStoreEntry, r => TraceCallStore.Read(r, timeline.Nodes)), timeline);
 
         IReadOnlyList<IteratorPlanNode> planNodes = reader.HasEntry(PlanNodesEntry)
             ? reader.ReadBinary(PlanNodesEntry, IteratorPlanNode.Read)
             : [];
 
-        var builder = new TraceResultBuilder(tree, callStore, timeline, reader.Events, planNodes)
+        var builder = new TraceResultBuilder(tree, store, reader.Events, planNodes)
         {
             Allocation = memory,
             AddressMap = reader.HasEntry(AddressMapEntry) && reader.ReadBinary(AddressMapEntry, AddressMap.IsSupported)
                 ? reader.ReadBinary(AddressMapEntry, r => AddressMap.Read(r, timeline.GetNode))
                 : AddressMap.Empty,
-            MemoryObjectSnapshot = reader.HasEntry(MemoryObjectsEntry) && reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.IsSupported)
+            MemoryClerkObjects = reader.HasEntry(MemoryObjectsEntry) && reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.IsSupported)
                 ? reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.ReadObjects)
                 : new Dictionary<ulong, MemoryObjectInfo>(),
-            ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
-                ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
-                : ObjectPoolSnapshot.Empty,
             BufferPool = reader.HasEntry(BufferPoolEntry) && reader.ReadBinary(BufferPoolEntry, TraceBufferPool.IsSupported)
                 ? reader.ReadBinary(BufferPoolEntry, TraceBufferPool.Read)
-                : TraceBufferPool.Empty
+                : TraceBufferPool.Empty,
+            SymbolsPath = reader.SymbolsPath,
+            ServerVersion = reader.HasEntry(ServerVersionEntry)
+                ? reader.ReadBinary(ServerVersionEntry, r => Version.Parse(r.ReadString()))
+                : null
         };
 
-        builder.Link();
+        builder.LinkExecutionPlan();
 
         var memoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
-            ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, timeline))
+            ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, store))
             : MemoryHistoryStore.Empty;
 
         var pageReads = reader.HasEntry(PageReadsEntry) && reader.ReadBinary(PageReadsEntry, TracePageReadList.IsSupported)

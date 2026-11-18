@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
@@ -11,6 +10,8 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -65,7 +66,18 @@ public class TraceTickTracksTests
     }
 
     [Fact]
-    public void A_Plan_Default_Rule_Is_Always_A_Plan_Step() => Assert.True(TraceTickTracks.IsPlanStep(Rule, new HashSet<string>()));
+    public void A_Plan_Default_Rule_Is_Always_A_Plan_Step()
+        => Assert.True(TraceTickTracks.IsPlanStep(Rule, new HashSet<string>(), isDetailed: false));
+
+    [Fact]
+    public void A_Detailed_Rule_Is_A_Plan_Step_Only_When_Detailed()
+    {
+        var rule = Rule with { IsDetailed = true };
+
+        Assert.Equal((false, true),
+                     (TraceTickTracks.IsPlanStep(rule, new HashSet<string>(), isDetailed: false),
+                      TraceTickTracks.IsPlanStep(rule, new HashSet<string>(), isDetailed: true)));
+    }
 
     [Fact]
     public void A_Rule_That_Is_Not_A_Plan_Default_Is_Not_A_Plan_Step_Until_Selected()
@@ -73,8 +85,8 @@ public class TraceTickTracksTests
         var rule = Rule with { IsPlanDefault = false };
 
         Assert.Equal((false, true),
-                     (TraceTickTracks.IsPlanStep(rule, new HashSet<string>()),
-                      TraceTickTracks.IsPlanStep(rule, new HashSet<string> { rule.GetPlanStepKey() })));
+                     (TraceTickTracks.IsPlanStep(rule, new HashSet<string>(), isDetailed: false),
+                      TraceTickTracks.IsPlanStep(rule, new HashSet<string> { rule.GetPlanStepKey() }, isDetailed: false)));
     }
 
     [Fact]

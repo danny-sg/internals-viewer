@@ -1,27 +1,24 @@
 ﻿using InternalsViewer.Query.FullTrace.Calls.Tree;
-using Xunit.Abstractions;
-using InternalsViewer.Query.FullTrace.Symbols.Categories;
-using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls.Tree;
 
 [Trait("Category", "Unit")]
-public class CallTreeTests(ITestOutputHelper output)
+public class CallTreeTests
 {
     [Fact]
     public void Merged_Nodes_Add_Up_Their_Calls_And_Allocations_And_Keep_Their_Members()
     {
         var tree = new CallTree();
 
-        var first = tree.AddCall(tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1),
-                                 new CallFrame { Module = new("sqlmin"), Rva = 0x30 },
+        var first = tree.AddCall(tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1),
+                                 new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 },
                                  2);
 
-        var second = tree.AddCall(tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1),
-                                  new CallFrame { Module = new("sqlmin"), Rva = 0x30 },
+        var second = tree.AddCall(tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1),
+                                  new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 },
                                   3);
 
-        var callee = tree.AddCall(second, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
+        var callee = tree.AddCall(second, new CallFrame { Module = new("sqlmin"), Address = 0x40, Rva = 0x40 }, 1);
 
         first.AllocatedBytes = 100;
         first.AllocationCount = 1;
@@ -30,7 +27,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         var merged = CallTreeNode.Merge([first, second]);
 
-        Assert.Equal((5L, 150L, 3L), (merged.CallCount, merged.AllocatedBytesIncludingChildren, merged.AllocationsIncludingChildren));
+        Assert.Equal((5L, 150L, 3L), (merged.CallCount, merged.AllocatedBytesIncludingChildren, merged.AllocationCountIncludingChildren));
         Assert.Equal([first, second], merged.MergedFrom);
         Assert.Equal(first.Key, merged.Key);
         Assert.Empty(merged.Children);
@@ -43,7 +40,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         Path(tree, Frame("Thread", 40), Frame("Join", 30), Frame("Seek", 20), Frame("Y", 10));
 
-        var collapsed = tree.CollapseToFunctions();
+        var collapsed = tree.Project();
 
         var boundary = collapsed.GetNodes().Single(n => n.Symbol == "Seek::m");
 
@@ -71,7 +68,7 @@ public class CallTreeTests(ITestOutputHelper output)
         Path(tree, Frame("WorkerA", 30), Frame("Seek", 20), Frame("Y", 10));
         Path(tree, Frame("WorkerB", 31), Frame("Seek", 20), Frame("Z", 11));
 
-        var collapsed = tree.CollapseToFunctions();
+        var collapsed = tree.Project();
 
         var boundaries = collapsed.GetNodes().Where(n => n.Symbol == "Seek::m").ToList();
 
@@ -100,7 +97,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         Path(tree, Frame("Statement", 50), Frame("Agg", 40), Frame("SeekInternals", 30), Frame("Seek", 20), Frame("BufRead", 10));
 
-        var collapsed = tree.CollapseToFunctions();
+        var collapsed = tree.Project();
 
         var statement = collapsed.GetNodes().Single(n => n.Symbol == "Statement::m");
 
@@ -126,7 +123,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         Path(tree, Frame("Agg", 30), Frame("Seek", 20), Frame("BufRead", 10));
 
-        var collapsed = tree.CollapseToFunctions();
+        var collapsed = tree.Project();
 
         var seek = collapsed.GetNodes().Single(n => n.Symbol == "Seek::m");
 
@@ -142,32 +139,6 @@ public class CallTreeTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Removing_Calls_Under_Extended_Events_Keeps_Other_Calls()
-    {
-        var tree = new CallTree();
-
-        var getRow = tree.AddCall(tree.Root, Frame("GetRow", 100), 1);
-
-        var preWait = tree.AddCall(getRow, Frame("PreWait", 200), 1);
-
-        var publish = tree.AddCall(preWait, XeFrame("Publish", 300), 1);
-
-        tree.AddCall(publish, Frame("memcpy", 400), 50);
-
-        tree.AddCall(getRow, Frame("ReadPage", 500), 3);
-
-        var collapsed = tree.CollapseToFunctions();
-
-        collapsed.RemoveCallsUnder(node => node.IsInstrumentation);
-
-        output.WriteLine(Render(collapsed));
-
-        Assert.DoesNotContain(collapsed.GetNodes(), node => node.Symbol is "Publish::m" or "memcpy::m");
-        Assert.Equal(3, collapsed.GetNodes().Single(node => node.Symbol == "ReadPage::m").CallCount);
-        Assert.Equal(1, collapsed.GetNodes().Single(node => node.Symbol == "PreWait::m").CallCount);
-    }
-
-    [Fact]
     public void Trace_Activity_Survives_The_Collapse_And_Sums_Up_The_Tree()
     {
         var tree = new CallTree();
@@ -176,40 +147,18 @@ public class CallTreeTests(ITestOutputHelper output)
 
         var y = tree.AddCall(x, Frame("Y", 200), 4);
 
-        x.CallActivity = [1, 0, 0];
+        x.OwnActivityCounts = [1, 0, 0];
 
-        y.CallActivity = [0, 3, 1];
+        y.OwnActivityCounts = [0, 3, 1];
 
-        var collapsed = tree.CollapseToFunctions();
+        var collapsed = tree.Project();
 
         collapsed.ComputeActivity(3);
 
         var root = collapsed.GetNodes().Single(node => node.Symbol == "X::m");
 
-        Assert.Equal([1, 3, 1], root.ActivityCounts);
-        Assert.Equal([0, 3, 1], collapsed.GetNodes().Single(node => node.Symbol == "Y::m").ActivityCounts);
-    }
-
-    [Fact]
-    public void Removing_Calls_Under_Extended_Events_Removes_Their_Activity()
-    {
-        var tree = new CallTree();
-
-        var x = tree.AddCall(tree.Root, Frame("X", 100), 1);
-
-        var publish = tree.AddCall(x, XeFrame("Publish", 200), 2);
-
-        x.CallActivity = [1, 0];
-
-        publish.CallActivity = [0, 2];
-
-        var collapsed = tree.CollapseToFunctions();
-
-        collapsed.RemoveCallsUnder(node => node.IsInstrumentation);
-
-        collapsed.ComputeActivity(2);
-
-        Assert.Equal([1, 0], Assert.Single(collapsed.GetNodes()).ActivityCounts);
+        Assert.Equal([1, 3, 1], root.SubtreeActivityCounts);
+        Assert.Equal([0, 3, 1], collapsed.GetNodes().Single(node => node.Symbol == "Y::m").SubtreeActivityCounts);
     }
 
     [Fact]
@@ -233,13 +182,13 @@ public class CallTreeTests(ITestOutputHelper output)
         tree.ComputeActivity(2);
 
         Assert.Equal(0, builds);
-        Assert.Equal([1, 3], x.ActivityCounts);
-        Assert.Equal([0, 3], y.ActivityCounts);
+        Assert.Equal([1, 3], x.SubtreeActivityCounts);
+        Assert.Equal([0, 3], y.SubtreeActivityCounts);
         Assert.Equal(1, builds);
     }
 
     private static string Render(CallTree tree)
-        => string.Concat(tree.Root.Children.Values.OrderBy(c => c.Order).Select(CallTree.Render));
+        => string.Concat(tree.Root.Children.OrderBy(c => c.Order).Select(CallTree.Render));
 
     private static void Path(CallTree tree, params CallFrame[] frames)
     {
@@ -254,19 +203,8 @@ public class CallTreeTests(ITestOutputHelper output)
     private static CallFrame Frame(string name, uint rva) => new()
     {
         Module = new("sqllang"),
+        Address = rva,
         Rva = rva,
         Function = new FrameFunction { ClassName = name, MethodName = "m" },
-    };
-
-    private static CallFrame XeFrame(string name, uint rva) => new()
-    {
-        Module = new("sqldk"),
-        Rva = rva,
-        Function = new FrameFunction
-        {
-            ClassName = name,
-            MethodName = "m",
-            SymbolCategory = SymbolCategory.XEventInfrastructure
-        },
     };
 }

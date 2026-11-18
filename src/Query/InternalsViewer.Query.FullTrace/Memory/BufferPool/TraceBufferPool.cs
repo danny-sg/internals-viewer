@@ -1,7 +1,7 @@
-using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -23,6 +23,8 @@ public sealed partial class TraceBufferPool
 
     public int Count => Pages.Length;
 
+    public EngineLayout Layout { get; private init; } = EngineLayout.Latest;
+
     internal TracePosition? FirstPosition => Pages.Length == 0 ? null : Pages.Min(p => p.Position);
 
     private TraceBufferPage[] Pages { get; }
@@ -35,7 +37,7 @@ public sealed partial class TraceBufferPool
 
     public bool IsBuffer(ulong address) => Array.BinarySearch(BufferStarts, address) >= 0;
 
-    public PageData? GetLayout(PageAddress page, ushort databaseId) => Layouts.GetValueOrDefault((page, databaseId));
+    public PageData? GetPageLayout(PageAddress page, ushort databaseId) => Layouts.GetValueOrDefault((page, databaseId));
 
     public TraceBufferReference? GetReference(ulong address, TracePosition position)
         => GetFrameReference(address, position) ?? GetBufferReference(address, position);
@@ -83,13 +85,56 @@ public sealed partial class TraceBufferPool
         return new TraceBufferReference(page.Page, page.DatabaseId, (int)(address - frame));
     }
 
+    public ulong? GetRecord(ulong buffer, int slot, TracePosition position)
+    {
+        var index = SortedSearch.FirstAfter(Buffers, (buffer, position), GetBufferKey) - 1;
+
+        if (index < 0 || Buffers[index].Buffer != buffer)
+        {
+            return null;
+        }
+
+        var page = Buffers[index];
+
+        return GetPageLayout(page.Page, page.DatabaseId)?.OffsetTable is { } offsets && slot >= 0 && slot < offsets.Length
+            ? page.Frame + offsets[slot]
+            : null;
+    }
+
+    internal static TraceBufferPool Build(ReplayBufferPool sightings)
+    {
+        var pages = new List<TraceBufferPage>();
+
+        foreach (var page in sightings.Sightings.OrderBy(p => p.Frame).ThenBy(p => p.Position))
+        {
+            if (pages.Count > 0 && pages[^1] is var previous && IsSameResidency(previous, page))
+            {
+                if (previous.Buffer == 0 && page.Buffer != 0)
+                {
+                    pages[^1] = previous with { Buffer = page.Buffer };
+                }
+
+                continue;
+            }
+
+            pages.Add(page);
+        }
+
+        var layouts = sightings.SlotLayouts.ToDictionary(l => l.Key, l => CreateLayout(l.Key.Page, l.Value.Offsets, l.Value.Type));
+
+        return new TraceBufferPool([.. pages], layouts);
+    }
+
+    internal TraceBufferPool WithLayout(EngineLayout layout)
+        => ReferenceEquals(layout, Layout) ? this : new TraceBufferPool(Pages, Layouts) { Layout = layout };
+
     internal IEnumerable<ulong> GetFrames() => Pages.Select(p => p.Frame).Distinct();
 
     private TraceBufferReference? GetBufferReference(ulong address, TracePosition position)
     {
         var last = SortedSearch.FirstAfter(BufferStarts, address) - 1;
 
-        if (last < 0 || address - BufferStarts[last] >= BufferDescriptor.Size)
+        if (last < 0 || address - BufferStarts[last] >= (ulong)Layout.Buffer.Size)
         {
             return null;
         }
@@ -115,40 +160,6 @@ public sealed partial class TraceBufferPool
 
     private static (ulong, TracePosition) GetBufferKey(TraceBufferPage page) => (page.Buffer, page.Position);
 
-    internal sealed class Builder
-    {
-        private List<TraceBufferPage> Pages { get; } = [];
-
-        private Dictionary<(PageAddress Page, ushort DatabaseId), PageData> Layouts { get; } = [];
-
-        public void Add(TraceBufferPage page) => Pages.Add(page);
-
-        public void AddLayout(PageAddress page, ushort databaseId, ushort[] offsets, PageType type = PageType.None)
-            => Layouts[(page, databaseId)] = CreateLayout(page, offsets, type);
-
-        public TraceBufferPool Build()
-        {
-            var pages = new List<TraceBufferPage>();
-
-            foreach (var page in Pages.OrderBy(p => p.Frame).ThenBy(p => p.Position))
-            {
-                if (pages.Count > 0 && pages[^1] is var previous && IsSameResidency(previous, page))
-                {
-                    if (previous.Buffer == 0 && page.Buffer != 0)
-                    {
-                        pages[^1] = previous with { Buffer = page.Buffer };
-                    }
-
-                    continue;
-                }
-
-                pages.Add(page);
-            }
-
-            return new TraceBufferPool([.. pages], Layouts);
-        }
-
-        private static bool IsSameResidency(TraceBufferPage previous, TraceBufferPage page)
-            => previous.Frame == page.Frame && previous.Page == page.Page && previous.DatabaseId == page.DatabaseId;
-    }
+    private static bool IsSameResidency(TraceBufferPage previous, TraceBufferPage page)
+        => previous.Frame == page.Frame && previous.Page == page.Page && previous.DatabaseId == page.DatabaseId;
 }

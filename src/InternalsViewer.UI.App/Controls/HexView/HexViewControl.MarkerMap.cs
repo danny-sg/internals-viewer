@@ -34,7 +34,10 @@ public sealed partial class HexViewControl
 
         foreach (var marker in markers)
         {
-            if (!marker.IsVisible || marker.StartPosition < 0 || marker.EndPosition < marker.StartPosition)
+            if (!marker.IsVisible
+                || marker.StartPosition < 0
+                || marker.EndPosition < marker.StartPosition
+                || marker.StartPosition >= length)
             {
                 continue;
             }

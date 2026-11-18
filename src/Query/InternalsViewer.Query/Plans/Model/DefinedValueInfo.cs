@@ -1,5 +1,5 @@
 using System.Data;
-using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Query.Plans.Predicates;
 
 namespace InternalsViewer.Query.Plans.Model;
 
@@ -9,7 +9,7 @@ public sealed record DefinedValueInfo
 
     public string? Expression { get; init; }
 
-    public IReadOnlyList<string> References { get; init; } = [];
+    public IReadOnlyList<ColumnReference> References { get; init; } = [];
 
     public AccessExpression? ParsedExpression { get; init; }
 

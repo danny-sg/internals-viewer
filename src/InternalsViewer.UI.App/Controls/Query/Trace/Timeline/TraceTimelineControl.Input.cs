@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -231,6 +232,10 @@ public sealed partial class TraceTimelineControl
             {
                 ZoomToOperator(operatorHit);
             }
+            else if (_operators.GetStageAt(position) is { } stage)
+            {
+                ZoomTo(stage.Span);
+            }
             else if (_operators.IsBackground(position))
             {
                 ClearSelections();
@@ -399,7 +404,10 @@ public sealed partial class TraceTimelineControl
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 
-        var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex);
+        var hit = found?.Call
+                  ?? HitTest(position)
+                  ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex)
+                  ?? GetMarkHit(operatorsHover.Stage?.Node, operatorsHover.Stage?.Span.CallIndex);
 
         if (hit != _hover
             || !Nullable.Equals(found, _hoverBlock)
@@ -434,7 +442,7 @@ public sealed partial class TraceTimelineControl
         {
             OpenToolTip(GetBufferLatchToolTip(latch), position);
         }
-        else if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
+        else if (hit is { } hovered && operatorsHover.Tick?.Tick is null && operatorsHover.Stage is null)
         {
             ShowToolTip(hovered, position);
         }
@@ -748,7 +756,7 @@ public sealed partial class TraceTimelineControl
 
         if (span is { } found)
         {
-            node = _visible?.GetNode(found.CallNodeIndex);
+            node = _visible?.GetNode(found.ReplayNodeIndex);
             callIndex = found.CallIndex;
         }
 
@@ -799,7 +807,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(CallStackItem());
+        flyout.Items.Add(CallStackItem(span?.From));
 
         return flyout;
     }
@@ -843,7 +851,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(CallStackItem());
+        flyout.Items.Add(CallStackItem(null));
 
         return flyout;
     }
@@ -868,8 +876,7 @@ public sealed partial class TraceTimelineControl
 
     private int VisiblePaneCount => (ShowsOperators ? 1 : 0) + (ShowsMemory ? 1 : 0) + (ShowsFlameChart ? 1 : 0);
 
-    private ToggleMenuFlyoutItem CallStackItem()
-        => MenuItems.Toggle("Call Stack", ShowCallStack, isChecked => CallStackVisibilityRequested?.Invoke(isChecked));
+    private MenuFlyoutItem CallStackItem(TracePoint? point) => MenuItems.Create("Call Stack", () => CallStackRequested?.Invoke(point));
 
     private void Select(FlameHit? hit)
     {
@@ -877,7 +884,7 @@ public sealed partial class TraceTimelineControl
 
         _canvas.Invalidate();
 
-        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.GetNode(span.CallNodeIndex) is not { } node)
+        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.GetNode(span.ReplayNodeIndex) is not { } node)
         {
             return;
         }
@@ -1043,7 +1050,7 @@ public sealed partial class TraceTimelineControl
     }
 
     private void RootAt(FlameHit? hit)
-        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.GetNode(span.CallNodeIndex) : null);
+        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.GetNode(span.ReplayNodeIndex) : null);
 
     private void Click(FlameHit? hit)
     {
@@ -1228,11 +1235,11 @@ public sealed partial class TraceTimelineControl
 
         var span = row.GetSpan(hit.Index);
 
-        var node = timeline.GetNode(span.CallNodeIndex);
+        var node = timeline.GetNode(span.ReplayNodeIndex);
 
         var lines = new List<string>
         {
-            LabelOf(span.CallNodeIndex),
+            LabelOf(span.ReplayNodeIndex),
             node?.Category is { Length: > 0 } category ? category : "Unknown",
             span.CallIndex >= 0
                 ? $"Thread {thread.ThreadId}  ·  Call {span.CallIndex + 1}  ·  Depth {hit.Depth}"

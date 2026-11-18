@@ -1,10 +1,15 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
-internal sealed class FakeTraceReplay : ITraceReplay
+internal sealed class FakeTraceReplay : ITraceReplay, ITraceMemoryReader
 {
+    public EngineLayout Layout { get; init; } = EngineLayout.Latest;
+
     public List<(uint Thread, ulong Frame)> WatchedFrames { get; } = [];
 
     public TraceHookFrame[] Frames { get; set; } = [];
@@ -47,4 +52,13 @@ internal sealed class FakeTraceReplay : ITraceReplay
     }
 
     public ReadOnlySpan<TraceHookFrame> GetFrames(uint thread) => Frames;
+
+    public ReadOnlySpan<ulong> GetStackArguments(in TraceHookCall call)
+    {
+        var stack = new ulong[TraceHookArgumentReader.StackSlotCount];
+
+        TraceHookArgumentReader.ReadStackArguments(this, call, stack);
+
+        return stack;
+    }
 }

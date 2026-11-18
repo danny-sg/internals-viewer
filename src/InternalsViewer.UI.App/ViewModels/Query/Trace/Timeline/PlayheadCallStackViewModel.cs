@@ -49,12 +49,4 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
     public override void Zoom(PlayheadCallRow row) => Chart?.ZoomTo(row.Span);
 
     protected override void ShowCall(PlayheadCallRow row) => Query.NavigateToCall(row.Node, row.CallIndex);
-
-    protected override void UseChart(Action<IPlayheadChart> action)
-    {
-        if (Chart is { } chart)
-        {
-            action(chart);
-        }
-    }
 }

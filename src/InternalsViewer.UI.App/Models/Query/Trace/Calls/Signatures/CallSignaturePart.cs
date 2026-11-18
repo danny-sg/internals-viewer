@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -17,7 +16,6 @@ public sealed class CallSignaturePart(string text,
                                      string? typeName = null,
                                      string? label = null,
                                      string? declaredType = null,
-                                     AddressMapEntry? origin = null,
                                      string? location = null,
                                      bool isLocal = false)
 {
@@ -44,8 +42,6 @@ public sealed class CallSignaturePart(string text,
     public string? Label { get; } = label;
 
     public string? DeclaredType { get; } = declaredType;
-
-    public AddressMapEntry? Origin { get; } = origin;
 
     public string? Location { get; } = location;
 

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.WinUI.Controls;
-using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.Plans.Text;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Plan.Enums;
 using Microsoft.UI;

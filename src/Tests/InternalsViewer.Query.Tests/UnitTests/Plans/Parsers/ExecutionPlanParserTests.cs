@@ -1,9 +1,8 @@
-﻿
-using System.Data;
-using InternalsViewer.Execution.AccessPaths.Aggregation;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.AccessPaths.Windowing;
+﻿using System.Data;
+using InternalsViewer.Query.Plans.Aggregation.Enums;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Search;
+using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Plans;
@@ -1114,111 +1113,6 @@ public class ExecutionPlanParserTests
     // ------------------------------------------------------------------
     // Sequence Project over Segment, from ROW_NUMBER() OVER (ORDER BY Id)
     // ------------------------------------------------------------------
-    private const string RowNumberXml =
-        """
-        <?xml version="1.0" encoding="utf-16"?>
-        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
-          <BatchSequence>
-            <Batch>
-              <Statements>
-                <StmtSimple StatementText="SELECT ROW_NUMBER() OVER (ORDER BY Id) FROM dbo.ClusteredTable" StatementType="SELECT">
-                  <QueryPlan>
-                    <RelOp NodeId="0" PhysicalOp="Sequence Project" LogicalOp="Compute Scalar" EstimateRows="100">
-                      <OutputList>
-                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
-                        <ColumnReference Column="Expr1002" />
-                      </OutputList>
-                      <SequenceProject>
-                        <DefinedValues>
-                          <DefinedValue>
-                            <ColumnReference Column="Expr1002" />
-                            <ScalarOperator ScalarString="row_number">
-                              <Sequence FunctionName="row_number" />
-                            </ScalarOperator>
-                          </DefinedValue>
-                        </DefinedValues>
-                        <RelOp NodeId="1" PhysicalOp="Segment" LogicalOp="Segment" EstimateRows="100">
-                          <OutputList>
-                            <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
-                            <ColumnReference Column="Segment1003" />
-                          </OutputList>
-                          <Segment>
-                            <GroupBy />
-                            <SegmentColumn>
-                              <ColumnReference Column="Segment1003" />
-                            </SegmentColumn>
-                            <RelOp NodeId="2" PhysicalOp="Clustered Index Seek" LogicalOp="Clustered Index Seek" EstimateRows="100">
-                              <OutputList>
-                                <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
-                              </OutputList>
-                              <IndexScan Ordered="true" ScanDirection="FORWARD">
-                                <Object Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Index="[pk_ClusteredTable]" IndexKind="Clustered" />
-                              </IndexScan>
-                            </RelOp>
-                          </Segment>
-                        </RelOp>
-                      </SequenceProject>
-                    </RelOp>
-                  </QueryPlan>
-                </StmtSimple>
-              </Statements>
-            </Batch>
-          </BatchSequence>
-        </ShowPlanXML>
-        """;
-
-    [Fact]
-    public void A_Segment_Reads_Its_Flag_Column_And_Its_Grouping_Columns()
-    {
-        var plan = Parse(RowNumberXml);
-
-        var segment = plan.NodesById[1].SegmentInfo;
-
-        Assert.NotNull(segment);
-        Assert.Equal("Segment1003", segment!.SegmentColumn?.Column);
-
-        // OVER (ORDER BY Id) has no PARTITION BY, so showplan writes an empty GroupBy and the whole input is one segment
-        Assert.Empty(segment.GroupBy);
-    }
-
-    [Fact]
-    public void A_Sequence_Project_Reads_The_Ranking_Function_It_Defines()
-    {
-        var plan = Parse(RowNumberXml);
-
-        var sequence = plan.NodesById[0].SequenceProjectInfo;
-
-        Assert.NotNull(sequence);
-        Assert.False(sequence!.HasUntranslatedFunction);
-
-        var column = Assert.Single(sequence.Columns);
-
-        Assert.Equal("Expr1002", column.Column);
-        Assert.Equal(RankingFunction.RowNumber, column.Function);
-    }
-
-    [Fact]
-    public void A_Ranking_Function_That_Is_Not_Recognised_Leaves_The_Operator_Untranslated()
-    {
-        var plan = Parse(RowNumberXml.Replace("row_number", "ntile"));
-
-        var sequence = plan.NodesById[0].SequenceProjectInfo;
-
-        Assert.NotNull(sequence);
-        Assert.True(sequence!.HasUntranslatedFunction);
-        Assert.Empty(sequence.Columns);
-    }
-
-    [Fact]
-    public void An_Operator_That_Is_Not_A_Window_Operator_Has_No_Window_Info()
-    {
-        var plan = Parse(RowNumberXml);
-
-        Assert.Null(plan.NodesById[0].SegmentInfo);
-        Assert.Null(plan.NodesById[1].SequenceProjectInfo);
-        Assert.Null(plan.NodesById[2].SegmentInfo);
-    }
-
     [Fact]
     public void An_Operator_That_Is_Not_An_Aggregate_Has_No_Aggregate_Info()
     {
@@ -1552,6 +1446,58 @@ public class ExecutionPlanParserTests
         Assert.Same(plan.NodesById[0], plan.Root[0].Children[0]);
     }
 
+    private const string ColumnUseXml = """
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Stream Aggregate" LogicalOp="Aggregate" EstimatedExecutionMode="Row">
+                      <OutputList><ColumnReference Column="Expr1007" /></OutputList>
+                      <StreamAggregate>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1007" />
+                            <ScalarOperator ScalarString="MAX([h].[Id])">
+                              <Aggregate AggType="MAX" Distinct="false">
+                                <ScalarOperator>
+                                  <Identifier>
+                                    <ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="Id" />
+                                  </Identifier>
+                                </ScalarOperator>
+                              </Aggregate>
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <GroupBy><ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="TextField" /></GroupBy>
+                        <RelOp NodeId="1" PhysicalOp="Hash Match" LogicalOp="Inner Join" EstimatedExecutionMode="Row">
+                          <OutputList><ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="Id" /></OutputList>
+                          <Hash>
+                            <DefinedValues />
+                            <HashKeysBuild><ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="Id" /></HashKeysBuild>
+                            <HashKeysProbe>
+                              <ColumnReference Schema="[dbo]" Table="[ClusteredTable]" Alias="[c]" Column="Id" />
+                            </HashKeysProbe>
+                            <ProbeResidual>
+                              <ScalarOperator ScalarString="[c].[TextField] IS NOT NULL">
+                                <Identifier>
+                                  <ColumnReference Schema="[dbo]" Table="[ClusteredTable]" Alias="[c]" Column="TextField" />
+                                </Identifier>
+                              </ScalarOperator>
+                            </ProbeResidual>
+                          </Hash>
+                        </RelOp>
+                      </StreamAggregate>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
     private const string ValueReferenceXml = """
         <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
           <BatchSequence>
@@ -1593,13 +1539,40 @@ public class ExecutionPlanParserTests
 
         Assert.Equal(["Expr1"], node.OuterReferences.ToArray());
 
-        Assert.Empty(node.ReferencedValues);
+        Assert.Empty(node.ReferencedColumns);
     }
 
     [Fact]
     public void A_Defined_Value_Lists_The_Values_Its_Expression_Reads()
     {
-        Assert.Equal(["ConstExpr2"], Parse(ValueReferenceXml).NodesById[1].DefinedValues[0].References);
+        Assert.Equal(["ConstExpr2"], Parse(ValueReferenceXml).NodesById[1].DefinedValues[0].References.Select(r => r.Column));
+    }
+
+    [Fact]
+    public void A_Defined_Value_Keeps_The_Table_Of_A_Column_It_Reads()
+    {
+        var reference = Assert.Single(Parse(ColumnUseXml).NodesById[0].DefinedValues[0].References);
+
+        Assert.Equal(("HeapTable", "Id"), (reference.Table, reference.Column));
+    }
+
+    [Fact]
+    public void An_Operator_Lists_The_Columns_It_Uses_With_Their_Use()
+    {
+        var uses = Parse(ColumnUseXml).NodesById[1].ReferencedColumns.Select(u => (u.Column.Table, u.Column.Column, u.Type));
+
+        Assert.Equal([("HeapTable", "Id", ColumnUseType.BuildKey),
+                      ("ClusteredTable", "Id", ColumnUseType.ProbeKey),
+                      ("ClusteredTable", "TextField", ColumnUseType.Predicate)],
+                     uses);
+    }
+
+    [Fact]
+    public void An_Operator_Does_Not_Use_The_Columns_It_Defines()
+    {
+        var uses = Parse(ColumnUseXml).NodesById[0].ReferencedColumns.Select(u => (u.Column.Column, u.Type));
+
+        Assert.Equal([("Id", ColumnUseType.Expression), ("TextField", ColumnUseType.Group)], uses);
     }
 
     [Fact]

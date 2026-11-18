@@ -21,14 +21,11 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
-    public Visibility GetRulerVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible)
-        => IsRulerShown(isPinned, isAvailable, isTrace, isTraceTimelineVisible) ? Visibility.Visible : Visibility.Collapsed;
-
     public Visibility GetTransportVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible, bool isGuideMode)
-        => IsRulerShown(isPinned, isAvailable, isTrace, isTraceTimelineVisible) || isGuideMode ? Visibility.Visible : Visibility.Collapsed;
+        => (isPinned && isAvailable && (!isTrace || isTraceTimelineVisible)) || isGuideMode ? Visibility.Visible : Visibility.Collapsed;
 
-    private static bool IsRulerShown(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible)
-        => isPinned && isAvailable && (!isTrace || isTraceTimelineVisible);
+    public Visibility GetStepVisibility(bool isTrace, bool isTraceTimelineVisible, bool isGuideMode)
+        => isTrace && isTraceTimelineVisible && !isGuideMode ? Visibility.Visible : Visibility.Collapsed;
 
     public void Dispose()
     {
@@ -38,6 +35,8 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
         PinnedRuler.Dispose();
 
         PinnedTransport.Dispose();
+
+        StepMenu.Dispose();
 
         (DataContext as QueryViewModel)?.Dispose();
     }

@@ -8,18 +8,13 @@ namespace InternalsViewer.Query.FullTrace.Export;
 
 internal static class TraceCallTreeExport
 {
-    public static Dictionary<CallTreeNode, int> Write(QueryExportWriter writer, CallTree tree, IEnumerable<CallTreeNode?> referenced)
+    public static Dictionary<CallTreeNode, int> Write(QueryExportWriter writer, CallTree tree)
     {
         var ids = new Dictionary<CallTreeNode, int>(ReferenceEqualityComparer.Instance);
 
         var nodes = new List<CallTreeNode>();
 
         AddSubtree(tree.Root, ids, nodes);
-
-        foreach (var node in referenced)
-        {
-            AddDetached(node, ids, nodes);
-        }
 
         var frames = new Dictionary<CallFrame, int>(ReferenceEqualityComparer.Instance);
 
@@ -69,7 +64,6 @@ internal static class TraceCallTreeExport
                 : new CallTreeNode
                 {
                     Frame = line.Frame is { } frame ? frames[frame] : null,
-                    Key = line.Key,
                     Order = line.Order
                 };
 
@@ -79,10 +73,7 @@ internal static class TraceCallTreeExport
 
                 node.Parent = parent;
 
-                if (!line.Detached)
-                {
-                    parent.Children[node.Key] = node;
-                }
+                parent.ChildrenByKey[node.Key] = node;
             }
 
             node.CallCount = line.Calls;
@@ -113,37 +104,12 @@ internal static class TraceCallTreeExport
 
             nodes.Add(node);
 
-            foreach (var child in node.Children.Values.Reverse())
+            foreach (var child in node.Children.Reverse())
             {
                 stack.Push(child);
             }
         }
     }
-
-    private static void AddDetached(CallTreeNode? node, Dictionary<CallTreeNode, int> ids, List<CallTreeNode> nodes)
-    {
-        if (node is null || ids.ContainsKey(node))
-        {
-            return;
-        }
-
-        while (node.Parent is { } parent && IsAttached(node, parent))
-        {
-            node = parent;
-        }
-
-        if (ids.ContainsKey(node))
-        {
-            return;
-        }
-
-        AddDetached(node.Parent, ids, nodes);
-
-        AddSubtree(node, ids, nodes);
-    }
-
-    private static bool IsAttached(CallTreeNode node, CallTreeNode parent)
-        => parent.Children.TryGetValue(node.Key, out var child) && ReferenceEquals(child, node);
 
     private static void CheckOrder(string entry, int id, int expected)
     {
@@ -159,8 +125,6 @@ internal static class TraceCallTreeExport
     {
         Id = ids[node],
         Parent = node.Parent is { } parent ? ids[parent] : null,
-        Detached = node.Parent is { } owner && !IsAttached(node, owner),
-        Key = node.Key,
         Function = node.Frame?.QualifiedName,
         Order = node.Order,
         Frame = node.Frame is { } nodeFrame ? frames[nodeFrame] : null,

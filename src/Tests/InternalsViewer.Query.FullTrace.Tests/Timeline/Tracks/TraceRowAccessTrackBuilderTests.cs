@@ -5,7 +5,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -114,11 +114,9 @@ public class TraceRowAccessTrackBuilderTests
 
     private static TraceTickSeries Build(TracePageReadList? headerReads = null)
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 10, 60), Span(1, 12, 14), Span(2, 20, 22)]);
-
-        var timeline = builder.Build(Nodes);
 
         var tree = new CallTree();
 
@@ -130,26 +128,24 @@ public class TraceRowAccessTrackBuilderTests
 
         CallTreeNode[] nodes = [range, get, record];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(GetFunction, BufferPool, Chunk(Call(12, 14, 1, returnValue: Buffer)), 1);
+        store.AddChunk(GetFunction, BufferPool, Chunk(Call(12, 14, 1, returnValue: Buffer)), 1);
 
-        store.Add(RecordFunction, 0, Chunk(Call(20, 22, 2, rcx: BufferFrame + 0x5B3)), 1);
+        store.AddChunk(RecordFunction, 0, Chunk(Call(20, 22, 2, rcx: BufferFrame + 0x5B3)), 1);
 
-        return BuildTicks(timeline, store.Build(), nodes, headerReads, offsets: null);
+        return BuildTicks(timeline, store.Build(nodes), headerReads, offsets: null);
     }
 
     private static TraceTickSeries BuildSearch(ulong returnedSlot)
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 10, 60), Span(1, 12, 14), Span(2, 16, 30), Span(3, 20, 22)]);
-
-        var timeline = builder.Build(SearchNodes);
 
         var tree = new CallTree();
 
@@ -163,34 +159,31 @@ public class TraceRowAccessTrackBuilderTests
 
         CallTreeNode[] nodes = [range, get, search, record];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(SearchNodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(GetFunction, BufferPool, Chunk(Call(12, 14, 1, returnValue: Buffer)), 1);
+        store.AddChunk(GetFunction, BufferPool, Chunk(Call(12, 14, 1, returnValue: Buffer)), 1);
 
-        store.Add(SearchFunction, 0, Chunk(Call(16, 30, 2, returnValue: returnedSlot)), 1);
+        store.AddChunk(SearchFunction, 0, Chunk(Call(16, 30, 2, returnValue: returnedSlot)), 1);
 
-        store.Add(RecordFunction, 0, Chunk(Call(20, 22, 3, rcx: BufferFrame + 0x5B3)), 1);
+        store.AddChunk(RecordFunction, 0, Chunk(Call(20, 22, 3, rcx: BufferFrame + 0x5B3)), 1);
 
-        return BuildTicks(timeline, store.Build(), nodes, headerReads: null, offsets: [0x60, 0x5B0]);
+        return BuildTicks(timeline, store.Build(nodes), headerReads: null, offsets: [0x60, 0x5B0]);
     }
 
     private static TraceTickSeries BuildTicks(TraceTimeline timeline,
                                               TraceCallStore calls,
-                                              CallTreeNode[] nodes,
                                               TracePageReadList? headerReads,
                                               ushort[]? offsets)
     {
-        calls.MapNodes(nodes);
+        var store = new TraceStore(calls, timeline);
 
-        timeline.SetCalls(calls);
+        var pool = new ReplayBufferPool();
 
-        var pool = new TraceBufferPool.Builder();
-
-        pool.Add(new TraceBufferPage(BufferFrame, Page, Database, At(1), Buffer));
+        pool.AddSighting(new TraceBufferPage(BufferFrame, Page, Database, At(1), Buffer));
 
         if (offsets is not null)
         {
@@ -211,16 +204,16 @@ public class TraceRowAccessTrackBuilderTests
         var enclosing = EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance);
 
         return headerReads is null
-            ? TraceRowAccessTrackBuilder.Build(timeline, calls, accesses, buffers, lifetimes, enclosing)
-            : TraceRowAccessTrackBuilder.BuildHeaders(timeline, accesses, lifetimes, enclosing);
+            ? TraceRowAccessTrackBuilder.Build(store, accesses, buffers, lifetimes, enclosing)
+            : TraceRowAccessTrackBuilder.BuildHeaders(store, accesses, lifetimes, enclosing);
     }
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong rcx = 0, ulong returnValue = 0)
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong rcx = 0, ulong returnValue = 0)
         => Row(start,
                flags: Thread | TraceCallColumnSet.ReturnedFlag,
                rcx: rcx,
                returnValue: returnValue,
-               callNodeIndex: callNodeIndex,
+               replayNodeIndex: replayNodeIndex,
                endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method) => new()
@@ -239,6 +232,6 @@ public class TraceRowAccessTrackBuilderTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, 0, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, 0, 1);
 }

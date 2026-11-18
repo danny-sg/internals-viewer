@@ -141,6 +141,8 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         ActualThemeChanged += OnActualThemeChanged;
     }
 
+    private ElementTheme? AppliedTheme { get; set; }
+
     public void Dispose()
     {
         Loaded -= OnLoaded;
@@ -158,28 +160,20 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         _marker.Dispose();
     }
 
-    private static float GetMarkerTop(TraceTimeline timeline, MinimapMarker marker, float height)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        var threads = timeline.Threads;
-
-        if (marker.Lane < 0 || marker.Lane >= threads.Count || marker.Depth < 0)
+        if (AppliedTheme != ActualTheme)
         {
-            return 0;
+            ApplyTheme();
         }
-
-        var laneHeight = height / threads.Count;
-
-        var rowHeight = laneHeight / Math.Max(1, threads[marker.Lane].Rows.Count);
-
-        return Math.Min(height, marker.Lane * laneHeight + marker.Depth * rowHeight);
     }
-
-    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
     private void ApplyTheme()
     {
+        AppliedTheme = ActualTheme;
+
         var isDark = ActualTheme == ElementTheme.Dark;
 
         _background.Color = isDark ? new SKColor(0x20, 0x20, 0x20, 0xD9) : new SKColor(0xF3, 0xF3, 0xF3, 0xD9);
@@ -277,7 +271,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             var x = (float)((marker.Position - start) * unit);
 
-            canvas.DrawLine(x, GetMarkerTop(timeline, marker, height), x, height, _marker);
+            canvas.DrawLine(x, 0, x, height, _marker);
         }
     }
 
@@ -409,9 +403,9 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             var right = (float)((row.GetEnd(Axis, index) - start) * unit);
 
-            var callNodeIndex = row.GetCallNodeIndex(index);
+            var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-            var isGrey = included is not null && (callNodeIndex < 0 || callNodeIndex >= included.Length || !included[callNodeIndex]);
+            var isGrey = included is not null && (replayNodeIndex < 0 || replayNodeIndex >= included.Length || !included[replayNodeIndex]);
 
             if (runNode >= 0 && isGrey == runGrey && left <= runRight + RunGap)
             {
@@ -429,7 +423,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             runRight = right;
 
-            runNode = callNodeIndex;
+            runNode = replayNodeIndex;
 
             runGrey = isGrey;
         }
@@ -450,11 +444,11 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var callNodeIndex = row.GetCallNodeIndex(index);
+                    var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-                    if (callNodeIndex >= 0 && callNodeIndex < included.Length)
+                    if (replayNodeIndex >= 0 && replayNodeIndex < included.Length)
                     {
-                        included[callNodeIndex] = true;
+                        included[replayNodeIndex] = true;
                     }
                 }
             }
@@ -465,14 +459,14 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
     private void FillRun(SKCanvas canvas,
                          TraceTimeline timeline,
-                         int callNodeIndex,
+                         int replayNodeIndex,
                          bool isGrey,
                          float left,
                          float right,
                          float top,
                          float height)
     {
-        _run.Color = ColourOf(timeline.GetNode(callNodeIndex)?.CategoryColour, isGrey);
+        _run.Color = ColourOf(timeline.GetNode(replayNodeIndex)?.CategoryColour, isGrey);
 
         canvas.DrawRect(new SKRect(left, top, Math.Max(right, left + RunGap), top + height), _run);
     }

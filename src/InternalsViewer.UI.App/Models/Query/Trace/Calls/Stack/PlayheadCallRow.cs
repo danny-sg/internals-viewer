@@ -14,9 +14,9 @@ public sealed partial class PlayheadCallRow(CallTreeNode node,
                                             CallSignature signature,
                                             TracePosition fromPosition,
                                             TracePosition toPosition,
-                                            uint thread,
                                             bool isCurrent,
-                                            ulong originSequence = 0) : ObservableObject
+                                            ulong originSequence = 0,
+                                            string? objectClass = null) : ObservableObject
 {
     [ObservableProperty]
     private CallSignaturePart? _highlighted;
@@ -31,8 +31,6 @@ public sealed partial class PlayheadCallRow(CallTreeNode node,
 
     public ulong OriginSequence { get; } = originSequence;
 
-    public uint Thread { get; } = thread;
-
     public int CallIndex => Span.CallIndex;
 
     public IReadOnlyList<CallSignaturePart> Signature => signature.Parts;
@@ -42,6 +40,13 @@ public sealed partial class PlayheadCallRow(CallTreeNode node,
     public CallSignaturePart? Return => signature.Return;
 
     public bool IsCurrent { get; } = isCurrent;
+
+    public string? ObjectClass { get; } = objectClass;
+
+    public string? BaseClass
+        => ObjectClass is not null && Node.Frame?.Function?.ClassName is { Length: > 0 } functionClass && functionClass != ObjectClass
+            ? functionClass
+            : null;
 
     public string CurrentText { get; set; } = string.Empty;
 

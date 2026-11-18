@@ -83,7 +83,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
     {
         var valueCalls = new List<TraceValueCall>();
 
-        if (!store.Functions.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var chunks))
+        if (!store.Chunks.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var chunks))
         {
             return valueCalls;
         }
@@ -113,10 +113,10 @@ public sealed class TraceValueSearch(TraceCallStore store)
     }
 
     private bool IsIncluded(TraceCallColumnSet columns, int callIndex, Func<CallTreeNode?, bool>? include)
-        => include is null || include(store.GetNode(columns.GetCallNodeIndex(callIndex)));
+        => include is null || include(store.GetNode(columns.GetReplayNodeIndex(callIndex)));
 
     private TraceValueCall GetValueCall(TraceCallColumnSet columns, int callIndex, int start)
-        => new(start + callIndex, columns.GetFromPosition(callIndex), store.GetNode(columns.GetCallNodeIndex(callIndex)), columns.GetThread(callIndex));
+        => new(start + callIndex, columns.GetFromPosition(callIndex), store.GetNode(columns.GetReplayNodeIndex(callIndex)), columns.GetThread(callIndex));
 
     private static TraceValueUse MergeValueUse(TraceValueUse existing, TraceValueUse use) => existing with
     {
@@ -127,7 +127,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
     private IEnumerable<(ulong FunctionAddress, ulong InstanceAddress, int Start, TraceCallStore.Chunk Chunk)> GetScans()
     {
-        foreach (var ((functionAddress, instanceAddress), chunks) in store.Functions)
+        foreach (var ((functionAddress, instanceAddress), chunks) in store.Chunks)
         {
             var start = 0;
 

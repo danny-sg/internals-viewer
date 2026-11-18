@@ -1,10 +1,11 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using System.Buffers.Binary;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 
@@ -29,6 +30,8 @@ public class LocatorHookTests
 
     private const ulong ReturnedFlag = TraceCallColumnSet.ReturnedFlag;
 
+    private static ulong BindingSize => (ulong)EngineLayout.Latest.OleDbBinding.Size;
+
     [Fact]
     public void A_Pointer_Argument_Is_Read_When_The_Call_Is_Made()
     {
@@ -40,11 +43,13 @@ public class LocatorHookTests
     }
 
     [Fact]
-    public void A_Path_Is_Followed_Before_The_Value_Is_Read()
+    public void A_Page_Reference_Is_Read_Through_The_Buffer_It_Points_To()
     {
-        var replay = new FakeTraceReplay().Write(Pointer + 8, Inner).Write(Inner + 0x10, Page336);
+        var pageId = (ulong)EngineLayout.Latest.Buffer.PageIdField.Offset;
 
-        var read = new LocatorRead(Function, 0, false, LocatorValueType.Page, Offset: 0x10, Path: [8]);
+        var replay = new FakeTraceReplay().Write(Pointer, Inner).Write(Inner + pageId, Page336);
+
+        var read = new LocatorRead(Function, 0, false, LocatorValueType.Page, LocatorPageSource.PageReference);
 
         Assert.Equal(Page336, Replay(read, replay, [Pointer, 0, 0, 0]).GetLocator(0)?.Value);
     }
@@ -56,9 +61,9 @@ public class LocatorHookTests
 
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
 
         var hook = new LocatorHook([new LocatorRead(Function, register, true, LocatorValueType.Page)], store);
 
@@ -74,9 +79,9 @@ public class LocatorHookTests
     {
         var register = ArgumentLayout.ReturnArgumentSlot;
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1)), 1);
 
         var hook = new LocatorHook([new LocatorRead(Function, register, true, LocatorValueType.Page)], store);
 
@@ -223,7 +228,7 @@ public class LocatorHookTests
     public void Bindings_Are_Read_For_The_Count_Before_Them()
     {
         var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
-                                          .Write(Pointer + BindingLocator.Size, Binding(2, 130, 0x7, 0x8, 0x108, 0x110));
+                                          .Write(Pointer + BindingSize, Binding(2, 130, 0x7, 0x8, 0x108, 0x110));
 
         var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountArgumentSlot: 1);
 
@@ -246,7 +251,7 @@ public class LocatorHookTests
     public void A_Binding_Without_A_Count_Is_Read_Alone()
     {
         var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
-                                          .Write(Pointer + BindingLocator.Size, Binding(2, 3, 0x1, 0x4));
+                                          .Write(Pointer + BindingSize, Binding(2, 3, 0x1, 0x4));
 
         var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Bindings), replay).GetLocator(1);
 
@@ -255,7 +260,7 @@ public class LocatorHookTests
 
     private static byte[] Binding(ulong ordinal, ushort type, uint parts, ulong value, ulong length = 0, ulong status = 0)
     {
-        var bytes = new byte[BindingLocator.Size];
+        var bytes = new byte[BindingSize];
 
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, ordinal);
 
@@ -277,9 +282,9 @@ public class LocatorHookTests
                                             ulong[]? arguments = null,
                                             ImageText? images = null)
     {
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1)), 1);
 
         new LocatorHook([read], store, images).OnEntry(Call(arguments ?? [0, Pointer, 0, 0]), replay);
 

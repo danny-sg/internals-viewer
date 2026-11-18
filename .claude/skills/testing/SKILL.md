@@ -39,7 +39,6 @@ it compiles, batch the remaining work, and run the suite once at the end.
 | Project | Covers |
 | --- | --- |
 | `InternalsViewer.Internals.Tests` | Storage engine internals. Split into `UnitTests/` and `IntegrationTests/`, with shared helpers in `Helpers/` |
-| `InternalsViewer.Execution.Tests` | Iterator/join integration plus access-path units. Links `TestServiceHost`, `RequiresFileFact` and `TestDatabase.mdf` from Internals.Tests rather than duplicating them |
 | `InternalsViewer.Query.Tests` | Event parsing, plan parsing, callstack projection |
 | `InternalsViewer.Connection.BackupFile.Tests` | Backup file reading. Has its own `RequiresFileFact`/`RequiresFileTheory` |
 | `InternalsViewer.UI.App.Tests` | Extracted UI logic plus headless SkiaSharp pixel tests that render into an `SKBitmap` |
@@ -49,7 +48,7 @@ it compiles, batch the remaining work, and run the suite once at the end.
 
 - Method names are `Verb_Describes_Behaviour` — `Parses_File_Event`, `Can_Run_Simple_Query`.
 - Test folders and namespaces mirror the source project's folders, so a test for `Events\Locks\LockGrouper` lives in
-  `Events\Locks`. `InternalsViewer.Internals.Tests`, `InternalsViewer.Execution.Tests` and `InternalsViewer.Query.Tests`
+  `Events\Locks`. `InternalsViewer.Internals.Tests` and `InternalsViewer.Query.Tests`
   keep `UnitTests\` and `IntegrationTests\` roots with the mirror beneath each. A test with no single subject type, such
   as a whole-backup read or a columnstore probe, sits at the root of its project or split, or in the area folder.
 - The app project grants `InternalsVisibleTo` to its test project, so internal types are testable directly.

@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed record TraceOperatorLifetime(uint Thread,
                                            ExecutionOperatorEvent Operator,
-                                           int CallNodeIndex,
+                                           int ReplayNodeIndex,
                                            IReadOnlyList<TraceSpan> Calls,
                                            MemoryUsageCurve InUse,
                                            TraceScale Scale)

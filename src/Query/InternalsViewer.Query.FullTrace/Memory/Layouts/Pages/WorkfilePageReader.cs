@@ -14,10 +14,6 @@ public static class WorkfilePageReader
 
     private const byte HeaderVersion = 1;
 
-    private const int HeaderSize = 96;
-
-    private const int PageTypeOffset = 1;
-
     private static FixedVarDataRecordLoader Loader { get; } = new(NullLogger<FixedVarDataRecordLoader>.Instance);
 
     private static FixedVarIndexRecordLoader IndexLoader { get; } = new(NullLogger<FixedVarIndexRecordLoader>.Instance);
@@ -61,7 +57,7 @@ public static class WorkfilePageReader
         {
             var write = writes[index];
 
-            var at = PageTypeOffset - write.Offset;
+            var at = PageHeaderParser.PageTypeOffset - write.Offset;
 
             if (at < 0 || at >= write.Length)
             {
@@ -89,7 +85,7 @@ public static class WorkfilePageReader
         {
             var offset = page.OffsetTable[slot];
 
-            if (offset < HeaderSize || offset >= end)
+            if (offset < PageHeader.Size || offset >= end)
             {
                 continue;
             }

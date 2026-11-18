@@ -101,19 +101,6 @@
 
                 <AppBarSeparator/>
 
-                <!--Trace-->
-                <AppBarElementContainer VerticalContentAlignment="Center">
-                    <Button Margin="3,0,3,0"
-                            Command="{x:Bind SimulationCommand, Mode=OneWay}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ToolTipService.ToolTip="Step through the query's plan in the Simulation tab">
-                        <TextBlock Text="Simulation" VerticalAlignment="Center" />
-                    </Button>
-                </AppBarElementContainer>
-
-                <AppBarSeparator/>
-
                 <!--Clear Buffer Pool Toggle-->
                 <AppBarElementContainer VerticalContentAlignment="Center">
                     <ToggleButton Margin="12,0,8,0"
@@ -138,20 +125,6 @@
                         <TextBlock Text="Disable Read-Ahead" VerticalAlignment="Center" />
                     </ToggleButton>
                 </AppBarElementContainer>
-
-                <!--Memory History Toggle-->
-                <AppBarElementContainer VerticalContentAlignment="Center"
-                                        Margin="0,0,8,0"
-                                        Visibility="{x:Bind IsFullTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ToggleButton IsChecked="{x:Bind QueryOptions.RecordMemoryHistory, Mode=TwoWay}"
-                                  Click="OnRunOptionClick"
-                                  ToolTipService.ToolTip
-                                  ="Watch every allocation for writes during the Full Trace replay, for the Memory History"
-                                  BorderThickness="0">
-                        <TextBlock Text="Memory History" VerticalAlignment="Center" />
-                    </ToggleButton>
-                </AppBarElementContainer>
-
             </CommandBar>
 
         </Grid>

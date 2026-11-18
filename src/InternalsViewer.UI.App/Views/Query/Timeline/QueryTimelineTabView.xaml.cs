@@ -11,7 +11,6 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Timeline;
 
-/// <summary>Dock document hosting the event timeline</summary>
 public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommands, IDisposable
 {
     private QueryViewModel? _subscribed;
@@ -29,7 +28,6 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.EventDoubleClicked += OnEventDoubleClicked;
         EventTimeline.IndexOpenRequested += OnIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
-        EventTimeline.SimulationOpenRequested += OnSimulationOpenRequested;
 
         Loaded += (_, _) => AttachStructureResolver();
     }
@@ -80,7 +78,6 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.EventDoubleClicked -= OnEventDoubleClicked;
         EventTimeline.IndexOpenRequested -= OnIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
-        EventTimeline.SimulationOpenRequested -= OnSimulationOpenRequested;
 
         if (_subscribed is not null)
         {
@@ -131,12 +128,4 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
     private void OnEventDoubleClicked(EngineEvent engineEvent) => ViewModel?.OpenEventPage(engineEvent);
 
     private void OnIndexOpenRequested(ExecutionOperatorEvent op) => ViewModel?.OpenIndex(op);
-
-    private void OnSimulationOpenRequested(ExecutionOperatorEvent op)
-    {
-        if (op.PlanNodeIdentifier is { } identifier)
-        {
-            ViewModel?.OpenSimulation(identifier);
-        }
-    }
 }

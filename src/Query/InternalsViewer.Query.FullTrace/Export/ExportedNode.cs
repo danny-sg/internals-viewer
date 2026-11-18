@@ -8,11 +8,6 @@ internal sealed record ExportedNode
 
     public int? Parent { get; init; }
 
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public bool Detached { get; init; }
-
-    public string Key { get; init; } = string.Empty;
-
     public string? Function { get; init; }
 
     public int Order { get; init; }

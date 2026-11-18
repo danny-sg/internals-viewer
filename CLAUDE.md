@@ -38,10 +38,9 @@ else in the solution.
 
 - **`InternalsViewer.Internals`** — storage engine internals. Pages, records, allocation chains, compression,
   columnstore segment decoding, metadata. Everything reachable through DI via `RegisterServices()`.
-- **`InternalsViewer.Execution`** — execution simulation (Volcano-model iterators, access paths, executors)
-  built on top of Internals. Registers itself with `RegisterExecutionServices()`; callers invoke both.
 - **`InternalsViewer.Query`** — Extended Events capture, execution plan parsing, callstack resolution.
-  Plan types live under `Plans/` (`Model/`, `Operators/`, `Joins/`, `Parsers/`); event types under `Events/`.
+  Plan types live under `Plans/` (`Model/`, `Operators/`, `Joins/`, `Parsers/`, and the predicate model in `Predicates/`,
+  `Search/`, `Text/`, `Values/`); event types under `Events/`.
 - **`InternalsViewer.Query.FullTrace`** — Full Trace: records SQL Server with Time Travel Debugging (TTD is found in the
   WinDbg installation), replays the trace through the native bridge and builds the call tree, timeline and call log.
   Query owns the recorder interfaces and the run export, and FullTrace plugs into both through

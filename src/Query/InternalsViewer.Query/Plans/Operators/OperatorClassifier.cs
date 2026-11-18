@@ -29,23 +29,11 @@ public static class OperatorClassifier
     public static bool IsComputeScalar(ExecutionOperatorEvent e) =>
         EqualsOp(e.OperatorDescription, "Compute Scalar");
 
-    public static bool IsTop(PlanNode n) =>
-        EqualsOp(n.PhysicalOperator, "Top");
-
-    public static bool IsConcatenation(PlanNode n) =>
-        EqualsOp(n.PhysicalOperator, "Concatenation");
-
     public static bool IsStreamAggregate(PlanNode n) =>
         EqualsOp(n.PhysicalOperator, "Stream Aggregate");
 
     public static bool IsAggregate(PlanNode n) =>
         Contains(n.LogicalOperator, "Aggregate") || IsStreamAggregate(n);
-
-    public static bool IsSegment(PlanNode n) =>
-        EqualsOp(n.PhysicalOperator, "Segment");
-
-    public static bool IsSequenceProject(PlanNode n) =>
-        EqualsOp(n.PhysicalOperator, "Sequence Project");
 
     public static bool IsSpool(PlanNode n) =>
         Contains(n.PhysicalOperator, "Spool");
@@ -187,8 +175,6 @@ public static class OperatorClassifier
     }
 
     public static PlanNode? GetHashBuildChild(PlanNode hash) => hash.Children.Count < 2 ? null : hash.Children[0];
-
-    public static PlanNode? GetHashProbeChild(PlanNode hash) => hash.Children.Count < 2 ? null : hash.Children[1];
 
     private static bool Contains(string s, string v) =>
         s?.IndexOf(v, StringComparison.OrdinalIgnoreCase) >= 0;

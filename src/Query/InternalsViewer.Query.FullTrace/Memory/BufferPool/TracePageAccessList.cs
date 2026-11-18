@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
@@ -8,7 +7,6 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -48,7 +46,7 @@ public sealed class TracePageAccessList
     public double? GetSlotFraction(TracePosition position, TraceBufferPool pool)
     {
         if (GetRowAccess(position) is not { Offset: { } offset } access
-            || pool.GetLayout(access.Page, access.DatabaseId) is not { } layout
+            || pool.GetPageLayout(access.Page, access.DatabaseId) is not { } layout
             || layout.GetSlot(offset) is not { } slot)
         {
             return null;
@@ -141,7 +139,7 @@ public sealed class TracePageAccessList
 
                 if ((GetPage(call) ?? buffer?.Page) is { } page)
                 {
-                    var access = new TracePageAccess(call.FromPosition, page, buffer?.DatabaseId ?? 0, null, call.CallNodeIndex, index);
+                    var access = new TracePageAccess(call.FromPosition, page, buffer?.DatabaseId ?? 0, null, call.ReplayNodeIndex, index);
 
                     candidates.Add(new Candidate(access, call.ThreadId, false));
                 }
@@ -243,29 +241,28 @@ public sealed class TracePageAccessList
         {
             var read = reads[index];
 
-            if (pool.GetFrameReference(read.Address, read.Position) is not { } reference)
+            if (IsPostRead(postReads, read.Thread, read.Position)
+                || pool.GetFrameReference(read.Address, read.Position) is not { } reference)
             {
                 continue;
             }
 
-            var isPostRead = IsPostRead(postReads, read.Thread, read.Position);
+            var isWholePage = reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size;
 
-            var isWholePage = isPostRead || (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size);
+            var hasLayout = pool.GetPageLayout(reference.Page, reference.DatabaseId) is not null;
 
-            var hasLayout = pool.GetLayout(reference.Page, reference.DatabaseId) is not null;
-
-            if (reference.Offset < PageHeader.Size ? isPostRead : !isWholePage && !hasLayout)
+            if (reference.Offset >= PageHeader.Size && !isWholePage && !hasLayout)
             {
                 continue;
             }
 
-            var (callNodeIndex, callIndex) = calls.GetCall(read.Thread, read.Position);
+            var (replayNodeIndex, callIndex) = calls.GetCall(read.Thread, read.Position);
 
             var access = new TracePageAccess(read.Position,
                                              reference.Page,
                                              reference.DatabaseId,
                                              isWholePage ? null : reference.Offset,
-                                             callNodeIndex,
+                                             replayNodeIndex,
                                              callIndex);
 
             candidates.Add(new Candidate(access, read.Thread, false, read.Length));
@@ -281,7 +278,7 @@ public sealed class TracePageAccessList
         if (openHeaders.TryGetValue(candidate.Thread, out var index)
             && headers[index].Access.Page == access.Page
             && headers[index].Access.DatabaseId == access.DatabaseId
-            && headers[index].Access.CallNodeIndex == access.CallNodeIndex
+            && headers[index].Access.ReplayNodeIndex == access.ReplayNodeIndex
             && headers[index].Access.CallIndex == access.CallIndex)
         {
             headers[index] = headers[index] with { Bytes = headers[index].Bytes | bytes };
@@ -314,7 +311,7 @@ public sealed class TracePageAccessList
 
                     var address = columns.GetRegister(callIndex, ThisRegister);
 
-                    if (GetRecord(pool, address, position, columns.GetCallNodeIndex(callIndex), first + callIndex) is { } access)
+                    if (GetRecord(pool, address, position, columns.GetReplayNodeIndex(callIndex), first + callIndex) is { } access)
                     {
                         candidates.Add(new Candidate(access, columns.GetThread(callIndex), false));
                     }
@@ -331,7 +328,7 @@ public sealed class TracePageAccessList
 
             foreach (var (write, value) in MemoryHistoryPointerReader.GetWrittenPointers(history, block))
             {
-                if (GetRecord(pool, value, write.Position, write.CallNodeIndex, write.CallIndex) is { } access)
+                if (GetRecord(pool, value, write.Position, write.ReplayNodeIndex, write.CallIndex) is { } access)
                 {
                     var isSnapshot = item.IsStack && write.Type == MemoryHistoryAccessType.Initialised;
 
@@ -344,10 +341,10 @@ public sealed class TracePageAccessList
     private static TracePageAccess? GetRecord(TraceBufferPool pool,
                                               ulong address,
                                               TracePosition position,
-                                              int callNodeIndex,
+                                              int replayNodeIndex,
                                               int callIndex)
         => address != 0 && pool.GetFrameReference(address, position) is { } reference && reference.Offset >= PageHeader.Size
-            ? new TracePageAccess(position, reference.Page, reference.DatabaseId, reference.Offset, callNodeIndex, callIndex)
+            ? new TracePageAccess(position, reference.Page, reference.DatabaseId, reference.Offset, replayNodeIndex, callIndex)
             : null;
 
     private static PageAddress? GetPage(TraceArgumentCall call)
@@ -367,7 +364,7 @@ public sealed class TracePageAccessList
     {
         var access = candidate.Access;
 
-        if (access.Offset is not { } offset || pool.GetLayout(access.Page, access.DatabaseId) is not { } layout)
+        if (access.Offset is not { } offset || pool.GetPageLayout(access.Page, access.DatabaseId) is not { } layout)
         {
             return candidate;
         }

@@ -1,11 +1,15 @@
 ﻿using CommunityToolkit.WinUI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 
 namespace InternalsViewer.UI.App.Helpers;
 
 public static class LayoutHelpers
 {
+    public static void ClipToBounds(FrameworkElement element)
+        => element.SizeChanged += (_, e) => element.Clip = new RectangleGeometry { Rect = new Rect(new Point(0, 0), e.NewSize) };
+
     public static void EnableHorizontalScrolling(TreeView tree)
     {
         if (tree.FindDescendant<TreeViewList>() is { } list)

@@ -30,13 +30,13 @@ public sealed class HoBtAccessMap
 
     private Dictionary<ulong, Lifetime[]> Lifetimes { get; }
 
-    public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallTreeNode?> nodes)
+    public static HoBtAccessMap Build(TraceCallStore callStore, CallTree tree)
     {
-        var destroyed = GetCalls(callStore, nodes, DestructorMethod).ToLookup(c => c.GetSlot(ObjectSlot), c => c.FromPosition);
+        var destroyed = GetCalls(callStore, tree, DestructorMethod).ToLookup(c => c.GetSlot(ObjectSlot), c => c.FromPosition);
 
         var lifetimes = new Dictionary<ulong, Lifetime[]>();
 
-        foreach (var calls in GetCalls(callStore, nodes, InitMethod).GroupBy(c => c.GetSlot(ObjectSlot)))
+        foreach (var calls in GetCalls(callStore, tree, InitMethod).GroupBy(c => c.GetSlot(ObjectSlot)))
         {
             var ends = destroyed[calls.Key].Order().ToArray();
 
@@ -88,12 +88,12 @@ public sealed class HoBtAccessMap
         return values[0] >> FullHoBtIdShift == 0 ? values[0] << PackedShift : values[0];
     }
 
-    private static IEnumerable<TraceArgumentCall> GetCalls(TraceCallStore callStore, IReadOnlyList<CallTreeNode?> nodes, string method)
+    private static IEnumerable<TraceArgumentCall> GetCalls(TraceCallStore callStore, CallTree tree, string method)
     {
-        var functions = nodes.OfType<CallTreeNode>()
-                             .Where(n => n.Frame?.Function is { ClassName: ClassName } resolved && resolved.MethodName == method)
-                             .Select(n => (n.Frame!.Address, n.Frame.InstanceAddress))
-                             .Distinct();
+        var functions = tree.GetNodes()
+                            .Where(n => n.Frame?.Function is { ClassName: ClassName } resolved && resolved.MethodName == method)
+                            .Select(n => (n.Frame!.Address, n.Frame.InstanceAddress))
+                            .Distinct();
 
         foreach (var (functionAddress, instanceAddress) in functions)
         {
