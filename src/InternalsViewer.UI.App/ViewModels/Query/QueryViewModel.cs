@@ -544,7 +544,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
     /// </summary>
-    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.ChildNodes ?? [];
+    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.Children ?? [];
 
     public IReadOnlyList<CallTreeNode>? CroppedRoots
         => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallTree, CallTree)
@@ -1616,7 +1616,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             || trace.PageAccesses.GetRowAccess(rowTick.Span.From.Position) is not { Offset: { } offset } access
             || access.Page != fetch.Page
             || access.DatabaseId != fetch.DatabaseId
-            || trace.BufferPool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is not { } slot)
+            || trace.BufferPool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is not { } slot)
         {
             return null;
         }

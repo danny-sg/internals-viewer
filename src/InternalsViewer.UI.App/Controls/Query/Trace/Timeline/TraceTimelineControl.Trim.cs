@@ -151,7 +151,7 @@ public sealed partial class TraceTimelineControl
 
         foreach (var thread in timeline.Threads)
         {
-            if (timeline.GetInnermostCall(thread.ThreadId, position) is not { } span)
+            if (timeline.GetInnermostSpan(thread.ThreadId, position) is not { } span)
             {
                 continue;
             }

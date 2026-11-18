@@ -510,7 +510,7 @@ public static partial class TraceTickTracks
 
     private static int? GetSlot(TraceResult trace, TraceTick tick)
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position) is { Offset: { } offset } access
-            ? trace.BufferPool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset)
+            ? trace.BufferPool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset)
             : GetRowId(trace, tick)?.Slot;
 
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceTick tick, TraceCallStore calls)
@@ -621,7 +621,7 @@ public static partial class TraceTickTracks
 
         yield return $"Page {access.Page}";
 
-        yield return pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
+        yield return pool.GetPageLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
     }
 
     private static List<TraceTrackStep> GetRuleSteps(IEnumerable<TraceTickTrack> tracks, Func<TraceTrackRule, bool> isIncluded)

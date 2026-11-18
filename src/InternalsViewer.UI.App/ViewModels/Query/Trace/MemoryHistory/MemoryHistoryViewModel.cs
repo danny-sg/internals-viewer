@@ -245,7 +245,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     {
         Window = window;
 
-        ShutdownStart = window?.GetFirstCallStart(TraceTimeline.ShutdownSymbol) ?? TracePosition.Unknown;
+        ShutdownStart = window?.GetFirstSpanStart(TraceTimeline.ShutdownSymbol) ?? TracePosition.Unknown;
 
         ApplyWindow();
     }

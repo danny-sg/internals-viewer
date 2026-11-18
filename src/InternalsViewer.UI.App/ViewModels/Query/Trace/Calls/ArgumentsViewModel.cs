@@ -300,7 +300,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var included = exclusions.IsEmpty
                 ? null
-                : Include(await Task.Run(() => lookup.Store.GetIncludedCalls(calls, exclusions.Includes, request.Token), request.Token),
+                : Include(await Task.Run(() => lookup.Store.GetIncludedCallIndexes(calls, exclusions.Includes, request.Token), request.Token),
                           select);
 
             if (included is { Count: 0 })

@@ -133,7 +133,7 @@ public sealed partial class CallTreeViewModel
         {
             if (row.Content is CallTreeNode node)
             {
-                node.Activity = IsActivityVisible
+                node.ActivityBand = IsActivityVisible
                     ? new ActivityBand([.. row.Children.Select(c => c.Content).OfType<CallTreeNode>()])
                     : null;
             }
@@ -273,7 +273,7 @@ public sealed partial class CallTreeViewModel
         }
 
         return IsHidden(node)
-            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(child => GetVisibleNodes(child, reveal))
+            ? node.Children.OrderBy(child => child.Order).SelectMany(child => GetVisibleNodes(child, reveal))
             : [node];
     }
 
@@ -285,7 +285,7 @@ public sealed partial class CallTreeViewModel
 
         var revealed = Revealed is { } path && group.Any(path.Contains);
 
-        var children = BuildVisible(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)),
+        var children = BuildVisible(group.SelectMany(n => n.Children.OrderBy(child => child.Order)),
                                     GetChildReveal(group, reveal),
                                     underMatch || matched);
 
@@ -504,7 +504,7 @@ public sealed partial class CallTreeViewModel
     private bool Segmented(ExecutionOperatorEvent op) => Frames.GetEntryFrames(op).Count > 0;
 
     private List<CallTreeRow> ProjectedCallNodes(CallTree projected, bool revealInfrastructure)
-        => BuildProjected(projected.Root.ChildNodes.OrderBy(child => child.Order), revealInfrastructure, underMatch: false);
+        => BuildProjected(projected.Root.Children.OrderBy(child => child.Order), revealInfrastructure, underMatch: false);
 
     // Renders a projected node's subtree, hiding infrastructure and promoting its visible children. No scope set: the
     // projection already contains only the operator's frames.
@@ -533,7 +533,7 @@ public sealed partial class CallTreeViewModel
         {
             promotedCuts.AddRange(node.CutBelow);
 
-            return node.ChildNodes
+            return node.Children
                        .OrderBy(child => child.Order)
                        .SelectMany(child => GetVisibleProjectedNodes(child, revealInfrastructure, promotedCuts));
         }
@@ -547,7 +547,7 @@ public sealed partial class CallTreeViewModel
 
         var matched = IsSearchMatch(node);
 
-        var children = BuildProjected(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)),
+        var children = BuildProjected(group.SelectMany(n => n.Children.OrderBy(child => child.Order)),
                                       revealInfrastructure,
                                       underMatch || matched);
 
