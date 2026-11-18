@@ -6,7 +6,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Helpers.Converters.Results;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Text;
@@ -38,6 +37,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     private const double BadgeFontSize = 9;
 
     private const double ObjectBadgeSpacing = 6;
+
+    private const string ObjectBadgeStyle = "ObjectBadgeStyle";
+
+    private const string ObjectBadgeTextStyle = "ObjectBadgeTextStyle";
 
     private const double SwatchSize = 20;
 
@@ -71,7 +74,6 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static readonly SolidColorBrush BadgeForeground = new(Microsoft.UI.Colors.Black);
 
-    private static readonly SolidColorBrush ObjectBadgeForeground = new(Microsoft.UI.Colors.White);
 
     public int Ordinal { get; } = ordinal;
 
@@ -518,17 +520,9 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         {
             var border = new Border
             {
-                CornerRadius = BadgeCorner,
-                Padding = BadgePadding,
-                Background = HexColorToBrushConverter.ToBrush(badge.Colour),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = badge.Name,
-                    FontSize = BadgeFontSize,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = ObjectBadgeForeground
-                }
+                Style = AppResources.Get<Style>(ObjectBadgeStyle),
+                Background = ObjectBadgeBrush.Get(badge.Stage, badge.Index, badge.Count),
+                Child = new TextBlock { Text = badge.Name, Style = AppResources.Get<Style>(ObjectBadgeTextStyle) }
             };
 
             ToolTipService.SetToolTip(border, badge.StageName);

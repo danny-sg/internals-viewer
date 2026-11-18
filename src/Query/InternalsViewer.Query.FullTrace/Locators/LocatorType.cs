@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -44,7 +45,7 @@ internal readonly record struct LocatorType(LocatorValueType ValueType,
 
             isConst |= word is "const";
 
-            if (!IsQualifier(word))
+            if (!TypeNameText.IsQualifier(word) && !TypeNameText.IsKeyword(word))
             {
                 names++;
 
@@ -99,6 +100,4 @@ internal readonly record struct LocatorType(LocatorValueType ValueType,
         "wchar_t" => LocatorValueType.WideText,
         _ => null
     };
-
-    private static bool IsQualifier(ReadOnlySpan<char> word) => word is "const" or "volatile" or "class" or "struct" or "__unaligned";
 }

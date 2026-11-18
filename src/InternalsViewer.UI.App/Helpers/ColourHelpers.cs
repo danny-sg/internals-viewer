@@ -10,6 +10,14 @@ internal static class ColourHelpers
 {
     private const double MinimumContrastDistance = 200;
 
+    private const double SeriesMinimumLightness = 32;
+
+    private const double SeriesMaximumLightness = 86;
+
+    private const double ShadeHalfSpread = 22;
+
+    private const double FullCircle = 360;
+
     public static SKColor ToSkColor(this Color color)
     {
         return new SKColor(color.R, color.G, color.B, color.A);
@@ -135,36 +143,26 @@ internal static class ColourHelpers
     }
 
     public static Color GetSeriesColour(Color baseColor, int index, int count)
+        => count <= 1 ? baseColor : GetShade(baseColor, index, count, SeriesMinimumLightness, SeriesMaximumLightness, 0);
+
+    public static Color GetShade(Color baseColor,
+                                 int index,
+                                 int count,
+                                 double minimumLightness,
+                                 double maximumLightness,
+                                 double hueStep)
     {
-        if (count <= 1)
-        {
-            return baseColor;
-        }
+        var (lightness, chroma, hue) = LabToLch(RgbToLab(baseColor));
 
-        var (baseL, baseC, baseH) = LabToLch(RgbToLab(baseColor));
+        var low = Math.Max(minimumLightness, Math.Min(lightness - ShadeHalfSpread, maximumLightness - 2 * ShadeHalfSpread));
 
-        const double minL = 32, maxL = 86, halfSpread = 22;
+        var high = Math.Min(maximumLightness, low + 2 * ShadeHalfSpread);
 
-        var lo = baseL - halfSpread;
-        var hi = baseL + halfSpread;
+        var position = count <= 1 ? 0.5 : (double)index / (count - 1);
 
-        if (lo < minL)
-        {
-            hi += minL - lo; lo = minL;
-        }
+        var shadeHue = (hue + (index - (count - 1) / 2.0) * hueStep + FullCircle) % FullCircle;
 
-        if (hi > maxL)
-        {
-            lo -= hi - maxL; hi = maxL;
-        }
-
-        lo = Math.Max(lo, minL);
-        hi = Math.Min(hi, maxL);
-
-        var t = (double)index / (count - 1);
-        var l = Lerp(lo, hi, t);
-
-        return LchToRgbSafe(l, baseC, baseH);
+        return LchToRgbSafe(Lerp(low, high, position), chroma, shadeHue);
     }
 
     public static List<Color> Generate(Color baseColor, int steps)

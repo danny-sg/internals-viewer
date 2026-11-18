@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
@@ -11,10 +12,6 @@ namespace InternalsViewer.UI.App.Helpers;
 public static class TraceLinkMenu
 {
     private const string FirstSuffix = " First";
-
-    private const string OffsetSeparator = " +0x";
-
-    private static readonly string[] TypeQualifiers = ["const", "volatile", "struct", "class", "enum"];
 
     public static MenuFlyout CreateForPosition(ITraceNavigator navigator, TraceCallLink link) => Create(navigator, link, false, false);
 
@@ -47,12 +44,12 @@ public static class TraceLinkMenu
             return null;
         }
 
-        var offset = name.IndexOf(OffsetSeparator, StringComparison.Ordinal);
+        var offset = name.IndexOf(TextLabel.OffsetSeparator, StringComparison.Ordinal);
 
         var words = (offset >= 0 ? name[..offset] : name).Replace('*', ' ')
                                                          .Replace('&', ' ')
                                                          .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                                         .Where(w => !TypeQualifiers.Contains(w));
+                                                         .Where(w => !TypeNameText.IsQualifier(w) && !TypeNameText.IsKeyword(w));
 
         var text = string.Join(' ', words);
 

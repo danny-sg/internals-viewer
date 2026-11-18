@@ -61,6 +61,28 @@ public class ColourHelpersTests
         Assert.Equal(Color.FromArgb(255, 0, 0, 0).ToArgb(), slot.ToArgb());
     }
 
+    [Fact]
+    public void Every_Shade_In_A_Crowded_Series_Is_Different()
+    {
+        var shades = Enumerable.Range(0, 14).Select(i => ColourHelpers.GetShade(Color.SeaGreen, i, 14, 24, 56, 5).ToArgb());
+
+        Assert.Equal(14, shades.Distinct().Count());
+    }
+
+    [Fact]
+    public void A_Shade_Stays_Inside_Its_Lightness_Range()
+    {
+        var shades = Enumerable.Range(0, 5).Select(i => ColourHelpers.GetShade(Color.Gold, i, 5, 24, 56, 5));
+
+        Assert.All(shades, s => Assert.InRange(ColourHelpers.LabToLch(ColourHelpers.RgbToLab(s)).l, 23, 57));
+    }
+
+    [Fact]
+    public void A_Series_Of_One_Keeps_Its_Base_Colour()
+    {
+        Assert.Equal(Color.SeaGreen.ToArgb(), ColourHelpers.GetSeriesColour(Color.SeaGreen, 0, 1).ToArgb());
+    }
+
     [Theory]
     [InlineData(nameof(Color.Navy))]
     [InlineData(nameof(Color.Green))]

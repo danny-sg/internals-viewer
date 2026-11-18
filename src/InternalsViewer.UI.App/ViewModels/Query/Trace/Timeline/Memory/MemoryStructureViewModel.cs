@@ -517,12 +517,10 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
             return History.GetUntrackedLabel(pointer, position) is { } label ? new ActionLinks([]) { Prefix = text, Suffix = label } : text;
         }
 
-        var offset = page.Offset == 0 ? string.Empty : $" +0x{page.Offset:X}";
-
         return new ActionLinks([new ActionLink(text, () => Navigator.OpenBufferPage(page))])
         {
             Badges = [page.IsBuffer ? BufferPoolBadge : BufferFrameBadge],
-            Suffix = $"{History.GetBufferPageName(page)}{offset}"
+            Suffix = TextLabel.GetOffsetText(History.GetBufferPageName(page), page.Offset)
         };
     }
 

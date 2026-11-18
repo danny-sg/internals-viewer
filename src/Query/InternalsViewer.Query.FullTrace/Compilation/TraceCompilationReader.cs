@@ -230,19 +230,7 @@ public static class TraceCompilationReader
     }
 
     private static bool IsAllocatedIn(TraceCallStore calls, int callNodeIndex)
-    {
-        var node = calls.GetNode(callNodeIndex);
-
-        for (var depth = 0; node is not null && depth < AllocationDepth; depth++, node = node.Parent)
-        {
-            if (node.Symbol == TextSymbol)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        => calls.GetNode(callNodeIndex)?.GetAncestors().Take(AllocationDepth).Any(n => n.Symbol == TextSymbol) == true;
 
     private static List<TraceToken> ReadTokens(TraceTimeline timeline, string? text)
     {

@@ -107,9 +107,25 @@ public sealed partial record TraceTrackRule(string Name,
     public bool MatchesName(string name) => Functions.Length == 0 || Functions.Any(f => f.Matches(name));
 
     public bool IsFunction(CallTreeNode node)
-        => node.Frame is { } frame
-           && (Module == AnyModule || string.Equals(frame.Module.Name, Module, StringComparison.OrdinalIgnoreCase))
-           && Functions.Any(f => f.Matches(node.Symbol));
+    {
+        if (node.Frame is not { } frame
+            || (Module != AnyModule && !string.Equals(frame.Module.Name, Module, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        var symbol = node.Symbol.AsSpan();
+
+        foreach (var function in Functions)
+        {
+            if (function.Matches(symbol))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public bool MatchesCall(TraceArgumentCall call) => TraceCallCondition.MatchesAll(Conditions, call);
 

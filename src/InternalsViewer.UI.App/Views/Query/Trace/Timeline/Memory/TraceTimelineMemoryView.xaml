@@ -6,6 +6,7 @@
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
     xmlns:categories="using:InternalsViewer.Query.FullTrace.Symbols.Categories"
+    xmlns:helpers="using:InternalsViewer.UI.App.Helpers"
     SizeChanged="OnSizeChanged">
 
     <Grid>
@@ -106,14 +107,11 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="categories:ObjectBadge">
-                                <Border Background="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"
-                                        CornerRadius="3"
+                                <Border Style="{StaticResource ObjectBadgeStyle}"
+                                        Background="{x:Bind helpers:ObjectBadgeBrush.Get(Stage, Index, Count)}"
                                         Padding="5,2,5,3"
                                         ToolTipService.ToolTip="{x:Bind StageName}">
-                                    <TextBlock Text="{x:Bind Name}"
-                                               Foreground="White"
-                                               FontSize="9"
-                                               FontWeight="SemiBold"/>
+                                    <TextBlock Style="{StaticResource ObjectBadgeTextStyle}" Text="{x:Bind Name}"/>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

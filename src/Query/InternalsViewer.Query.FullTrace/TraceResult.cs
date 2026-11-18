@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Data;
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
@@ -188,6 +189,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public string? GetVtableBase(ulong value)
         => ModuleSymbols.GetDecoratedName(value) is { } decorated ? VtableResolver.GetBaseName(decorated) : null;
+
+    public string? GetInterfaceName(ulong address, TracePosition position)
+        => new MemoryHistoryReader(MemoryHistory, position).TryRead(address, out ulong vtable) ? GetVtableBase(vtable) : null;
 
     public string? GetModuleLabel(ulong value)
         => ModuleSymbols.Find(value) is { } found

@@ -275,9 +275,20 @@ public sealed partial class TraceTimeline
 
     public IEnumerable<(uint ThreadId, TraceSpan Span)> GetCalls(Func<CallTreeNode, bool> predicate)
     {
-        var isMatch = Array.ConvertAll(Nodes, n => n is not null && predicate(n));
+        var isMatch = new bool[Nodes.Length];
 
-        if (!isMatch.Contains(true))
+        var anyMatch = false;
+
+        for (var index = 0; index < isMatch.Length; index++)
+        {
+            if (Nodes[index] is { } node && predicate(node))
+            {
+                isMatch[index] = true;
+                anyMatch = true;
+            }
+        }
+
+        if (!anyMatch)
         {
             yield break;
         }

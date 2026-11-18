@@ -51,35 +51,27 @@ public class ObjectCategoryTableTests
     }
 
     [Fact]
-    public void The_First_Badge_Of_A_Stage_Takes_The_Stage_Colour()
+    public void A_Badge_Names_Its_Stage()
     {
         var table = Load("CQScan*|Iterator|Execution");
 
         var badge = Assert.Single(table.GetBadges("CQScanTopNew"));
 
-        Assert.Equal((ObjectStage.Execution, "#239B56", "Execution"), (badge.Stage, badge.Colour, badge.StageName));
+        Assert.Equal((ObjectStage.Execution, "Execution"), (badge.Stage, badge.StageName));
     }
 
     [Fact]
-    public void Each_Badge_In_A_Stage_Takes_Its_Own_Shade()
+    public void Each_Badge_In_A_Stage_Takes_Its_Own_Place_In_The_Stage()
     {
-        var table = Load("CQScan*|Iterator|Execution", "CEsExec|Expression Executor|Execution", "CBpBatch*|Batch|Execution");
+        var table = Load("CQScan*|Iterator|Execution",
+                         "CEsExec|Expression Executor|Execution",
+                         "CVal*|Value Provider|Values",
+                         "CBpBatch*|Batch|Execution");
 
-        var colours = new[] { "CQScanTopNew", "CEsExec", "CBpBatch" }.Select(c => table.GetBadges(c).Single().Colour).ToList();
+        var places = new[] { "CQScanTopNew", "CEsExec", "CValExpr", "CBpBatch" }.Select(c => table.GetBadges(c).Single())
+                                                                                 .Select(b => (b.Index, b.Count));
 
-        Assert.Equal(3, colours.Distinct().Count());
-    }
-
-    [Fact]
-    public void Every_Badge_In_A_Crowded_Stage_Takes_A_Different_Shade()
-    {
-        var lines = Enumerable.Range(0, 14).Select(i => $"C{i}|Badge {i}|Values").ToArray();
-
-        var table = Load(lines);
-
-        var colours = Enumerable.Range(0, 14).Select(i => table.GetBadges($"C{i}").Single().Colour).ToList();
-
-        Assert.Equal(14, colours.Distinct().Count());
+        Assert.Equal([(0, 3), (1, 3), (0, 1), (2, 3)], places);
     }
 
     [Theory]

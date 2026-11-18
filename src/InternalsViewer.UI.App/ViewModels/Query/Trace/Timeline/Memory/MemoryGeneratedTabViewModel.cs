@@ -429,11 +429,7 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
 
         var offset = (int)(pointer - Address);
 
-        var label = offset == 0
-            ? SelfName
-            : GetSelfFieldName(owner, pointer, offset) is { } field
-                ? $"{SelfName}.{field}"
-                : $"{SelfName} +0x{offset:X}";
+        var label = offset == 0 ? SelfName : TextLabel.GetFieldText(SelfName, GetSelfFieldName(owner, pointer, offset), offset);
 
         return slot == pointer ? label + SelfSuffix : label;
     }

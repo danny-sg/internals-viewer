@@ -18,46 +18,16 @@ public static class AllocationTypeReader
 
     private const string DynamicArrayClass = "CTDynArray<";
 
-    private const string EnumPrefix = "enum ";
-
-    private static readonly Dictionary<string, int> ElementSizes = new()
-    {
-        ["bool"] = 1,
-        ["char"] = 1,
-        ["unsigned char"] = 1,
-        ["BYTE"] = 1,
-        ["short"] = 2,
-        ["unsigned short"] = 2,
-        ["wchar_t"] = 2,
-        ["WCHAR"] = 2,
-        ["int"] = 4,
-        ["unsigned int"] = 4,
-        ["long"] = 4,
-        ["unsigned long"] = 4,
-        ["float"] = 4,
-        ["ULONG"] = 4,
-        ["DWORD"] = 4,
-        ["__int64"] = 8,
-        ["unsigned __int64"] = 8,
-        ["double"] = 8,
-        ["LONGLONG"] = 8,
-        ["ULONGLONG"] = 8
-    };
+    private const string PointerArrayMarker = "*[";
 
     public static string? GetLabel(TraceCallStore calls, int callNodeIndex, int size)
     {
-        var functions = new List<FrameFunction>();
+        var functions = calls.GetNode(callNodeIndex)?.GetAncestors().Select(n => n.Frame!.Function).OfType<FrameFunction>() ?? [];
 
-        for (var node = calls.GetNode(callNodeIndex); node is not null && functions.Count < MaximumDepth; node = node.Parent)
-        {
-            if (node.Frame?.Function is { } function)
-            {
-                functions.Add(function);
-            }
-        }
-
-        return GetLabel(functions, size);
+        return GetLabel(functions.Take(MaximumDepth), size);
     }
+
+    public static bool IsPointerArray(string? label) => label?.Contains(PointerArrayMarker, StringComparison.Ordinal) == true;
 
     internal static string? GetLabel(IEnumerable<FrameFunction> functions, int size)
     {
@@ -87,8 +57,8 @@ public static class AllocationTypeReader
         var name = TypeNameText.Shorten(element);
 
         int? elementSize = element.Contains('*') ? PointerSize
-            : element.TrimStart().StartsWith(EnumPrefix, StringComparison.Ordinal) ? EnumSize
-            : ElementSizes.TryGetValue(name, out var found) ? found
+            : element.TrimStart().StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal) ? EnumSize
+            : TypeNameText.GetPrimitive(name) is { Size: > 0 } primitive ? primitive.Size
             : null;
 
         return elementSize is { } known && size % known == 0 ? $"{name}[{size / known}]" : $"{name}[]";

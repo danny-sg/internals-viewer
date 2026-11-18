@@ -2921,7 +2921,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.BufferPool,
                             b => result.GetVtableClass(b) ?? result.GetTextLabel(b),
                             result.GetModuleLabel,
-                            result.GetVtableBase);
+                            result.GetInterfaceName);
 
         FullTraceTimeline = result.Timeline;
 

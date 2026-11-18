@@ -75,8 +75,6 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private const string ArraySuffix = "[]";
 
-    private const string PointerArraySuffix = "*[";
-
     private const string PageObject = "Page";
 
     private const string FreedSuffix = " (Freed)";
@@ -278,9 +276,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
             : null;
 
     public string GetFreedLabel(int block, ulong address)
-        => address - Store.Blocks[block].Address is > 0 and var offset
-            ? $"{GetObjectName(block)} +0x{offset:X}{FreedSuffix}"
-            : $"{GetObjectName(block)}{FreedSuffix}";
+        => TextLabel.GetOffsetText(GetObjectName(block), (long)(address - Store.Blocks[block].Address)) + FreedSuffix;
 
     public string? GetPointerTarget(ulong address, TracePosition position)
         => GetPointerArray(address, position) is { } array
@@ -291,10 +287,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public MemoryListNode? GetListNode(int block) => Trace?.GetListNode(block);
 
-    public string? GetInterfaceName(ulong address, TracePosition position)
-        => Trace is { } trace && new MemoryHistoryReader(Store, position).TryRead(address, out ulong vtable)
-            ? trace.GetVtableBase(vtable)
-            : null;
+    public string? GetInterfaceName(ulong address, TracePosition position) => Trace?.GetInterfaceName(address, position);
 
     public string? GetVtableBase(ulong value) => Trace?.GetVtableBase(value);
 
@@ -312,7 +305,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         if (GetBufferPage(address, position) is null && trace.AddressMap.GetEntry(address, position) is { } entry)
         {
-            return GetShortLabel(entry.VtableClassName ?? entry.ClassName ?? TraceReferenceFinder.GetAllocationName(entry));
+            return TextLabel.Shorten(entry.VtableClassName ?? entry.ClassName ?? TraceReferenceFinder.GetAllocationName(entry));
         }
 
         return trace.GetModuleLabel(address);
@@ -414,11 +407,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     {
         var buffer = reference.IsBuffer ? BufferSuffix : string.Empty;
 
-        var offset = reference.Offset == 0 ? string.Empty : $" +0x{reference.Offset:X}";
-
         var prefix = reference.IsBuffer ? BufferPoolPrefix : BufferFramePrefix;
 
-        return $"{prefix}{GetDatabasePrefix(reference)}{reference.Page}{buffer}{offset}";
+        return TextLabel.GetOffsetText($"{prefix}{GetDatabasePrefix(reference)}{reference.Page}{buffer}", reference.Offset);
     }
 
     public bool IsQueryDatabase(TraceBufferReference reference) => reference.DatabaseId == DatabaseId;
@@ -710,7 +701,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private string GetDisplayLabel(int block)
         => GetObjectLabel(block) is { Length: > 0 } label
-            ? GetShortLabel(label)
+            ? TextLabel.Shorten(label)
             : GetAllocatingCall(block)?.Symbol is { Length: > 0 } symbol
                 ? Store.Blocks[block].IsStack ? symbol : symbol + AllocationSuffix
                 : string.Empty;
@@ -760,9 +751,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         {
             var types = array.Pointers.Select(p => GetElementType(p, array.Position)).Distinct().ToList();
 
-            var pointer = types is [{ } type] ? $"{PointerLabel}<{type}>" : PointerLabel;
-
-            label = Store.Blocks[block].Size == MemoryHistoryPointerReader.PointerSize ? pointer : pointer + ArraySuffix;
+            label = GetPointerShape(block, types is [{ } type] ? $"{PointerLabel}<{type}>" : PointerLabel);
         }
 
         PointerArrayLabels[block] = label;
@@ -779,7 +768,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         var offset = pointer.Value - Store.Blocks[pointer.Block].Address;
 
-        if (GetShortLabel(GetTypeLabel(pointer.Block)) is { } type)
+        if (TextLabel.Shorten(GetTypeLabel(pointer.Block)) is { } type)
         {
             return offset == 0 ? type : GetFieldLabel(type, pointer.Block, pointer.Value, offset, position);
         }
@@ -787,12 +776,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return offset == 0 ? GetPointerKind(pointer.Block) : null;
     }
 
-    private string? GetPointerKind(int block)
-        => GetLastArray(block) is null
-            ? null
-            : Store.Blocks[block].Size == MemoryHistoryPointerReader.PointerSize
-                ? PointerLabel
-                : PointerLabel + ArraySuffix;
+    private string? GetPointerKind(int block) => GetLastArray(block) is null ? null : GetPointerShape(block, PointerLabel);
+
+    private string GetPointerShape(int block, string pointer)
+        => Store.Blocks[block].Size == MemoryHistoryPointerReader.PointerSize ? pointer : pointer + ArraySuffix;
 
     private (List<MemoryHistoryPointer> Pointers, TracePosition Position)? GetLastArray(int block)
     {
@@ -805,8 +792,6 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         return array;
     }
-
-    private static string? GetShortLabel(string? label) => label is null or ['"', ..] ? label : TypeNameText.Shorten(label);
 
     private string? GetListLabel(int block)
         => GetListNode(block) is { } node
@@ -847,8 +832,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         if (!PointerArrayTypes.TryGetValue(block, out var isPointerArray))
         {
             isPointerArray = !Store.Blocks[block].IsIterator
-                             && GetAllocationTypeLabel(Store.Blocks[block]) is { } label
-                             && label.Contains(PointerArraySuffix, StringComparison.Ordinal);
+                             && AllocationTypeReader.IsPointerArray(GetAllocationTypeLabel(Store.Blocks[block]));
 
             PointerArrayTypes[block] = isPointerArray;
         }
@@ -890,9 +874,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     }
 
     private string GetFieldLabel(string label, int block, ulong address, ulong offset, TracePosition position)
-        => (GetInterfaceName(address, position) ?? Store.Layout.GetFieldPath(GetLayoutType(block), (int)offset)) is { } field
-            ? $"{label}.{field}"
-            : $"{label} +0x{offset:X}";
+        => TextLabel.GetFieldText(label,
+                                  GetInterfaceName(address, position) ?? Store.Layout.GetFieldPath(GetLayoutType(block), (int)offset),
+                                  (long)offset);
 
     private string GetPointerArrayText(List<MemoryHistoryPointer> pointers, TracePosition position)
         => PointerArrayText.Get([.. pointers.Select(p => GetPointerName(p, position))]);
