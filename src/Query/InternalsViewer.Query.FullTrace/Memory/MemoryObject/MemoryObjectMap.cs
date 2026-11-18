@@ -56,6 +56,8 @@ public sealed partial class MemoryObjectMap
 
     private int[] PageSizes { get; }
 
+    private HashSet<ulong> Owners => field ??= [.. Pages.Values.SelectMany(c => c).Select(c => c.MemoryObject)];
+
     public static MemoryObjectMap Build(TraceCallStore store,
                                         IReadOnlyList<CallTreeNode?> nodes,
                                         IReadOnlyDictionary<ulong, MemoryObjectInfo> objects)
@@ -132,6 +134,10 @@ public sealed partial class MemoryObjectMap
 
         return null;
     }
+
+    public static bool IsMemoryObjectClass(string? className) => AllocationFunction.IsMemoryObjectClass(className);
+
+    public bool IsMemoryObject(ulong address) => Owners.Contains(address);
 
     internal IEnumerable<MemoryBlock> GetPageBlocks()
         => Pages.Select(p => new MemoryBlock(p.Key.Page, (ulong)p.Key.Size, p.Value[0].Thread, p.Value[0].Position, TracePosition.Unknown));

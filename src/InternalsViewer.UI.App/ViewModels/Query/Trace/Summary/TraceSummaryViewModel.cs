@@ -11,7 +11,8 @@ public sealed class TraceSummaryViewModel
 {
     public TraceSummaryViewModel(MemoryHistoryViewModel history, Func<ITraceNavigator> getNavigator)
     {
-        Panes = [new TraceSummaryOperatorsViewModel(history, getNavigator) { IsExpanded = true },
+        Panes = [new TraceSummaryCompilationViewModel(history, getNavigator),
+                 new TraceSummaryOperatorsViewModel(history, getNavigator) { IsExpanded = true },
                  new TraceSummaryMemoryViewModel(history, getNavigator)];
 
         foreach (var pane in Panes)

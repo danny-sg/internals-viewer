@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -7,28 +8,103 @@ namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Tabs;
 
 public static class EmbeddedObjectReader
 {
+    private const int PointerSize = sizeof(ulong);
+
     public static List<EmbeddedObject> Read(AddressMap map,
                                             MemoryHistoryStore store,
                                             TraceCallStore? calls,
+                                            IReadOnlyDictionary<ulong, string> vtables,
                                             int block,
                                             TracePosition position)
     {
         var item = store.Blocks[block];
 
+        var found = new SortedDictionary<ulong, string>();
+
+        foreach (var entry in map.GetEmbedded(item.Address, item.Size, item.FromPosition, position))
+        {
+            found[entry.Address] = (entry.VtableClassName ?? entry.ClassName)!;
+        }
+
+        var baseParts = new HashSet<ulong>();
+
+        foreach (var embedded in FindVtableObjects(store, vtables, block, position, baseParts))
+        {
+            found[embedded.Address] = embedded.Type;
+        }
+
+        foreach (var basePart in baseParts)
+        {
+            found.Remove(basePart);
+        }
+
         var classNames = new Dictionary<int, string?>();
 
-        return Read(map.GetEmbedded(item.Address, item.Size, item.FromPosition, position),
-                    store,
-                    block,
-                    n => GetClassName(calls, classNames, n));
+        return Measure([.. found.Select(f => new EmbeddedObject(f.Key, f.Value, 0))],
+                       store,
+                       block,
+                       n => GetClassName(calls, classNames, n));
     }
 
-    internal static List<EmbeddedObject> Read(List<AddressMapEntry> entries,
-                                              MemoryHistoryStore store,
-                                              int block,
-                                              Func<int, string?> getClassName)
+    internal static List<EmbeddedObject> FindVtableObjects(MemoryHistoryStore store,
+                                                           IReadOnlyDictionary<ulong, string> vtables,
+                                                           int block,
+                                                           TracePosition position,
+                                                           HashSet<ulong>? baseParts = null)
     {
-        if (entries.Count == 0)
+        var objects = new List<EmbeddedObject>();
+
+        if (vtables.Count == 0 || store.GetWriteCount(block, position) is not (> 0 and var count))
+        {
+            return objects;
+        }
+
+        var address = store.Blocks[block].Address;
+
+        var image = store.GetImage(block, count - 1);
+
+        var started = new Dictionary<string, ulong>();
+
+        for (var offset = (int)((PointerSize - address % PointerSize) % PointerSize);
+             offset + PointerSize <= image.Data.Length;
+             offset += PointerSize)
+        {
+            if (image.Known.AsSpan(offset, PointerSize).Contains(false))
+            {
+                continue;
+            }
+
+            var vtable = BinaryPrimitives.ReadUInt64LittleEndian(image.Data.AsSpan(offset));
+
+            if (!vtables.TryGetValue(vtable, out var className))
+            {
+                continue;
+            }
+
+            if (started.TryGetValue(className, out var first) && first != vtable)
+            {
+                baseParts?.Add(address + (ulong)offset);
+
+                continue;
+            }
+
+            started[className] = vtable;
+
+            if (offset > 0)
+            {
+                objects.Add(new EmbeddedObject(address + (ulong)offset, className, 0));
+            }
+        }
+
+        return objects;
+    }
+
+    internal static List<EmbeddedObject> Measure(List<EmbeddedObject> objects,
+                                                 MemoryHistoryStore store,
+                                                 int block,
+                                                 Func<int, string?> getClassName)
+    {
+        if (objects.Count == 0)
         {
             return [];
         }
@@ -37,26 +113,23 @@ public static class EmbeddedObjectReader
 
         var size = store.Blocks[block].Size;
 
-        int[] starts = [.. entries.Select(e => (int)(e.Address - address))];
+        int[] starts = [.. objects.Select(o => (int)(o.Address - address))];
 
-        var ends = new int[entries.Count];
+        var ends = new int[objects.Count];
 
         foreach (var write in store.GetWrites(block))
         {
-            Measure(write.CallNodeIndex, write.Offset, write.Length);
+            Add(write.CallNodeIndex, write.Offset, write.Length);
         }
 
         foreach (var read in store.GetReads(block))
         {
-            Measure(read.CallNodeIndex, read.Offset, read.Length);
+            Add(read.CallNodeIndex, read.Offset, read.Length);
         }
 
-        return
-        [
-            .. entries.Select((e, i) => new EmbeddedObject(e.Address, (e.VtableClassName ?? e.ClassName)!, Math.Max(0, ends[i] - starts[i])))
-        ];
+        return [.. objects.Select((o, i) => o with { Length = Math.Max(0, ends[i] - starts[i]) })];
 
-        void Measure(int callNodeIndex, int offset, int length)
+        void Add(int callNodeIndex, int offset, int length)
         {
             var index = SortedSearch.FirstAfter<int>(starts, offset) - 1;
 
@@ -67,9 +140,7 @@ public static class EmbeddedObjectReader
 
             var limit = index + 1 < starts.Length ? starts[index + 1] : size;
 
-            if (offset < limit
-                && getClassName(callNodeIndex) is { } className
-                && (className == entries[index].ClassName || className == entries[index].VtableClassName))
+            if (offset < limit && getClassName(callNodeIndex) == objects[index].Type)
             {
                 ends[index] = Math.Max(ends[index], Math.Min(offset + length, limit));
             }

@@ -28,11 +28,33 @@ internal static class VtableResolver
 {
     private const string VtableName = "::`vftable'";
 
+    private const string DecoratedPrefix = "??_7";
+
+    private const string BaseMarker = "@@6B";
+
+    private const string NameEnd = "@@";
+
     internal static string? GetClassName(ReadOnlySpan<char> name)
     {
         var end = name.IndexOf(VtableName, StringComparison.Ordinal);
 
         return end > 0 ? name[..end].ToString() : null;
+    }
+
+    internal static string? GetBaseName(string decoratedName)
+    {
+        var start = decoratedName.IndexOf(BaseMarker, StringComparison.Ordinal);
+
+        if (!decoratedName.StartsWith(DecoratedPrefix, StringComparison.Ordinal) || start < 0)
+        {
+            return null;
+        }
+
+        var rest = decoratedName[(start + BaseMarker.Length)..];
+
+        var end = rest.IndexOf(NameEnd, StringComparison.Ordinal);
+
+        return end > 0 && !rest[..end].Contains('?') ? string.Join("::", rest[..end].Split('@').Reverse()) : null;
     }
 
     internal static AddressTable<string[]> Read(SymbolTable table)

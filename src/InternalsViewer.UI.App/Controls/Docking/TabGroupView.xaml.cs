@@ -215,6 +215,10 @@ public sealed partial class TabGroupView : UserControl
             {
                 title.FontWeight = HeaderWeight(document);
             }
+            else if (e.PropertyName == nameof(DocumentViewModel.Title))
+            {
+                HexText.Apply(title, document.Title);
+            }
         }
 
         document.PropertyChanged += OnDocumentPropertyChanged;

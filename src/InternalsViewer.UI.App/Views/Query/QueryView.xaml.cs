@@ -24,6 +24,9 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
     public Visibility GetTransportVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible, bool isGuideMode)
         => (isPinned && isAvailable && (!isTrace || isTraceTimelineVisible)) || isGuideMode ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility GetStepVisibility(bool isTrace, bool isTraceTimelineVisible, bool isGuideMode)
+        => isTrace && isTraceTimelineVisible && !isGuideMode ? Visibility.Visible : Visibility.Collapsed;
+
     public void Dispose()
     {
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
@@ -32,6 +35,8 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
         PinnedRuler.Dispose();
 
         PinnedTransport.Dispose();
+
+        StepMenu.Dispose();
 
         (DataContext as QueryViewModel)?.Dispose();
     }

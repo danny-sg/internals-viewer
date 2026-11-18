@@ -117,6 +117,14 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         }
     }
 
+    public void OpenSnapshot(int index)
+    {
+        if (GetWrite(index) is { } write)
+        {
+            Owner.OpenSnapshot(write.Position);
+        }
+    }
+
     public void Clear()
     {
         SelectedRow = null;

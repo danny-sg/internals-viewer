@@ -6,5 +6,7 @@ public enum MemoryFieldDecoder
     SqlType,
     BindingFlags,
     RecordOffset,
-    Bitmap
+    Bitmap,
+    TypeInfo,
+    TypeDetails
 }

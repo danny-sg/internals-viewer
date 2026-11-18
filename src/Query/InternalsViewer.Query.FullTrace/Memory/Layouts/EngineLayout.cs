@@ -81,6 +81,9 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public ExecValueLayout ExecValue { get; } = new(Get(structures, "CValExec"));
 
+    public OptimizerExpressionLayout OptimizerExpression { get; } =
+        new(Get(structures, "COptExpr"), Get(structures, "ExpressionChildArray"));
+
     public RowsetLayout Rowset { get; } = new(Get(structures, "RowsetNewSS"));
 
     public RowLayout Row { get; } = new(Get(structures, "BTreeRow"));
@@ -592,6 +595,17 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
     public sealed class ExecValueLayout(MemoryStructure structure)
     {
         public MemoryField EntryField { get; } = structure.Get("Entry");
+    }
+
+    public sealed class OptimizerExpressionLayout(MemoryStructure structure, MemoryStructure children)
+    {
+        public MemoryField OperatorField { get; } = structure.Get("Operator");
+
+        public MemoryField ChildCountField { get; } = structure.Get("Child Count");
+
+        public MemoryField ChildrenField { get; } = structure.Get("Children");
+
+        public MemoryField ChildField { get; } = children.Get("Child");
     }
 
     public sealed class RowsetLayout(MemoryStructure structure)

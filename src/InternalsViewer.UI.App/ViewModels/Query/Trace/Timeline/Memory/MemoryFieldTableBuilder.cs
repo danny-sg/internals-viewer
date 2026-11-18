@@ -53,7 +53,8 @@ internal static class MemoryFieldTableBuilder
         => new(header, [], select) { Table = table, ValueKey = key };
 
     public static QueryResultSet CreateFieldTable(EngineLayout layout,
-                                                  Func<ulong, object> getPointerCell,
+                                                  Func<ulong?, ulong, object> getPointerCell,
+                                                  ulong address,
                                                   List<MemoryField> fields,
                                                   ulong?[] values,
                                                   List<Colour> colours,
@@ -68,7 +69,12 @@ internal static class MemoryFieldTableBuilder
 
         var rows = fields.Select((f, i) => new ResultRow<long>([new SwatchText(f.Name, colours[i]),
                                                                  $"0x{f.Offset:X}",
-                                                                 GetValueCell(layout, getPointerCell, f, values[i], getBytes)])
+                                                                 GetValueCell(layout,
+                                                                              getPointerCell,
+                                                                              f,
+                                                                              address + (ulong)f.Offset,
+                                                                              values[i],
+                                                                              getBytes)])
         {
             Id = i
         });
@@ -77,7 +83,7 @@ internal static class MemoryFieldTableBuilder
     }
 
     public static QueryResultSet CreateRowTable(EngineLayout layout,
-                                                Func<ulong, object> getPointerCell,
+                                                Func<ulong?, ulong, object> getPointerCell,
                                                 LayoutObject item,
                                                 List<Colour> colours,
                                                 Func<ulong, int, string>? getBytes = null)
@@ -96,7 +102,12 @@ internal static class MemoryFieldTableBuilder
         var rows = item.Rows.Select((r, i) => new ResultRow<long>(
         [
             $"{i}",
-            .. item.Fields.Select((f, j) => GetValueCell(layout, getPointerCell, f, r[j], getBytes))
+            .. item.Fields.Select((f, j) => GetValueCell(layout,
+                                                         getPointerCell,
+                                                         f,
+                                                         item.Address + (ulong)(i * item.Stride + f.Offset),
+                                                         r[j],
+                                                         getBytes))
         ])
         {
             Id = i
@@ -106,8 +117,9 @@ internal static class MemoryFieldTableBuilder
     }
 
     public static object GetValueCell(EngineLayout layout,
-                                      Func<ulong, object> getPointerCell,
+                                      Func<ulong?, ulong, object> getPointerCell,
                                       MemoryField field,
+                                      ulong? slot,
                                       ulong? value,
                                       Func<ulong, int, string>? getBytes = null)
     {
@@ -128,7 +140,7 @@ internal static class MemoryFieldTableBuilder
 
         if (field.Structure is not null)
         {
-            return getPointerCell(found);
+            return getPointerCell(null, found);
         }
 
         if (field.IsHex)
@@ -136,24 +148,24 @@ internal static class MemoryFieldTableBuilder
             return $"0x{found:X8}";
         }
 
-        return field.IsPointer ? getPointerCell(found) : $"{found}";
+        return field.IsPointer ? getPointerCell(slot, found) : $"{found}";
     }
 
     public static string GetStructure(List<MemoryObjectTab> tabs)
         => string.Join(";", tabs.Select(t => $"{t.Header}[{GetStructure(t.Tabs)}]"));
 
-    public static void Update(List<MemoryObjectTab> current, List<MemoryObjectTab> next)
+    public static void Update(List<MemoryObjectTab> current, List<MemoryObjectTab> next, bool isForced = false)
     {
         for (var index = 0; index < current.Count; index++)
         {
-            if (current[index].ValueKey != next[index].ValueKey)
+            if (isForced || current[index].ValueKey != next[index].ValueKey)
             {
                 current[index].Table = next[index].Table;
 
                 current[index].ValueKey = next[index].ValueKey;
             }
 
-            Update(current[index].Tabs, next[index].Tabs);
+            Update(current[index].Tabs, next[index].Tabs, isForced);
         }
     }
 }

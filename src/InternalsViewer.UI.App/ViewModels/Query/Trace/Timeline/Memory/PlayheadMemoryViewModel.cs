@@ -14,6 +14,7 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts.Enums;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
@@ -53,6 +54,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const string IndirectPrefix = "→ ";
 
+    private const string SnapshotPrefix = " @";
+
     [ObservableProperty]
     private bool _isOpen;
 
@@ -88,6 +91,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isHexVisible = true;
+
+    [ObservableProperty]
+    private bool _isCategoryVisible = true;
 
     [ObservableProperty]
     private int? _scrollToOffset;
@@ -151,15 +157,22 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public int Block { get; private set; } = -1;
 
+    public List<ObjectBadge> Badges { get; private set; } = [];
+
     public TracePosition Position => Playhead ?? OpenedAt;
 
-    public string Title => Block >= 0 && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
+    public string Title => IsSnapshot ? $"{BaseTitle}{SnapshotPrefix}{TracePositionText.GetHexText(Position)}" : BaseTitle;
+
+    public bool IsSnapshot { get; private set; }
 
     public IPlayheadChart? Chart { get; set; }
 
     public ITraceNavigator? Navigator { get; set; }
 
     private TracePosition OpenedAt { get; set; } = TracePosition.Unknown;
+
+    private string BaseTitle
+        => Block >= 0 && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
 
     private TracePosition? Playhead { get; set; }
 
@@ -169,9 +182,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private List<MemoryChangeRun> Runs { get; set; } = [];
 
+    private List<MemoryChangeRun> ReadRuns { get; set; } = [];
+
     private List<MemoryHistoryPointer> Pointers { get; set; } = [];
 
     private ObservableCollection<Marker>? WriterMarkers { get; set; }
+
+    private ObservableCollection<Marker>? ReaderMarkers { get; set; }
 
     private ulong HashTableGroup { get; set; }
 
@@ -201,6 +218,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         OpenedAt = position;
 
         ObjectName = History.GetObjectName(block);
+
+        Badges = History.GetObjectBadges(block);
 
         RequestedAddress = (address, 1);
 
@@ -310,6 +329,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WriterMarkers = null;
 
+        ReaderMarkers = null;
+
         Markers = null;
 
         Pointers = [];
@@ -332,7 +353,51 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         IsOpen = false;
     }
 
-    public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
+    public void RequestPlayhead(TracePoint point)
+    {
+        if (IsSnapshot)
+        {
+            Freeze(point.Position);
+
+            return;
+        }
+
+        PlayheadRequested?.Invoke(this, point);
+    }
+
+    public void Freeze() => Freeze(Position);
+
+    public void Freeze(TracePosition position)
+    {
+        IsSnapshot = true;
+
+        Playhead = null;
+
+        OpenedAt = position;
+
+        Refresh();
+
+        RefreshBatch();
+
+        RefreshGenerated();
+
+        OnPropertyChanged(nameof(IsSnapshot));
+
+        OnPropertyChanged(nameof(Title));
+    }
+
+    public void OpenSnapshot(TracePosition position)
+    {
+        if (Block >= 0)
+        {
+            MemoryRequested?.Invoke(this, new MemoryRequest(History.Store.Blocks[Block].Address, 1, position) { IsSnapshot = true });
+        }
+    }
+
+    public TracePosition GetLiveBefore(TracePosition position)
+        => position.Steps > 0
+            ? new TracePosition(position.Sequence, position.Steps - 1)
+            : Block >= 0 && History.Store.GetWrites(Block) is { Count: > 0 } writes ? writes[^1].Position : position;
 
     public TraceMemoryWrites? GetUpdates()
     {
@@ -347,7 +412,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     }
 
     public void RequestMemory(ulong address, int length = 1, TracePosition? position = null)
-        => MemoryRequested?.Invoke(this, new MemoryRequest(address, length, position));
+    {
+        if (IsSnapshot && position is null && Block >= 0 && History.GetBlock(address, Position) == Block)
+        {
+            ShowAddress(address, length);
+
+            return;
+        }
+
+        MemoryRequested?.Invoke(this, new MemoryRequest(address, length, position));
+    }
 
     public object? GetBufferPageCell(string text, ulong address, TracePosition position)
     {
@@ -376,24 +450,63 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         if (History.GetBlock(pointer, Position) < 0)
         {
-            return GetBufferPageCell(text, pointer, Position) ?? text;
+            if (GetBufferPageCell(text, pointer, Position) is { } page)
+            {
+                return page;
+            }
+
+            if (GetFreedCell(text, pointer) is { } freed)
+            {
+                return freed;
+            }
+
+            return History.GetUntrackedLabel(pointer, Position) is { } label ? new ActionLinks([]) { Prefix = text, Suffix = label } : text;
         }
 
-        if (target is null && History.GetPointerArray(pointer, Position) is [{ Block: >= 0, Value: var inner }])
+        if (target is null && History.GetPointerArray(pointer, Position) is [{ Block: >= 0 and var innerBlock, Value: var inner }])
         {
             return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer)),
                                     new ActionLink($"{IndirectPrefix}0x{inner:X16}", () => RequestMemory(inner))])
             {
-                Suffix = History.GetPointerTarget(inner, Position),
-                IsChained = true
+                Suffix = History.GetPointerDetail(inner) ?? History.GetPointerTarget(inner, Position),
+                IsChained = true,
+                ObjectBadges = GetTargetBadges(innerBlock)
+            };
+        }
+
+        if (target is null && History.GetPointerArray(pointer, Position) is { Count: > 1 } array)
+        {
+            return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer))])
+            {
+                Targets = [.. array.Select(GetTargetLink)]
             };
         }
 
         return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer))])
         {
-            Suffix = target ?? History.GetPointerTarget(pointer, Position)
+            Suffix = target ?? History.GetPointerTarget(pointer, Position),
+            ObjectBadges = GetTargetBadges(History.GetBlock(pointer, Position))
         };
     }
+
+    private List<ObjectBadge> GetTargetBadges(int block) => block != Block ? GetBadges(block) : [];
+
+    private List<ObjectBadge> GetBadges(int block) => IsCategoryVisible && block >= 0 ? History.GetObjectBadges(block) : [];
+
+    private ActionLinks? GetFreedCell(string text, ulong pointer)
+        => History.GetFreedBlock(pointer, Position) is { } freed
+            ? new ActionLinks([new ActionLink(text, () => RequestMemory(pointer, 1, freed.Position))])
+            {
+                Suffix = History.GetFreedLabel(freed.Block, pointer),
+                ObjectBadges = GetBadges(freed.Block)
+            }
+            : null;
+
+    partial void OnIsCategoryVisibleChanged(bool value) => RefreshGenerated();
+
+    private ActionLink GetTargetLink(MemoryHistoryPointer pointer)
+        => new(History.GetPointerName(pointer, Position),
+               pointer.Page is { } page ? () => Navigator?.OpenBufferPage(page) : () => RequestMemory(pointer.Value));
 
     public void OpenHashTable()
     {
@@ -516,7 +629,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
                                          (byte)(colour.B + (255 - colour.B) / 2));
     }
 
-    public void ShowWritesAt(int offset)
+    public void ShowAccessesAt(int offset)
     {
         if (!IsOpen || offset < 0 || offset >= History.Store.Blocks[Block].Size)
         {
@@ -525,14 +638,27 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         SelectedChangeSpan = null;
 
-        if (Runs.FindIndex(r => r.Start <= offset && offset <= r.End) is not (>= 0 and var index))
+        var isRead = SelectedTab == ReadsTab;
+
+        var runs = isRead ? ReadRuns : Runs;
+
+        if (runs.FindIndex(r => r.Start <= offset && offset <= r.End) is not (>= 0 and var index))
         {
             return;
         }
 
-        var function = Runs[index].State == MemoryChangeState.Pending ? null : History.GetWriterLabel(Runs[index].CallNodeIndex);
+        var function = runs[index].State == MemoryChangeState.Pending ? null : History.GetWriterLabel(runs[index].CallNodeIndex);
 
-        ShowWrites(function, History.Store.Blocks[Block].Address + (ulong)offset);
+        var address = History.Store.Blocks[Block].Address + (ulong)offset;
+
+        if (isRead)
+        {
+            ShowReads(function, address);
+        }
+        else
+        {
+            ShowWrites(function, address);
+        }
     }
 
     public void MarkPosition(TracePoint? point) => Chart?.MarkPositions(point is { } marked ? [marked] : null);
@@ -876,6 +1002,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void SetPlayhead(TracePosition? position)
     {
+        if (IsSnapshot)
+        {
+            return;
+        }
+
         Playhead = position;
 
         Refresh();
@@ -915,9 +1046,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             WriterMarkers = null;
 
+            ReaderMarkers = null;
+
             Markers = null;
 
             Runs = [];
+
+            ReadRuns = [];
 
             Pointers = [];
 
@@ -949,6 +1084,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         return new HexImage(image.Data,
                             MemoryChangeRuns.GetRuns(store.GetWrites(block), count, image.Data.Length),
+                            MemoryChangeRuns.GetReadRuns(store.GetReads(block), position, image.Data.Length),
                             MemoryHistoryPointerReader.Find(store, history.BufferPool, block, image, count, position));
     }
 
@@ -1010,6 +1146,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             WriterMarkers = new ObservableCollection<Marker>(GetChangeMarkers(hex.Runs));
         }
 
+        if (ReaderMarkers is null || !hex.ReadRuns.SequenceEqual(ReadRuns))
+        {
+            ReadRuns = hex.ReadRuns;
+
+            ReaderMarkers = new ObservableCollection<Marker>(GetChangeMarkers(hex.ReadRuns));
+        }
+
         if (Links is null || !hex.Pointers.SequenceEqual(Pointers))
         {
             Pointers = hex.Pointers;
@@ -1036,6 +1179,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             BatchTab when Batch.FieldMarkers is { } fields => fields,
             PageTab when WorkfilePage.IsAvailable => WorkfilePage.Markers,
             GeneratedTab when Generated.Markers is { } fields => fields,
+            ReadsTab => ReaderMarkers,
             _ => WriterMarkers
         };
 
@@ -1131,7 +1275,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         }
     }
 
-    private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs, List<MemoryHistoryPointer> Pointers);
+    private sealed record HexImage(byte[] Data,
+                                   List<MemoryChangeRun> Runs,
+                                   List<MemoryChangeRun> ReadRuns,
+                                   List<MemoryHistoryPointer> Pointers);
 
     private sealed record HashTableMatch(ulong Group, TraceHashPart? Part, RowRecordLayout? Layout);
 }

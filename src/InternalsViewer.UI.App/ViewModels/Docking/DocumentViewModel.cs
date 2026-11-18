@@ -30,6 +30,9 @@ public sealed partial class DocumentViewModel(string title,
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private string _title = title;
+
     /// <summary>Stable identifier used to persist/restore which documents are open and where</summary>
     public string Key { get; } = key ?? title;
 
@@ -67,8 +70,6 @@ public sealed partial class DocumentViewModel(string title,
     /// When true the single view instance is cached and reused across show/hide and re-layout
     /// </summary>
     public bool KeepAlive { get; } = keepAlive;
-
-    public string Title { get; } = title;
 
     public bool CanClose { get; } = canClose;
 

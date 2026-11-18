@@ -176,7 +176,7 @@ public sealed class CategoryRuleTable
     private static bool Improves(int index, RuleScore score, int best, RuleScore bestScore)
         => best < 0 || score.IsBetterThan(bestScore) || (!bestScore.IsBetterThan(score) && index < best);
 
-    private static StreamReader OpenResource(Assembly assembly, string fileName)
+    internal static StreamReader OpenResource(Assembly assembly, string fileName)
     {
         var name = assembly.GetManifestResourceNames()
                            .Single(n => n.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));

@@ -490,7 +490,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public event Action<string>? SearchRequested;
 
-    public event Action<bool>? CallStackVisibilityRequested;
+    public event Action<TracePoint?>? CallStackRequested;
 
     public event Action? CallStackChanged;
 

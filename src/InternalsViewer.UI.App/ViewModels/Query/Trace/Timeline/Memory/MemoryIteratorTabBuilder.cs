@@ -137,7 +137,7 @@ internal sealed class MemoryIteratorTabBuilder
                                                     header.Columns,
                                                     header.ColumnCount);
 
-        var table = CreateRowTable(memory.Layout, owner.GetPointerCell, bindings, CreateColours(bindings.Fields.Count));
+        var table = CreateRowTable(memory.Layout, (_, p) => owner.GetPointerCell(p), bindings, CreateColours(bindings.Fields.Count));
 
         return CreateTab(RowBindingsHeader, table, string.Join(";", bindings.Rows.Select(r => string.Join(",", r))));
     }

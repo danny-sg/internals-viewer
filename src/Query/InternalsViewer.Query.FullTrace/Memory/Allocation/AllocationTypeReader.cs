@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Allocation;
 
@@ -18,12 +19,6 @@ public static class AllocationTypeReader
     private const string DynamicArrayClass = "CTDynArray<";
 
     private const string EnumPrefix = "enum ";
-
-    private const string FunctorSuffix = "Fn";
-
-    private static readonly string[] Qualifiers = ["__ptr64", "const ", "volatile ", "class ", "struct ", EnumPrefix];
-
-    private static readonly string[] PolicyPrefixes = ["CFn", "Fn", "CMemObjAlloc<", "CRawMemObjAlloc<"];
 
     private static readonly Dictionary<string, int> ElementSizes = new()
     {
@@ -80,7 +75,7 @@ public static class AllocationTypeReader
 
             if (function.MethodName.StartsWith(ObjectMethod, StringComparison.Ordinal))
             {
-                return Format(GetFirstArgument(function.MethodName));
+                return TypeNameText.Shorten(GetFirstArgument(function.MethodName));
             }
         }
 
@@ -89,7 +84,7 @@ public static class AllocationTypeReader
 
     private static string GetArrayLabel(string element, int size)
     {
-        var name = Format(element);
+        var name = TypeNameText.Shorten(element);
 
         int? elementSize = element.Contains('*') ? PointerSize
             : element.TrimStart().StartsWith(EnumPrefix, StringComparison.Ordinal) ? EnumSize
@@ -103,92 +98,8 @@ public static class AllocationTypeReader
     {
         var open = name.IndexOf('<');
 
-        return open < 0 ? name : SplitArguments(name[(open + 1)..GetClose(name, open)]).FirstOrDefault() ?? string.Empty;
-    }
-
-    private static string Format(string type)
-    {
-        var text = Qualifiers.Aggregate(type, (current, qualifier) => current.Replace(qualifier, string.Empty)).Trim();
-
-        var open = text.IndexOf('<');
-
-        if (open < 0)
-        {
-            return Tidy(text);
-        }
-
-        var close = GetClose(text, open);
-
-        var arguments = SplitArguments(text[(open + 1)..close]).Where(a => !IsPolicy(a)).Select(Format);
-
-        return $"{Tidy(text[..open])}<{string.Join(", ", arguments)}>{Tidy(text[Math.Min(close + 1, text.Length)..])}";
-    }
-
-    private static bool IsPolicy(string argument)
-        => PolicyPrefixes.Any(p => argument.StartsWith(p, StringComparison.Ordinal))
-           || argument.EndsWith(FunctorSuffix, StringComparison.Ordinal);
-
-    private static string Tidy(string text) => text.Replace(" *", "*").Replace(" &", "&").Trim();
-
-    private static int GetClose(string text, int open)
-    {
-        var depth = 0;
-
-        for (var index = open; index < text.Length; index++)
-        {
-            depth += text[index] switch
-            {
-                '<' => 1,
-                '>' => -1,
-                _ => 0
-            };
-
-            if (depth == 0)
-            {
-                return index;
-            }
-        }
-
-        return text.Length;
-    }
-
-    private static List<string> SplitArguments(string text)
-    {
-        var arguments = new List<string>();
-
-        var depth = 0;
-
-        var start = 0;
-
-        for (var index = 0; index < text.Length; index++)
-        {
-            switch (text[index])
-            {
-                case '<':
-                {
-                    depth++;
-
-                    break;
-                }
-                case '>':
-                {
-                    depth--;
-
-                    break;
-                }
-                case ',' when depth == 0:
-                {
-                    arguments.Add(text[start..index].Trim());
-
-                    start = index + 1;
-
-                    break;
-                }
-            }
-        }
-
-        arguments.Add(text[start..].Trim());
-
-        return arguments;
+        return open < 0
+            ? name
+            : TypeNameText.SplitArguments(name[(open + 1)..TypeNameText.GetClose(name, open)]).FirstOrDefault() ?? string.Empty;
     }
 }

@@ -18,11 +18,20 @@ public static class LayoutObjectReader
                                     ulong address,
                                     int size,
                                     List<ulong>? pointers = null,
-                                    IReadOnlyList<EmbeddedObject>? embedded = null)
+                                    IReadOnlyList<EmbeddedObject>? embedded = null,
+                                    IReadOnlyDictionary<ulong, string>? pointerNames = null)
     {
         if (tab.Layout == MemoryTabLayout.Column)
         {
-            return ReadObject(memory, tab.Header, tab.Type, memory.Layout.GetFields(tab.Type), address, size, 0, pointers, embedded);
+            return ReadObject(memory,
+                              tab.Header,
+                              tab.Type,
+                              memory.Layout.GetFields(tab.Type),
+                              address,
+                              size,
+                              0,
+                              new PointerSlots(pointers, pointerNames),
+                              embedded);
         }
 
         var stride = memory.Layout.GetStructure(tab.Type).Size;
@@ -49,8 +58,9 @@ public static class LayoutObjectReader
                                     ulong address,
                                     int size,
                                     List<ulong>? pointers = null,
-                                    IReadOnlyList<EmbeddedObject>? embedded = null)
-        => ReadObject(memory, name, name, fields, address, size, MaximumDepth - 1, pointers, embedded);
+                                    IReadOnlyList<EmbeddedObject>? embedded = null,
+                                    IReadOnlyDictionary<ulong, string>? pointerNames = null)
+        => ReadObject(memory, name, name, fields, address, size, MaximumDepth - 1, new PointerSlots(pointers, pointerNames), embedded);
 
     public static LayoutObject ReadArray(ITraceMemoryReader memory, string name, string type, ulong address, int count)
         => ReadArray(memory, name, type, address, count, count * memory.Layout.GetStructure(type).Size);
@@ -78,12 +88,12 @@ public static class LayoutObjectReader
                                            ulong address,
                                            int size,
                                            int depth,
-                                           List<ulong>? pointers,
+                                           PointerSlots pointers,
                                            IReadOnlyList<EmbeddedObject>? embedded)
     {
-        var withEmbedded = AddEmbedded(memory.Layout, fields, embedded, address, size);
+        var (withEmbedded, slots) = AddEmbedded(memory.Layout, fields, embedded, pointers, address, size);
 
-        var item = new LayoutObject(name, type, address, size, MemoryTabLayout.Column, AddPointers(withEmbedded, pointers, address, size));
+        var item = new LayoutObject(name, type, address, size, MemoryTabLayout.Column, AddPointers(withEmbedded, slots, address, size));
 
         item.Rows.Add(ReadValues(memory, item.Fields, address));
 
@@ -103,7 +113,7 @@ public static class LayoutObjectReader
                                              address + (ulong)field.Offset,
                                              field.Length,
                                              depth + 1,
-                                             pointers,
+                                             slots,
                                              embedded));
             }
         }
@@ -111,20 +121,27 @@ public static class LayoutObjectReader
         return item;
     }
 
-    private static List<MemoryField> AddEmbedded(EngineLayout layout,
-                                                 List<MemoryField> fields,
-                                                 IReadOnlyList<EmbeddedObject>? embedded,
-                                                 ulong address,
-                                                 int size)
+    private static (List<MemoryField> Fields, PointerSlots Pointers) AddEmbedded(EngineLayout layout,
+                                                                                 List<MemoryField> fields,
+                                                                                 IReadOnlyList<EmbeddedObject>? embedded,
+                                                                                 PointerSlots pointers,
+                                                                                 ulong address,
+                                                                                 int size)
     {
         if (embedded is not { Count: > 0 })
         {
-            return fields;
+            return (fields, pointers);
         }
+
+        var objects = embedded.Where(e => e.Address > address && e.Address < address + (ulong)size).OrderBy(e => e.Address).ToList();
+
+        var starts = GetStarts(fields, objects, pointers.Addresses, address, size);
 
         var added = new List<MemoryField>();
 
-        foreach (var item in embedded.Where(e => e.Address > address && e.Address < address + (ulong)size).OrderBy(e => e.Address))
+        Dictionary<ulong, string>? names = null;
+
+        foreach (var item in objects)
         {
             var offset = (int)(item.Address - address);
 
@@ -135,32 +152,68 @@ public static class LayoutObjectReader
 
             var known = layout.GetKnownSize(item.Type);
 
-            added.Add(known > 0 && known <= size - offset
-                          ? new MemoryField(item.Type, offset, known) { Structure = item.Type }
-                          : new MemoryField(item.Type, offset, Math.Min(item.Length, size - offset)) { IsBytes = true });
+            if (known > 0 && known <= size - offset)
+            {
+                added.Add(new MemoryField(item.Type, offset, known) { Structure = item.Type });
+
+                continue;
+            }
+
+            if (pointers.Addresses?.Contains(item.Address) == true && pointers.Names?.ContainsKey(item.Address) != true)
+            {
+                names ??= pointers.Names?.ToDictionary() ?? [];
+
+                names[item.Address] = item.Type;
+
+                continue;
+            }
+
+            var end = Math.Min(starts.FirstOrDefault(s => s > offset, size), size);
+
+            added.Add(new MemoryField(item.Type, offset, Math.Min(item.Length, end - offset)) { IsBytes = true });
         }
 
-        return added.Count == 0 ? fields : [.. fields.Concat(added).OrderBy(f => f.Offset)];
+        var slots = names is null ? pointers : pointers with { Names = names };
+
+        return added.Count == 0 ? (fields, slots) : ([.. fields.Concat(added).OrderBy(f => f.Offset)], slots);
     }
 
+    private static List<int> GetStarts(List<MemoryField> fields,
+                                       List<EmbeddedObject> objects,
+                                       List<ulong>? pointers,
+                                       ulong address,
+                                       int size)
+        =>
+        [
+            .. fields.Select(f => f.Offset)
+                     .Concat(objects.Select(o => (int)(o.Address - address)))
+                     .Concat(pointers?.Where(p => p >= address && p < address + (ulong)size).Select(p => (int)(p - address)) ?? [])
+                     .Order()
+        ];
+
     private static List<MemoryField> AddPointers(List<MemoryField> fields,
-                                                 List<ulong>? pointers,
+                                                 PointerSlots pointers,
                                                  ulong address,
                                                  int size)
     {
-        if (pointers is not { Count: > 0 })
+        if (pointers.Addresses is not { Count: > 0 } addresses)
         {
             return fields;
         }
 
-        var added = pointers.Where(p => p >= address && p + PointerSize <= address + (ulong)size)
-                            .Select(p => (int)(p - address))
-                            .Select(o => new MemoryField($"{PointerName}+0x{o:X}", o, PointerSize))
-                            .Where(p => !fields.Any(f => !f.IsBytes && p.Offset < f.Offset + f.Length && f.Offset < p.Offset + PointerSize))
-                            .ToList();
+        var added = addresses.Where(p => p >= address && p + PointerSize <= address + (ulong)size)
+                             .Select(p => new MemoryField(GetPointerName(pointers, p, (int)(p - address)), (int)(p - address), PointerSize))
+                             .Where(p => !fields.Any(f => !f.IsBytes && IsOverlapping(f, p)))
+                             .ToList();
 
         return added.Count == 0 ? fields : [.. fields.Concat(added).OrderBy(f => f.Offset)];
     }
+
+    private static bool IsOverlapping(MemoryField field, MemoryField pointer)
+        => pointer.Offset < field.Offset + field.Length && field.Offset < pointer.Offset + PointerSize;
+
+    private static string GetPointerName(PointerSlots pointers, ulong slot, int offset)
+        => pointers.Names?.GetValueOrDefault(slot) ?? $"{PointerName}+0x{offset:X}";
 
     private static ulong?[] ReadValues(ITraceMemoryReader memory, List<MemoryField> fields, ulong address)
     {
@@ -191,4 +244,6 @@ public static class LayoutObjectReader
 
         return values;
     }
+
+    private readonly record struct PointerSlots(List<ulong>? Addresses, IReadOnlyDictionary<ulong, string>? Names);
 }

@@ -8,6 +8,7 @@
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     xmlns:timeline="using:InternalsViewer.UI.App.Controls.Query.Timeline"
+    xmlns:traceTimeline="using:InternalsViewer.UI.App.Controls.Query.Trace.Timeline"
     mc:Ignorable="d">
 
     <Grid>
@@ -193,10 +194,14 @@
                         </MenuBar>
                         <StackPanel Grid.Column="5"
                                     Orientation="Horizontal"
-                                    VerticalAlignment="Center"
-                                    Visibility="{x:Bind GetTransportVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable, ViewModel.Layout.IsTrace, ViewModel.Layout.IsTraceTimelineVisible, ViewModel.Layout.IsGuideMode), Mode=OneWay}">
+                                    Spacing="8"
+                                    VerticalAlignment="Center">
+                            <traceTimeline:TraceStepMenu x:Name="StepMenu"
+                                                         Source="{x:Bind ViewModel.TraceRuler, Mode=OneWay}"
+                                                         Visibility="{x:Bind GetStepVisibility(ViewModel.Layout.IsTrace, ViewModel.Layout.IsTraceTimelineVisible, ViewModel.Layout.IsGuideMode), Mode=OneWay}"/>
                             <timeline:PinnedTransport x:Name="PinnedTransport"
-                                                      Source="{x:Bind ViewModel.TransportSource, Mode=OneWay}"/>
+                                                      Source="{x:Bind ViewModel.TransportSource, Mode=OneWay}"
+                                                      Visibility="{x:Bind GetTransportVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable, ViewModel.Layout.IsTrace, ViewModel.Layout.IsTraceTimelineVisible, ViewModel.Layout.IsGuideMode), Mode=OneWay}"/>
                         </StackPanel>
                         <ToggleButton Grid.Column="3"
                                       Margin="-6,1,0,0"

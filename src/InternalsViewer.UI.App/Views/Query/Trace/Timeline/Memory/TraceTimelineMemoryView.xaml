@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
+    xmlns:categories="using:InternalsViewer.Query.FullTrace.Symbols.Categories"
     SizeChanged="OnSizeChanged">
 
     <Grid>
@@ -92,6 +93,32 @@
                      IsAddTabButtonVisible="False"
                      TabWidthMode="SizeToContent"
                      SelectedIndex="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}">
+                <TabView.TabStripFooter>
+                    <ItemsControl Margin="0,0,8,0"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  ItemsSource="{x:Bind ViewModel.Badges, Mode=OneTime}"
+                                  Visibility="{x:Bind ViewModel.IsCategoryVisible, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="categories:ObjectBadge">
+                                <Border Background="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"
+                                        CornerRadius="3"
+                                        Padding="5,2,5,3"
+                                        ToolTipService.ToolTip="{x:Bind StageName}">
+                                    <TextBlock Text="{x:Bind Name}"
+                                               Foreground="White"
+                                               FontSize="9"
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </TabView.TabStripFooter>
                 <TabViewItem Header="{x:Bind ViewModel.Batch.Title, Mode=OneWay}"
                              IsClosable="False"
                              Visibility="{x:Bind ViewModel.Batch.IsAvailable, Mode=OneWay}">

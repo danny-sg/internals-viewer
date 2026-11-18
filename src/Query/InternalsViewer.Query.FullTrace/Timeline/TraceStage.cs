@@ -10,6 +10,7 @@ public sealed record TraceStage(string Name, CallTreeNode Node, uint ThreadId, T
 
     private static readonly Dictionary<string, string> Names = new()
     {
+        ["CSQLSource::FParse"] = "Parse",
         ["CSQLSource::FCompile"] = "Compilation",
         ["CProchdr::FNormalizeStep"] = "Algebrization",
         ["PqoBuild"] = "Plan Build",

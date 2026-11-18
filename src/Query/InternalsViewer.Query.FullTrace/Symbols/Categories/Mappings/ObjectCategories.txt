@@ -1,0 +1,285 @@
+﻿Class|Badge|Stage
+
+CLexer|Parser|ParseAndBind
+CTokenStream*|Parser|ParseAndBind
+SqlSemantics|Semantics|ParseAndBind
+CAlg*|Algebrizer|ParseAndBind
+CValRefAlg*|Algebrizer|ParseAndBind
+trRoot|Algebrizer|ParseAndBind
+trConstant|Algebrizer|ParseAndBind
+CViewRep|Algebrizer|ParseAndBind
+CRelOp_*|Query Tree|ParseAndBind
+QueryBlockBase|Query Tree|ParseAndBind
+CNS*|Name Binding|ParseAndBind
+CQName*|Name Binding|ParseAndBind
+CSymTab|Name Binding|ParseAndBind
+CBindEnv|Name Binding|ParseAndBind
+CBinding|Name Binding|ParseAndBind
+CBndOutputs|Name Binding|ParseAndBind
+CObjName|Name Binding|ParseAndBind
+CMultiPart*|Name Binding|ParseAndBind
+IdPart|Name Binding|ParseAndBind
+CTableAlias|Name Binding|ParseAndBind
+CRangeTable|Name Binding|ParseAndBind
+CColumnInfo|Column Info|ParseAndBind
+CVariableInfo|Variable|ParseAndBind
+ParamID|Parameter|ParseAndBind
+CParamCollection|Parameter|ParseAndBind
+CUPController|Parameter|ParseAndBind
+
+CLogOp_*|Logical Operator|Optimization
+CLogOpArg|Logical Operator|Optimization
+CPhyOp_*|Physical Operator|Optimization
+CPhysOpArg|Physical Operator|Optimization
+CScaOp_*|Scalar Operator|Optimization
+CAncOp_*|Projection List|Optimization
+COptExpr*|Memo|Optimization
+CMemo|Memo|Optimization
+CGroup|Memo|Optimization
+CGroupExpr|Memo|Optimization
+CTask_*|Optimizer Task|Optimization
+COptTask|Optimizer Task|Optimization
+MOVE|Rules|Optimization
+CRuleContext|Rules|Optimization
+CActiveRule*|Rules|Optimization
+*PlanProperties|Plan Properties|Optimization
+*GroupProperties|Plan Properties|Optimization
+CContextProperties|Plan Properties|Optimization
+CExprProperties|Plan Properties|Optimization
+*SortProps|Plan Properties|Optimization
+CAnalyzePredicate|Predicates|Optimization
+CCard*|Cardinality|Optimization
+*Histogram*|Cardinality|Optimization
+CMapCnj*|Cardinality|Optimization
+CCnjInfo|Cardinality|Optimization
+CStColl*|Cardinality|Optimization
+CDistInfo|Cardinality|Optimization
+CDstr*|Cardinality|Optimization
+CInterval*|Cardinality|Optimization
+CHstItvl*|Cardinality|Optimization
+CSelCalc*|Cardinality|Optimization
+CDistinctContext*|Cardinality|Optimization
+IDistinctCalculationPlan|Cardinality|Optimization
+CSIColumn|Cardinality|Optimization
+CSIConstantValue|Cardinality|Optimization
+CXVarFunc_NoOp|Cardinality|Optimization
+CStatHeader|Statistics|Optimization
+CStats*|Statistics|Optimization
+CStatMan|Statistics|Optimization
+CStatLocking*|Statistics|Optimization
+CColModCtr*|Statistics|Optimization
+CModTrackingInfo|Statistics|Optimization
+COptCost*|Costing|Optimization
+CRowLength|Costing|Optimization
+CQPOffsets|Costing|Optimization
+COpt*|Optimizer|Optimization
+CQO*|Optimizer|Optimization
+CValRefOpt*|Optimizer|Optimization
+CVRTableOpt|Optimizer|Optimization
+CJoinEdge|Optimizer|Optimization
+CLinClassManager|Optimizer|Optimization
+CConstraint*|Constraints|Optimization
+CHalloweenProtection|Halloween Protection|Optimization
+CHPTableInfo|Halloween Protection|Optimization
+CSequenceProjectContext|Window Functions|Optimization
+CRelOp_WindowList|Window Functions|Optimization
+BatchModeHeuristics|Batch Mode|Optimization
+*Hints|Hints|Optimization
+*Feedback*|Feedback|Optimization
+
+CXte*|Compiled Plan|Compilation
+CCompPlan|Compiled Plan|Compilation
+CXCodeInst|Compiled Plan|Compilation
+CProchdr|Compiled Plan|Compilation
+CVRTableComp|Compiled Plan|Compilation
+CQte*|Compiled Plan|Compilation
+CReloadContext|Compiled Plan|Compilation
+CRiLeaf|Seek Range|Compilation
+CRiGroup|Seek Range|Compilation
+CRangeInterval|Seek Range|Compilation
+SubpmgrIteratorForDump|Seek Range|Compilation
+CXStmt*|Statement|Compilation
+CStmt*|Statement|Compilation
+CQuery|Statement|Compilation
+CEsComp*|Expression Compiler|Compilation
+*Collection|Collections|Compilation
+CCollections|Collections|Compilation
+CKeyGroup|Collections|Compilation
+CSourcesForResults|Collections|Compilation
+*QueryContext|Query Context|Compilation
+*QueryCtxt|Query Context|Compilation
+CDepend*|Dependencies|Compilation
+CShowPlan*|Showplan|Compilation
+CQPCompilationQueue|Compilation Queue|Compilation
+CSql|Plan Cache|Compilation
+CPlanCacheKey|Plan Cache|Compilation
+CRecompile|Plan Cache|Compilation
+
+CQScan*|Iterator|Execution
+CQueryScan|Iterator|Execution
+CBpQScan*|Batch Iterator|Execution
+CQScanProfileNew|Profiling|Execution
+CQScanLightProfileNew|Profiling|Execution
+*ExecContext|Execution Context|Execution
+*ExecCtxt|Execution Context|Execution
+CQECtxt|Execution Context|Execution
+CExecParamTbl|Execution Context|Execution
+CTaskContext|Execution Context|Execution
+CEsExec|Expression Executor|Execution
+CBpBatch*|Batch|Execution
+CHashWorkItem|Hash Table|Execution
+CHashWorkfile*|Hash Partition|Execution
+CHashWorktable*|Hash Partition|Execution
+CAutoShutdown<CHashWork*|Hash Partition|Execution
+CMemoryGrant*|Memory Grant|Execution
+CQryMemManager|Memory Grant|Execution
+CStoreMemEstimation*|Memory Grant|Execution
+
+CValRef*|Value Reference|ValueReferences
+CValRefSS|Storage Engine|ValueReferences
+CValRefOrdinal*|Operator|ValueReferences
+CValRefPrefetch|Operator|ValueReferences
+CValRefCalculated|Expression|ValueReferences
+CValRefAlgCalc|Expression|ValueReferences
+CValRefJoin|Join|ValueReferences
+CValRefBatch*|Batch|ValueReferences
+CValRefComp|Compiled|ValueReferences
+CValRef*Table|Table|ValueReferences
+CValRefAlgChecksum|System Column|ValueReferences
+CValRefAlgGeneration|System Column|ValueReferences
+CValRefAlgLockres|System Column|ValueReferences
+CValRefAlgPhysLocator|System Column|ValueReferences
+CValRefAlgRowDump|System Column|ValueReferences
+CValRef*RID|RID|ValueReferences
+CValRefRow|Row|ValueReferences
+CValRefSetRange|Range|ValueReferences
+CValRefVirtual|Virtual|ValueReferences
+CValRefTracker|Tracker|ValueReferences
+
+CValComp|Value Provider|Values
+CValExec|Value Provider|Values
+CValExpr|Value Provider|Values
+CValSSTable|Value Provider|Values
+CValHash*|Value Provider|Values
+CValRow*|Value Provider|Values
+CValSetRange|Value Provider|Values
+CValEs*|Value Provider|Values
+CValOds*|Value Provider|Values
+CValComp|Compiled|Values
+CValExec|Executable|Values
+CValExpr|Expression|Values
+CValSSTable|Storage Engine|Values
+CValHash|Hash|Values
+CValHash*Switch|Hash Switch|Values
+CValRowHash|Hash|Values
+CValRow|Row|Values
+CValOds*|Row|Values
+CValSetRange|Range|Values
+CValEsConst*|Constant|Values
+CValHash*|Hash Table|Execution
+CValRowHash|Hash Table|Execution
+CTypeInfo|Type Info|Values
+CXVariant*|Constant|Values
+CMapVr*|Column Mapping|Values
+CMapComp*|Column Mapping|Values
+MapPvr|Column Mapping|Values
+CRemap*|Column Mapping|Values
+
+Rowset*|Rowset|Storage
+*Rowset|Rowset|Storage
+SERowsetId|Rowset|Storage
+DatasetSession*|Dataset|Storage
+*DataSetSession|Dataset|Storage
+*UsageDescriptor|Dataset|Storage
+UserInfo|Dataset|Storage
+AccBindings*|Bindings|Storage
+ColumnBinding|Bindings|Storage
+tagDBBINDING|Bindings|Storage
+SEBindings|Bindings|Storage
+SingleColAccessor|Bindings|Storage
+AccessorCache|Bindings|Storage
+CAccessorRelease|Bindings|Storage
+BTree*|B-Tree|Storage
+IndexRowScanner|B-Tree|Storage
+IndexPageManager|B-Tree|Storage
+KeyRangeObject|B-Tree|Storage
+HoBt*|HoBt|Storage
+VisibleHoBt|HoBt|Storage
+CTreeHandle|HoBt|Storage
+AllocationCaches*|Allocation Cache|Storage
+PageCache|Allocation Cache|Storage
+StateInfo|Allocation Cache|Storage
+Page|Page|Storage
+PageHandle|Page|Storage
+HPageHandle|Page|Storage
+PageContext|Page|Storage
+*WorkFile*|Workfile|Storage
+*WorkTable*|Workfile|Storage
+WFResourceMgr|Workfile|Storage
+Lob*|LOB|Storage
+CBlob*|LOB|Storage
+CLob*|LOB|Storage
+
+CMED*|Metadata|Metadata
+*Metadata*|Metadata|Metadata
+CIdxInfo|Metadata|Metadata
+CIndex|Metadata|Metadata
+MDPartition|Metadata|Metadata
+IMIter*|Metadata|Metadata
+CMIter*|Metadata|Metadata
+tagFTSColInfo|Metadata|Metadata
+CMEDProxy*|Proxy|Metadata
+CQSIndex*|Index Usage|Metadata
+
+*Xact|Transaction|Transactions
+*XactImp|Transaction|Transactions
+Xdes*|Transaction|Transactions
+XVB|Transaction|Transactions
+*LockProxy|Locking|Transactions
+CPmoLock|Locking|Transactions
+CLockCollection|Locking|Transactions
+
+ISOS_Malloc|Memory Object|Memory
+IMemObj|Memory Object|Memory
+CMemObj|Memory Object|Memory
+MemObjCache*|Memory Object|Memory
+CMemProc*|Memory Object|Memory
+CIncInfo|Memory Object|Memory
+*Allocator|Allocator|Memory
+AlignedSmallPageAllocator*|Allocator|Memory
+CPageInfo|Allocator|Memory
+StdAlloc*|Allocator|Memory
+SOS_*|SQLOS|Memory
+ISOS*|SQLOS|Memory
+TCacheStore*|Cache Store|Memory
+CCacheStore*|Cache Store|Memory
+SCacheElement|Cache Store|Memory
+ClockInfo|Cache Store|Memory
+
+CTHashTable*|Hash Map|Containers
+CTMap*|Hash Map|Containers
+CTDelayedMap*|Hash Map|Containers
+CTList*|List|Containers
+TListElem*|List|Containers
+SEList*|List|Containers
+CSingleLinked*|List|Containers
+TDelayedPartitionedStack*|Stack|Containers
+CBitSet*|Bit Set|Containers
+CPvrBitSet|Bit Set|Containers
+CBitVector|Bit Set|Containers
+CDisjointSet*|Set|Containers
+CTStrData*|String|Containers
+CAutoRefc*|Reference Count|Containers
+CRefCount|Reference Count|Containers
+
+CQDS*|Query Store|QueryStore
+
+CSEC*|Security|Security
+CRcs*|Security|Security
+CProtElem|Permissions|Security
+*Encryption*|Encryption|Security
+
+CTDS*|TDS|Tds
+CFmtTds|TDS|Tds
+CNet*|TDS|Tds
+CSysTaskConnOut|Connection|Tds

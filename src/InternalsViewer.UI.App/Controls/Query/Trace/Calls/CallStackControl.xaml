@@ -128,7 +128,7 @@
 
                     <HyperlinkButton Style="{StaticResource DetailLinkStyle}"
                                      HorizontalAlignment="Left"
-                                     Content="{x:Bind MemoryTarget}"
+                                     Content="{x:Bind calls:CallStackControl.GetTargetContent(MemoryTarget)}"
                                      Tag="{x:Bind}"
                                      Padding="0,6,0,0"
                                      Visibility="{x:Bind calls:CallStackControl.GetTargetVisibility(MemoryTarget)}"

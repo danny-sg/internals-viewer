@@ -65,6 +65,13 @@ public static class SignatureRuns
 
     public static void AddType(InlineCollection inlines, string type)
     {
+        if (TextLabel.GetString(type) is { } value)
+        {
+            StringText.AddRuns(inlines, value);
+
+            return;
+        }
+
         foreach (var token in SignatureTokenizer.Tokenize(type))
         {
             var brush = token.Type switch

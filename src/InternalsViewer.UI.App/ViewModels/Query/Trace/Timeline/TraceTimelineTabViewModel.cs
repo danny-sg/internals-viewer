@@ -36,6 +36,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private const string StepForwardGlyph = "";
 
+    private const string SnapshotGlyph = "\uE722";
+
     [ObservableProperty]
     private bool _isCallStackVisible;
 
@@ -118,7 +120,12 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private DocumentViewModel? ShownMemory { get; set; }
 
-    public void ShowCallStack() => IsCallStackVisible = true;
+    public void ShowCallStack()
+    {
+        IsCallStackVisible = true;
+
+        Dock.Activate(CallStackDocument);
+    }
 
     public void CloseCallStack()
     {
@@ -156,8 +163,6 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         RequestPlayhead(point);
 
         ShowCallStack();
-
-        Dock.Activate(CallStackDocument);
     }
 
     public void FindInCallTree(CallTreeNode node, int callIndex) => Query.OpenCallTree(node, callIndex);
@@ -197,7 +202,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         OpenMemory(block, address, position);
 
-        if (MemoryDocuments.FirstOrDefault(d => d.Key == $"Memory{block}")?.Content is PlayheadMemoryViewModel memory)
+        if (FindLiveMemory(block)?.Content is PlayheadMemoryViewModel memory)
         {
             memory.ShowIteratorTab(tabs);
         }
@@ -207,9 +212,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         Query.Layout.ShowTraceTimeline();
 
-        var key = $"Memory{block}";
-
-        if (MemoryDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
+        if (FindLiveMemory(block) is { } existing)
         {
             Dock.Activate(existing);
 
@@ -222,9 +225,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             return;
         }
 
-        var memory = new PlayheadMemoryViewModel(Query.MemoryHistory);
-
-        if (!memory.Open(block, address, position))
+        if (CreateMemory(block, address, position) is not { } memory)
         {
             return;
         }
@@ -236,44 +237,21 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         memory.SetPlayhead(Query.IsOutsideCrop(position) ? null : Playhead);
 
-        memory.Chart = Chart;
+        AddMemoryDocument(memory, block);
+    }
 
-        memory.Navigator = this;
+    public void OpenMemorySnapshot(int block, ulong address, TracePosition position)
+    {
+        Query.Layout.ShowTraceTimeline();
 
-        memory.PlayheadRequested += OnMemoryPlayheadRequested;
-
-        memory.MemoryRequested += OnMemoryRequested;
-
-        memory.Opened += OnMemoryOpened;
-
-        List<DocumentMenuItem> menuItems =
-        [
-            new("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position)),
-            new("Open Hash Table", memory.OpenHashTable, () => memory.IsHashTableVisible),
-            new("Open Sort Table", memory.OpenSortTable, () => memory.IsSortTableVisible)
-        ];
-
-        var document = new DocumentViewModel(memory.Title,
-                                             memory,
-                                             static () => new TraceTimelineMemoryView(),
-                                             keepAlive: true,
-                                             key: key,
-                                             persist: false,
-                                             commandsFactory: () => CreateMemoryCommands(memory))
+        if (CreateMemory(block, address, position) is not { } memory)
         {
-            MinWidth = HexViewControl.StandardWidth,
-            MenuItems = menuItems
-        };
+            return;
+        }
 
-        var neighbour = MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument;
+        memory.Freeze(position);
 
-        MemoryDocuments.Add(document);
-
-        ShowPanel(document, neighbour);
-
-        LastActivatedMemory = document;
-
-        ShowActiveMemoryUpdates();
+        AddMemoryDocument(memory, block);
     }
 
     public void HighlightMemory(int? block) => MemoryHighlightRequested?.Invoke(this, block);
@@ -651,17 +629,33 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                                 (_, _) => PlayheadStack.Step(forward: true)));
 
     private static FrameworkElement CreateMemoryCommands(PlayheadMemoryViewModel memory)
-        => TabCommands.Panel(CommandSpacing,
-                             TabCommands.Toggle(TabCommands.Label("Hex"),
-                                                memory.IsHexVisible,
-                                                "Show or hide the hex view",
-                                                (sender, _) => memory.IsHexVisible = TabCommands.IsChecked(sender)),
-                             TabCommands.Button(TabCommands.Glyph(StepBackGlyph),
-                                                "Previous Update",
-                                                (_, _) => memory.StepWrite(isForward: false)),
-                             TabCommands.Button(TabCommands.Glyph(StepForwardGlyph),
-                                                "Next Update",
-                                                (_, _) => memory.StepWrite(isForward: true)));
+    {
+        var snapshot = TabCommands.Button(TabCommands.Glyph(SnapshotGlyph), "Snapshot", (sender, _) =>
+        {
+            memory.Freeze();
+
+            ((Button)sender).IsEnabled = false;
+        });
+
+        snapshot.IsEnabled = !memory.IsSnapshot;
+
+        return TabCommands.Panel(CommandSpacing,
+                                 TabCommands.Toggle(TabCommands.Label("Hex"),
+                                                    memory.IsHexVisible,
+                                                    "Show or hide the hex view",
+                                                    (sender, _) => memory.IsHexVisible = TabCommands.IsChecked(sender)),
+                                 TabCommands.Toggle(TabCommands.Label("Category"),
+                                                    memory.IsCategoryVisible,
+                                                    "Show or hide the category badges",
+                                                    (sender, _) => memory.IsCategoryVisible = TabCommands.IsChecked(sender)),
+                                 TabCommands.Button(TabCommands.Glyph(StepBackGlyph),
+                                                    "Previous Update",
+                                                    (_, _) => memory.StepWrite(isForward: false)),
+                                 TabCommands.Button(TabCommands.Glyph(StepForwardGlyph),
+                                                    "Next Update",
+                                                    (_, _) => memory.StepWrite(isForward: true)),
+                                 snapshot);
+    }
 
     private static FrameworkElement CreateGraphCommands(MemoryReferenceGraphViewModel graph)
     {
@@ -757,9 +751,89 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         var block = Query.MemoryHistory.GetBlock(request.Address, position);
 
-        if (block >= 0)
+        if (block >= 0 && request.IsSnapshot)
+        {
+            OpenMemorySnapshot(block, request.Address, position);
+        }
+        else if (block >= 0)
         {
             OpenMemory(block, request.Address, position, request.Length);
+        }
+    }
+
+    private DocumentViewModel? FindLiveMemory(int block)
+        => MemoryDocuments.FirstOrDefault(d => d.Key == GetMemoryKey(block) && d.Content is PlayheadMemoryViewModel { IsSnapshot: false });
+
+    private static string GetMemoryKey(int block) => $"Memory{block}";
+
+    private PlayheadMemoryViewModel? CreateMemory(int block, ulong address, TracePosition position)
+    {
+        var memory = new PlayheadMemoryViewModel(Query.MemoryHistory);
+
+        if (!memory.Open(block, address, position))
+        {
+            return null;
+        }
+
+        memory.Chart = Chart;
+
+        memory.Navigator = this;
+
+        memory.PlayheadRequested += OnMemoryPlayheadRequested;
+
+        memory.MemoryRequested += OnMemoryRequested;
+
+        memory.Opened += OnMemoryOpened;
+
+        return memory;
+    }
+
+    private void AddMemoryDocument(PlayheadMemoryViewModel memory, int block)
+    {
+        List<DocumentMenuItem> menuItems =
+        [
+            new("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position)),
+            new("Open Hash Table", memory.OpenHashTable, () => memory.IsHashTableVisible),
+            new("Open Sort Table", memory.OpenSortTable, () => memory.IsSortTableVisible),
+            new("Duplicate", () => DuplicateMemory(memory), () => memory.IsSnapshot)
+        ];
+
+        var document = new DocumentViewModel(memory.Title,
+                                             memory,
+                                             static () => new TraceTimelineMemoryView(),
+                                             keepAlive: true,
+                                             key: GetMemoryKey(block),
+                                             persist: false,
+                                             commandsFactory: () => CreateMemoryCommands(memory))
+        {
+            MinWidth = HexViewControl.StandardWidth,
+            MenuItems = menuItems
+        };
+
+        memory.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayheadMemoryViewModel.Title))
+            {
+                document.Title = memory.Title;
+            }
+        };
+
+        var neighbour = MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument;
+
+        MemoryDocuments.Add(document);
+
+        ShowPanel(document, neighbour);
+
+        LastActivatedMemory = document;
+
+        ShowActiveMemoryUpdates();
+    }
+
+    private void DuplicateMemory(PlayheadMemoryViewModel memory)
+    {
+        if (memory.Block >= 0)
+        {
+            OpenMemory(memory.Block, Query.MemoryHistory.Store.Blocks[memory.Block].Address, Playhead ?? memory.Position);
         }
     }
 

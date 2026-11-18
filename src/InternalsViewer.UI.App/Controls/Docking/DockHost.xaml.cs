@@ -245,7 +245,7 @@ public sealed partial class DockHost : UserControl
 
     private static void Place(Grid grid, FrameworkElement element, int cell, bool horizontal)
     {
-        if (!ReferenceEquals(element.Parent, grid))
+        if (!grid.Children.Contains(element))
         {
             Detach(element);
 

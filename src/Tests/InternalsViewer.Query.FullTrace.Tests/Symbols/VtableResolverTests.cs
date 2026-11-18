@@ -25,6 +25,20 @@ public class VtableResolverTests
         Assert.Equal(["CMsqlReadOnlyXact"], collector.Build()[0x100]);
     }
 
+    [Theory]
+    [InlineData("??_7RowsetNewSS@@6BIRowset@@@", "IRowset")]
+    [InlineData("??_7RowsetNewSS@@6BIRowsetFetchNextRow@@@", "IRowsetFetchNextRow")]
+    [InlineData("??_7CDerived@@6BIInner@Outer@@@", "Outer::IInner")]
+    public void A_Vtable_For_A_Base_Names_The_Base_In_Its_Decorated_Name(string decorated, string expected)
+        => Assert.Equal(expected, VtableResolver.GetBaseName(decorated));
+
+    [Theory]
+    [InlineData("??_7CQScanHash@@6B@")]
+    [InlineData("??_7CDerived@@6B?$CTBase@H@@@")]
+    [InlineData("?GetRow@CQScanHash@@QEAAEXZ")]
+    public void A_Vtable_Without_A_Plain_Base_Or_Another_Symbol_Names_No_Base(string decorated)
+        => Assert.Null(VtableResolver.GetBaseName(decorated));
+
     [Fact]
     public void Other_Data_Is_Not_A_Vtable()
     {

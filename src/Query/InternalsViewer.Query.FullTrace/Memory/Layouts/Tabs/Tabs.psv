@@ -2,6 +2,10 @@ Header|Type|Layout|Trailing
 Iterator|CQScanNew|Column|
 Plan Object|CXte|Column|
 Output List|CBndOutputs|Column|
+Value Reference|CValRefComp|Column|
+Value Reference|CValRefSS|Column|
+Value Reference|CValRefBatchRedirect|Column|
+Expression|COptExpr|Column|
 Buffer|BUF|Column|
 Accessor Bindings|AccBindings|Column|
 Column Bindings|ColumnBinding|Row|ColumnBindingInfrequent

@@ -514,7 +514,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(CallStackItem());
+        flyout.Items.Add(CallStackItem(null));
 
         return flyout;
     }

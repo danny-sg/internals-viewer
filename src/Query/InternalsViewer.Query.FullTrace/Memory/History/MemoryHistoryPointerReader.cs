@@ -66,6 +66,27 @@ public static class MemoryHistoryPointerReader
         return pointers.Count > 0 ? pointers : null;
     }
 
+    public static (List<MemoryHistoryPointer> Pointers, TracePosition Position)? ReadLastArray(MemoryHistoryStore store,
+                                                                                               TraceBufferPool pool,
+                                                                                               int block)
+    {
+        var writes = store.GetWrites(block);
+
+        for (var index = writes.Count - 1; index >= 0; index--)
+        {
+            if (!store.GetBytes(writes[index]).AsSpan().ContainsAnyExcept((byte)0))
+            {
+                continue;
+            }
+
+            var position = writes[index].Position;
+
+            return ReadArray(store, pool, store.Blocks[block].Address, position) is { } pointers ? (pointers, position) : null;
+        }
+
+        return null;
+    }
+
     public static List<MemoryHistoryPointer> Find(MemoryHistoryStore store,
                                                   TraceBufferPool pool,
                                                   int block,

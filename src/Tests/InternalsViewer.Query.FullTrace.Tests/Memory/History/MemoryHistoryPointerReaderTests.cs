@@ -111,5 +111,53 @@ public class MemoryHistoryPointerReaderTests
         Assert.Null(MemoryHistoryPointerReader.ReadArray(store, TraceBufferPool.Empty, Holder + 8, At(5)));
     }
 
+    [Fact]
+    public void A_Block_Cleared_Before_It_Is_Freed_Is_Read_As_The_Array_It_Last_Held()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x8),
+                                                    MemoryHistoryStoreHelper.Block(Target, 0x20)],
+                                                   [(2, Holder, Pointer(Target + 8)), (3, Target, [1]), (6, Holder, Pointer(0))]);
+
+        var holder = MemoryHistoryStoreHelper.GetBlock(store, Holder);
+
+        var array = MemoryHistoryPointerReader.ReadLastArray(store, TraceBufferPool.Empty, holder);
+
+        Assert.Equal([Target + 8], array?.Pointers.Select(p => p.Value));
+
+        Assert.Equal(At(2), array?.Position);
+    }
+
+    [Fact]
+    public void A_Block_That_Never_Held_A_Pointer_Has_No_Last_Array()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x8)], [(2, Holder, Pointer(0))]);
+
+        var holder = MemoryHistoryStoreHelper.GetBlock(store, Holder);
+
+        Assert.Null(MemoryHistoryPointerReader.ReadLastArray(store, TraceBufferPool.Empty, holder));
+    }
+
+    [Fact]
+    public void A_Pointer_To_Memory_Freed_Before_The_Position_Finds_The_Last_Block_There()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Target, 0x20, 1, 3),
+                                                    MemoryHistoryStoreHelper.Block(Target, 0x20, 4, 6)],
+                                                   [(2, Target, [1]), (5, Target, [2])]);
+
+        var freed = store.GetFreedBlock(Target + 8, At(7));
+
+        Assert.Equal(At(4), store.Blocks[freed].FromPosition);
+    }
+
+    [Fact]
+    public void A_Pointer_To_Live_Or_Unfreed_Memory_Has_No_Freed_Block()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Target, 0x20, 1, 5)], [(2, Target, [1])]);
+
+        Assert.Equal(-1, store.GetFreedBlock(Target, At(3)));
+
+        Assert.Equal(-1, store.GetFreedBlock(Holder, At(7)));
+    }
+
     private static byte[] Pointer(ulong value) => BitConverter.GetBytes(value);
 }

@@ -105,6 +105,14 @@ public sealed partial class MemoryReadsViewModel(PlayheadMemoryViewModel owner) 
         }
     }
 
+    public void OpenSnapshot(int index)
+    {
+        if (GetRead(index) is { } read)
+        {
+            Owner.OpenSnapshot(read.Position);
+        }
+    }
+
     partial void OnFunctionFilterChanged(string value) => Rebuild();
 
     partial void OnAddressFilterChanged(string value) => Rebuild();

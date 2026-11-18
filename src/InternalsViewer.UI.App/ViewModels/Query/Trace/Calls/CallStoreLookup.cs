@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System;
@@ -31,6 +32,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   AddressMap addressMap,
                                   MemoryHistoryStore memoryHistory,
                                   TraceBufferPool bufferPool,
+                                  Func<int, string?> getContentLabel,
+                                  Func<ulong, string?> getModuleLabel,
+                                  Func<ulong, string?> getVtableBase,
                                   MemoryObjectMap memoryObjects,
                                   StorageIdMap storageIds,
                                   SymbolsViewModel symbols) : ITraceSignatureSource
@@ -101,13 +105,21 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         if (className is not null)
         {
-            return new ValueDescription(address, className) { Origin = entry };
+            return new ValueDescription(address, GetShortName(className)) { Origin = entry };
         }
 
-        if (containing is ({ } inside, var offset)
-            && (inside.VtableClassName ?? inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
+        if (isPointer && GetContentLabel(value, GetPosition(slot, call)) is { } content)
         {
-            return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", container) { Origin = inside };
+            return new ValueDescription(address, content) { Origin = entry };
+        }
+
+        if (containing is ({ } inside, var offset) && GetContainerName(inside, GetPosition(slot, call)) is { } container)
+        {
+            var type = GetInterfaceName(inside.Address + offset, GetPosition(slot, call)) is { } interfaceName
+                ? $"{GetShortName(container)}.{interfaceName}"
+                : GetShortName(container);
+
+            return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", type) { Origin = inside };
         }
 
         if (slot.Type == ThisType || value == 0)
@@ -138,7 +150,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, allocation) { Origin = entry };
         }
 
-        return DescribeStackObject(value, GetPosition(slot, call)) ?? DescribeMemoryObject(value, GetPosition(slot, call));
+        return DescribeStackObject(value, GetPosition(slot, call))
+               ?? DescribeMemoryObject(value, GetPosition(slot, call))
+               ?? (getModuleLabel(value) is { } module ? new ValueDescription(address, module) : null);
     }
 
     public async Task<CallSignature?> GetSignatureAsync(CallTreeNode node, int callIndex)
@@ -282,23 +296,45 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return $"Page {page.Page}";
         }
 
-        var entry = addressMap.GetEntry(pointer.Value, position);
-
-        if ((entry?.VtableClassName ?? entry?.ClassName) is { } className)
+        if (IteratorText.GetDetail(GetIterator(pointer.Value)) is { } iterator)
         {
-            return className;
+            return iterator;
         }
 
-        if (GetContaining(pointer.Value, position) is ({ } inside, var offset)
-            && (inside.VtableClassName ?? inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
+        var entry = addressMap.GetEntry(pointer.Value, position);
+
+        if ((entry?.VtableClassName ?? entry?.ClassName ?? GetContentLabel(pointer.Value, position)) is { } className)
         {
-            return memoryHistory.Layout.GetFieldPath(inside.VtableClassName ?? inside.ClassName, (int)offset) is { } field
-                ? $"{container}.{field}"
-                : $"{container} + 0x{offset:X}";
+            return GetShortName(className);
+        }
+
+        if (GetContaining(pointer.Value, position) is ({ } inside, var offset) && GetContainerName(inside, position) is { } container)
+        {
+            return (GetInterfaceName(pointer.Value, position) ?? memoryHistory.Layout.GetFieldPath(container, (int)offset)) is { } field
+                ? $"{GetShortName(container)}.{field}"
+                : $"{GetShortName(container)} + 0x{offset:X}";
         }
 
         return entry?.Site ?? $"0x{pointer.Value:X}";
     }
+
+    private string? GetInterfaceName(ulong address, TracePosition position)
+        => new MemoryHistoryReader(memoryHistory, position).TryRead(address, out ulong vtable) ? getVtableBase(vtable) : null;
+
+    private static string GetShortName(string name) => name is ['"', ..] ? name : TypeNameText.Shorten(name);
+
+    private string? GetContentLabel(ulong value, TracePosition position)
+        => memoryHistory.GetBlock(value, position) is >= 0 and var block
+           && memoryHistory.Blocks[block] is { IsStack: false } item
+           && item.Address == value
+            ? getContentLabel(block)
+            : null;
+
+    private string? GetContainerName(AddressMapEntry inside, TracePosition position)
+        => inside.VtableClassName
+           ?? inside.ClassName
+           ?? GetContentLabel(inside.Address, position)
+           ?? TraceReferenceFinder.GetAllocationName(inside);
 
     private (AddressMapEntry Entry, ulong Offset)? GetContaining(ulong value, TracePosition position)
     {

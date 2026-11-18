@@ -92,7 +92,10 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           MemoryHistoryStore? memoryHistory = null,
                           MemoryObjectMap? memoryObjects = null,
                           StorageIdMap? storageIds = null,
-                          TraceBufferPool? bufferPool = null)
+                          TraceBufferPool? bufferPool = null,
+                          Func<int, string?>? getContentLabel = null,
+                          Func<ulong, string?>? getModuleLabel = null,
+                          Func<ulong, string?>? getVtableBase = null)
     {
         Cancel();
 
@@ -105,6 +108,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 addressMap ?? AddressMap.Empty,
                                 memoryHistory ?? MemoryHistoryStore.Empty,
                                 bufferPool ?? TraceBufferPool.Empty,
+                                getContentLabel ?? (_ => null),
+                                getModuleLabel ?? (_ => null),
+                                getVtableBase ?? (_ => null),
                                 memoryObjects ?? MemoryObjectMap.Empty,
                                 storageIds ?? StorageIdMap.Empty,
                                 symbols);

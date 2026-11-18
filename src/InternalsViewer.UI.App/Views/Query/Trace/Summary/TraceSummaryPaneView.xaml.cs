@@ -154,6 +154,10 @@ public sealed partial class TraceSummaryPaneView : UserControl, IDisposable
         {
             Pane.Open(content);
         }
+        else if (content.IsCall)
+        {
+            Pane.ZoomToCall(content);
+        }
         else
         {
             node.IsExpanded = !node.IsExpanded;

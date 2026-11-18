@@ -447,7 +447,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         var selected = SelectedFieldRow?.Id;
 
         FieldTable = MemoryFieldTableBuilder.CreateFieldTable(Layout,
-                                                              GetPointerCell,
+                                                              (_, p) => GetPointerCell(p),
+                                                              HexAddress + (ulong)ShownBase,
                                                               [.. ShownFields.Select(f => f.Field)],
                                                               [.. values],
                                                               [.. ShownFields.Select(f => colours[f.Colour])]);
@@ -479,8 +480,17 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
                                     new ActionLink($"{IndirectPrefix}{GetAddressText(inner)}",
                                                    () => Navigator.OpenMemory(innerBlock, inner, position))])
             {
-                Suffix = History.GetPointerTarget(inner, position),
-                IsChained = true
+                Suffix = History.GetPointerDetail(inner) ?? History.GetPointerTarget(inner, position),
+                IsChained = true,
+                ObjectBadges = History.GetObjectBadges(innerBlock)
+            };
+        }
+
+        if (block >= 0 && History.GetPointerArray(pointer, position) is { Count: > 1 } array)
+        {
+            return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(block, pointer, position))])
+            {
+                Targets = [.. array.Select(p => GetTargetLink(p, position))]
             };
         }
 
@@ -488,13 +498,23 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         {
             return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(block, pointer, position))])
             {
-                Suffix = History.GetPointerTarget(pointer, position)
+                Suffix = History.GetPointerTarget(pointer, position),
+                ObjectBadges = History.GetObjectBadges(block)
             };
         }
 
         if (History.GetBufferPage(pointer, position) is not { } page)
         {
-            return text;
+            if (History.GetFreedBlock(pointer, position) is { } freed)
+            {
+                return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(freed.Block, pointer, freed.Position))])
+                {
+                    Suffix = History.GetFreedLabel(freed.Block, pointer),
+                    ObjectBadges = History.GetObjectBadges(freed.Block)
+                };
+            }
+
+            return History.GetUntrackedLabel(pointer, position) is { } label ? new ActionLinks([]) { Prefix = text, Suffix = label } : text;
         }
 
         var offset = page.Offset == 0 ? string.Empty : $" +0x{page.Offset:X}";
@@ -745,6 +765,12 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         Show();
     }
 
+    private ActionLink GetTargetLink(MemoryHistoryPointer pointer, TracePosition position)
+        => new(History.GetPointerName(pointer, position),
+               pointer.Page is { } page
+                   ? () => Navigator.OpenBufferPage(page)
+                   : () => Navigator.OpenMemory(pointer.Block, pointer.Value, position));
+
     [RelayCommand(CanExecute = nameof(CanGoBack))]
     private void GoBack() => Travel(-1);
 
@@ -921,7 +947,7 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     }
 
     protected object GetValueCell(MemoryField field, ulong? value)
-        => MemoryFieldTableBuilder.GetValueCell(Layout, GetPointerCell, field, value);
+        => MemoryFieldTableBuilder.GetValueCell(Layout, (_, p) => GetPointerCell(p), field, null, value);
 
     private MemoryUsageChart? CreateChart(IReadOnlyList<TraceMemoryUsage> usage, IReadOnlyList<Colour> colours, TracePosition position)
     {

@@ -97,6 +97,14 @@ public abstract partial class TraceSummaryPaneViewModel(string title,
         GetNavigator().OpenMemory(node.Block, node.Address, position);
     }
 
+    public void ZoomToCall(TraceSummaryNode node)
+    {
+        if (node.Call is { } call)
+        {
+            GetNavigator().ZoomToCall(call, node.CallIndex);
+        }
+    }
+
     public void OpenHashTable(TraceSummaryNode node)
     {
         if (node.HashTableGroup != 0)

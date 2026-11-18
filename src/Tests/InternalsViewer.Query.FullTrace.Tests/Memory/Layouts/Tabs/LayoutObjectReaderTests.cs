@@ -147,6 +147,65 @@ public class LayoutObjectReaderTests
     }
 
     [Fact]
+    public void An_Object_Found_Inside_A_Block_Ends_Where_The_Next_Pointer_Starts()
+    {
+        var block = ReadBlock([Session + 0x58], [new EmbeddedObject(Session + 0x48, "CMxcContainer", 0x20)]);
+
+        Assert.Equal(0x10, block.Fields.Single(f => f.Name == "CMxcContainer").Length);
+    }
+
+    [Fact]
+    public void An_Object_Found_Inside_A_Block_Ends_Where_The_Next_Object_Starts()
+    {
+        var block = ReadBlock([],
+                              [
+                                  new EmbeddedObject(Session + 0x48, "CMxcContainer", 0x40),
+                                  new EmbeddedObject(Session + 0x60, "HoBtAccess", 0x10)
+                              ]);
+
+        Assert.Equal([("CMxcContainer", 0x18), ("HoBtAccess", 0x10)], block.Fields.Select(f => (f.Name, f.Length)));
+    }
+
+    [Fact]
+    public void A_Pointer_At_The_Start_Of_An_Object_Found_Inside_A_Block_Takes_The_Name_Of_The_Object()
+    {
+        var block = ReadBlock([Session + 0x48, Session + 0x58], [new EmbeddedObject(Session + 0x48, "CMxcContainer", 0x20)]);
+
+        Assert.Equal([("CMxcContainer", 0x48, 8, false), ("Pointer+0x58", 0x58, 8, false)],
+                     block.Fields.Select(f => (f.Name, f.Offset, f.Length, f.IsBytes)));
+    }
+
+    [Fact]
+    public void A_Named_Pointer_At_The_Start_Of_An_Object_Found_Inside_A_Block_Keeps_Its_Name()
+    {
+        var block = LayoutObjectReader.Read(new FakeTraceReplay(),
+                                            "Block",
+                                            [],
+                                            Session,
+                                            0x100,
+                                            [Session + 0x48, Session + 0x58],
+                                            [new EmbeddedObject(Session + 0x48, "CMxcContainer", 0x20)],
+                                            new Dictionary<ulong, string> { [Session + 0x48] = "Vtable" });
+
+        Assert.Equal([("CMxcContainer", 0x48, 0x10, true), ("Vtable", 0x48, 8, false), ("Pointer+0x58", 0x58, 8, false)],
+                     block.Fields.Select(f => (f.Name, f.Offset, f.Length, f.IsBytes)));
+    }
+
+    [Fact]
+    public void A_Pointer_Slot_Given_A_Name_Takes_That_Name()
+    {
+        var block = LayoutObjectReader.Read(new FakeTraceReplay(),
+                                            "Block",
+                                            [],
+                                            Session,
+                                            0x100,
+                                            [Session, Session + 0x10],
+                                            pointerNames: new Dictionary<ulong, string> { [Session] = "Vtable" });
+
+        Assert.Equal(["Vtable", "Pointer+0x10"], block.Fields.Select(f => f.Name));
+    }
+
+    [Fact]
     public void An_Object_Found_Inside_A_Block_Reads_Its_Fields_When_Its_Layout_Is_Known()
     {
         var size = Layout.GetKnownSize("HeapRowObject");

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.Enums;
@@ -40,20 +41,51 @@ public static class MemoryChangeRuns
             }
         }
 
+        return GetRuns(states, writers);
+    }
+
+    public static List<MemoryChangeRun> GetReadRuns(IReadOnlyList<MemoryHistoryRead> reads, TracePosition position, int size)
+    {
+        var states = new MemoryChangeState[size];
+
+        var readers = new int[size];
+
+        foreach (var read in reads)
+        {
+            if (read.Position > position)
+            {
+                break;
+            }
+
+            var end = Math.Min(read.Offset + read.Length, size);
+
+            for (var offset = Math.Max(read.Offset, 0); offset < end; offset++)
+            {
+                states[offset] = MemoryChangeState.Read;
+
+                readers[offset] = read.CallNodeIndex;
+            }
+        }
+
+        return GetRuns(states, readers);
+    }
+
+    private static List<MemoryChangeRun> GetRuns(MemoryChangeState[] states, int[] callers)
+    {
         var runs = new List<MemoryChangeRun>();
 
         var start = 0;
 
-        for (var offset = 1; offset <= size; offset++)
+        for (var offset = 1; offset <= states.Length; offset++)
         {
-            if (offset < size && states[offset] == states[start] && writers[offset] == writers[start])
+            if (offset < states.Length && states[offset] == states[start] && callers[offset] == callers[start])
             {
                 continue;
             }
 
-            if (states[start] != MemoryChangeState.Unchanged)
+            if (states.Length > 0 && states[start] != MemoryChangeState.Unchanged)
             {
-                runs.Add(new MemoryChangeRun(start, offset - 1, states[start], writers[start]));
+                runs.Add(new MemoryChangeRun(start, offset - 1, states[start], callers[start]));
             }
 
             start = offset;

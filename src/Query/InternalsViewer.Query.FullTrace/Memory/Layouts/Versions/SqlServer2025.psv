@@ -15,6 +15,7 @@ Base|CXteTableScan|CXteRowset
 Base|CXteRange|CXteRowset
 Base|CXteStreamAggregate|CXte
 Base|CValRefOrdinal|CValRefComp
+Base|CValRefOrdinalEx|CValRefOrdinal
 Base|CValRefPrefetch|CValRefOrdinal
 Base|CValRefJoin|CValRefComp
 Base|CValRefCalculated|CValRefComp
@@ -28,6 +29,7 @@ Size|DeepDataPage|0x18
 Size|ColumnBinding|0x50
 Size|ColumnBindingInfrequent|0x30
 Size|tagDBBINDING|0x58
+Size|COptExpr|0xB0
 Value|CQScanNew|End Of Rows Status|0x40EC6
 Value|CQScanNew|Fake Row Status|0x4FFFF
 Value|BUF|Latch Exclusive Flag|0x02
@@ -99,12 +101,12 @@ CBndOutputs|Column Flags Memory Object|0x40|8|Pointer||CBitVector::Init
 CBndOutputs|Column Flags|0x48|4|Bitmap||CBitVector::Set
 OutputColumnArray|Column|0x00|8|Pointer||CXte::RemapOutputValrefs,CBpXte::BpCompile,CBndOutputs::Append
 CValRefComp|Interface|0x28|8|Pointer||CValComp::CValComp
-CValRefComp|Type|0x30|8|Hex||
-CValRefComp|Type Details|0x40|8|Hex||
+CValRefComp|Type|0x30|8|TypeInfo||
+CValRefComp|Type Details|0x40|8|TypeDetails||
 CValRefComp|Producer|0x50|8|Pointer||CValRef*
 CValRefSS|Producer|0x30|8|Pointer||CValRefExecTable::CValRefExecTable
-CValRefSS|Type|0x38|8|Hex||
-CValRefSS|Type Details|0x48|8|Hex||
+CValRefSS|Type|0x38|8|TypeInfo||
+CValRefSS|Type Details|0x48|8|TypeDetails||
 CValRefSS|Column Id|0x58|4|Number||
 CValRefJoin|Side|0x58|2|Number||
 CValRefJoin|Column|0x5C|4|Number||
@@ -114,8 +116,8 @@ CValRefCalculated|Expression|0x68|8|Pointer||
 CValRefBatchRedirect|Target|0x30|8|Pointer||
 CValRefBatchRedirect|Producer|0x38|8|Pointer||CValRefBatchRedirect::CValRefBatchRedirect
 CValRefBatchRedirect|Column|0x40|4|Number||
-CTypeInfo|Type|0x00|8|Hex||
-CTypeInfo|Type Details|0x10|8|Hex||
+CTypeInfo|Type|0x00|8|TypeInfo||
+CTypeInfo|Type Details|0x10|8|TypeDetails||
 Expression|Operands|0x28|8|Pointer||
 Expression|Operand Count|0x30|4|Number||
 OperandArray|Operand|0x00|8|Pointer||
@@ -142,6 +144,10 @@ CValExpr|Executor|0x08|8|Pointer||
 CEsExec|Input Values|0x28|8|Pointer||
 ExecutorArray|Executor|0x00|8|Pointer||
 ExecutorValueArray|Value|0x00|8|Pointer||
+COptExpr|Operator|0x10|8|Pointer||COptExpr::COptExpr
+COptExpr|Child Count|0x18|4|Number||COptExpr::COptExpr
+COptExpr|Children|0x20|8|Pointer||COptExpr::COptExpr
+ExpressionChildArray|Child|0x00|8|Pointer||
 CValExec|Entry|0x08|8|Pointer||CValRefOrdinal::PvalInvokeSpecific
 RowsetNewSS|Interface|0x70|8|Pointer||
 RowsetNewSS|Data Set Session|0xB0|8|Pointer||

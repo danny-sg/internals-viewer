@@ -1,6 +1,7 @@
 using System.Numerics;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Enums;
@@ -27,6 +28,8 @@ public static class MemoryFieldDecoderLookup
         MemoryFieldDecoder.BindingFlags => GetFlagsText((ColumnBindingFlags)(uint)value),
         MemoryFieldDecoder.RecordOffset => (int)(uint)value is < 0 and var offset ? $"{VariablePrefix}{-offset}" : $"{value}",
         MemoryFieldDecoder.Bitmap => GetBitmapText(value),
+        MemoryFieldDecoder.TypeInfo => SqlTypeInfo.Create(value, 0).ToString(),
+        MemoryFieldDecoder.TypeDetails => GetTypeDetailsText(SqlTypeInfo.Create(0, value)),
         _ => $"{value}"
     };
 
@@ -35,6 +38,13 @@ public static class MemoryFieldDecoderLookup
         var count = Math.Max(1, (sizeof(ulong) * 8 - BitOperations.LeadingZeroCount(value) + 7) / 8);
 
         return string.Join(" ", BitConverter.GetBytes(value).Take(count).Select(b => b.ToBinaryString()));
+    }
+
+    private static string GetTypeDetailsText(SqlTypeInfo details)
+    {
+        var text = $"Maximum Length {details.MaxLength}, Precision {details.Precision}, Scale {details.Scale}";
+
+        return details.Collation == 0 ? text : $"{text}, Collation {details.Collation}";
     }
 
     private static string GetLatchText(EngineLayout.BufferLayout layout, ulong state)

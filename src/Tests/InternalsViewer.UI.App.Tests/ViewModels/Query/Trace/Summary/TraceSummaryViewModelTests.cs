@@ -11,7 +11,7 @@ public class TraceSummaryViewModelTests
     {
         var summary = Create();
 
-        Assert.Equal([true, false], summary.Panes.Select(p => p.IsExpanded));
+        Assert.Equal([false, true, false], summary.Panes.Select(p => p.IsExpanded));
     }
 
     [Fact]
@@ -19,9 +19,9 @@ public class TraceSummaryViewModelTests
     {
         var summary = Create();
 
-        summary.Panes[1].Toggle();
+        summary.Panes[0].Toggle();
 
-        Assert.Equal([false, true], summary.Panes.Select(p => p.IsExpanded));
+        Assert.Equal([true, false, false], summary.Panes.Select(p => p.IsExpanded));
     }
 
     [Fact]
@@ -29,9 +29,9 @@ public class TraceSummaryViewModelTests
     {
         var summary = Create();
 
-        summary.Panes[0].Toggle();
+        summary.Panes[1].Toggle();
 
-        Assert.Equal([false, false], summary.Panes.Select(p => p.IsExpanded));
+        Assert.Equal([false, false, false], summary.Panes.Select(p => p.IsExpanded));
     }
 
     private static TraceSummaryViewModel Create()

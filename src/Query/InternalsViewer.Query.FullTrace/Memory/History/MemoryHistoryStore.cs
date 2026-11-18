@@ -190,6 +190,27 @@ public sealed partial class MemoryHistoryStore
     public int GetBlock(ulong address, TracePosition position)
         => GetBlock(StackAddresses, address, position) is >= 0 and var stack ? stack : GetBlock(Addresses, address, position);
 
+    public int GetFreedBlock(ulong address, TracePosition position)
+    {
+        var found = -1;
+
+        foreach (var at in Addresses.Addresses.GetCandidates(address))
+        {
+            var block = Addresses.Blocks[at];
+
+            var item = BlockArray[block];
+
+            if (address < item.Address + (ulong)item.Size
+                && item.ToPosition <= position
+                && (found < 0 || BlockArray[found].ToPosition < item.ToPosition))
+            {
+                found = block;
+            }
+        }
+
+        return found;
+    }
+
     public bool IsLive(int block, TracePosition position)
         => BlockArray[block] is { InstanceCount: > 0 }
             ? GetInstance(block, position) >= 0
@@ -204,7 +225,7 @@ public sealed partial class MemoryHistoryStore
     {
         ReadOnlySpan<MemoryHistoryInstance> instances = Instances.AsSpan(BlockArray[block].FirstInstance, BlockArray[block].InstanceCount);
 
-        var index = SortedSearch.FirstAfter<MemoryHistoryInstance, TracePosition>(instances, position, i => i.FromPosition) - 1;
+        var index = SortedSearch.FirstAfter(instances, position, i => i.FromPosition) - 1;
 
         return index >= 0 && position < instances[index].ToPosition ? index : -1;
     }

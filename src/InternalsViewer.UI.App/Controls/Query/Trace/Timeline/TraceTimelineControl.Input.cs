@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -806,7 +807,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(CallStackItem());
+        flyout.Items.Add(CallStackItem(span?.From));
 
         return flyout;
     }
@@ -850,7 +851,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(CallStackItem());
+        flyout.Items.Add(CallStackItem(null));
 
         return flyout;
     }
@@ -875,8 +876,7 @@ public sealed partial class TraceTimelineControl
 
     private int VisiblePaneCount => (ShowsOperators ? 1 : 0) + (ShowsMemory ? 1 : 0) + (ShowsFlameChart ? 1 : 0);
 
-    private ToggleMenuFlyoutItem CallStackItem()
-        => MenuItems.Toggle("Call Stack", ShowCallStack, isChecked => CallStackVisibilityRequested?.Invoke(isChecked));
+    private MenuFlyoutItem CallStackItem(TracePoint? point) => MenuItems.Create("Call Stack", () => CallStackRequested?.Invoke(point));
 
     private void Select(FlameHit? hit)
     {

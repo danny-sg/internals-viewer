@@ -58,6 +58,20 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     public static Visibility GetTargetVisibility(string? target) => GetVisibility(target is not null);
 
+    public static object GetTargetContent(string? target)
+    {
+        if (TextLabel.GetString(target) is not { } value)
+        {
+            return target ?? string.Empty;
+        }
+
+        var text = new TextBlock();
+
+        StringText.AddRuns(text.Inlines, value);
+
+        return text;
+    }
+
     public static Visibility IsClassVisible(PlayheadCallRow? row) => GetVisibility(row?.ObjectClass is not null);
 
     public static Visibility IsBaseClassVisible(PlayheadCallRow? row) => GetVisibility(row?.BaseClass is not null);
@@ -83,7 +97,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsTargetVisible(CallSignaturePart? part) => GetVisibility(part?.MemoryTarget is not null);
 
-    private string TargetText(CallSignaturePart? part) => part?.MemoryTarget ?? string.Empty;
+    private object TargetText(CallSignaturePart? part) => GetTargetContent(part?.MemoryTarget);
 
     private string TargetToolTip(CallSignaturePart? part) => GetTargetToolTip(part?.IsBufferPage == true);
 

@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Helpers.Converters.Results;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Text;
@@ -19,9 +23,21 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private const double ActionGlyphSize = 12;
 
+    private const double LinkInset = 5;
+
+    private const double LabelSpacing = 3;
+
+    private const string ListStart = "[";
+
+    private const string ListSeparator = ", ";
+
+    private const string ListEnd = "]";
+
     private const double BadgeSpacing = 4;
 
     private const double BadgeFontSize = 9;
+
+    private const double ObjectBadgeSpacing = 6;
 
     private const double SwatchSize = 20;
 
@@ -37,6 +53,12 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static readonly Thickness ChainedLinkMargin = new(-ActionSpacing, 0, 0, 0);
 
+    private static readonly Thickness ActionPadding = new(CellPadding.Left - LinkInset, 0, 0, 0);
+
+    private static readonly Thickness LabelMargin = new(LabelSpacing - ActionSpacing, 0, 0, 0);
+
+    private static readonly Thickness ObjectBadgeMargin = new(ObjectBadgeSpacing - ActionSpacing, 0, 0, 0);
+
     private static readonly Thickness ClassMargin = new(0, 0, 4, 0);
 
     private static readonly Thickness BadgePadding = new(5, 1, 5, 2);
@@ -48,6 +70,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     private static readonly SolidColorBrush BadgeBackground = new(Microsoft.UI.Colors.White);
 
     private static readonly SolidColorBrush BadgeForeground = new(Microsoft.UI.Colors.Black);
+
+    private static readonly SolidColorBrush ObjectBadgeForeground = new(Microsoft.UI.Colors.White);
 
     public int Ordinal { get; } = ordinal;
 
@@ -367,10 +391,24 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         if (host.Content is not StackPanel { Tag: ActionLinks previous } panel
             || previous.Links.Count != actions.Links.Count
             || previous.Badges.Count != actions.Badges.Count
+            || (previous.Prefix is null) != (actions.Prefix is null)
             || (previous.Suffix is null) != (actions.Suffix is null)
+            || (previous.Targets.Count > 0) != (actions.Targets.Count > 0)
+            || (previous.ObjectBadges.Count > 0) != (actions.ObjectBadges.Count > 0)
             || previous.IsChained != actions.IsChained)
         {
-            panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = ActionSpacing };
+            panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = ActionSpacing, Padding = ActionPadding };
+
+            if (actions.Prefix is not null)
+            {
+                panel.Children.Add(new HyperlinkButton
+                {
+                    Style = (Style)Application.Current.Resources["ResultPointerStyle"],
+                    Foreground = Resource("TextFillColorPrimaryBrush"),
+                    IsHitTestVisible = false,
+                    IsTabStop = false
+                });
+            }
 
             for (var index = 0; index < actions.Links.Count; index++)
             {
@@ -391,13 +429,34 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 panel.Children.Add(CreateBadge(badge));
             }
 
-            if (actions.Suffix is not null)
+            var labelMargin = actions.Badges.Count == 0 ? LabelMargin : default;
+
+            if (actions.Targets.Count > 0)
             {
-                panel.Children.Add(new TextBlock
+                panel.Children.Add(new StackPanel
                 {
+                    Orientation = Orientation.Horizontal,
                     VerticalAlignment = VerticalAlignment.Center,
-                    TextLineBounds = TextLineBounds.TrimToCapHeight,
-                    Foreground = Resource("TextFillColorSecondaryBrush")
+                    Margin = labelMargin
+                });
+            }
+            else if (actions.Suffix is not null)
+            {
+                var label = CreateSecondaryText(string.Empty);
+
+                label.Margin = labelMargin;
+
+                panel.Children.Add(label);
+            }
+
+            if (actions.ObjectBadges.Count > 0)
+            {
+                panel.Children.Add(new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Spacing = BadgeSpacing,
+                    Margin = ObjectBadgeMargin
                 });
             }
 
@@ -406,9 +465,16 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         panel.Tag = actions;
 
+        var first = actions.Prefix is null ? 0 : 1;
+
+        if (actions.Prefix is { } prefix && panel.Children[0] is HyperlinkButton leading)
+        {
+            SetLinkText(leading, prefix);
+        }
+
         for (var index = 0; index < actions.Links.Count; index++)
         {
-            if (panel.Children[index] is HyperlinkButton button)
+            if (panel.Children[first + index] is HyperlinkButton button)
             {
                 SetAction(button, actions.Links[index]);
             }
@@ -416,15 +482,120 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         for (var index = 0; index < actions.Badges.Count; index++)
         {
-            if (panel.Children[actions.Links.Count + index] is Border { Child: TextBlock badge })
+            if (panel.Children[first + actions.Links.Count + index] is Border { Child: TextBlock badge })
             {
                 badge.Text = actions.Badges[index];
             }
         }
 
-        if (actions.Suffix is { } suffix && panel.Children[^1] is TextBlock text)
+        var tail = actions.ObjectBadges.Count > 0 ? 2 : 1;
+
+        if (actions.Targets.Count > 0 && panel.Children[^tail] is StackPanel targets)
         {
-            text.Text = suffix;
+            SetTargets(targets, actions.Targets);
+        }
+        else if (actions.Suffix is { } suffix && panel.Children[^tail] is TextBlock text)
+        {
+            SetLabel(text, suffix);
+        }
+
+        if (actions.ObjectBadges.Count > 0 && panel.Children[^1] is StackPanel objects)
+        {
+            SetObjectBadges(objects, actions.ObjectBadges);
+        }
+    }
+
+    private static void SetObjectBadges(StackPanel panel, IReadOnlyList<ObjectBadge> badges)
+    {
+        if (panel.Tag is IReadOnlyList<ObjectBadge> current && current.SequenceEqual(badges))
+        {
+            return;
+        }
+
+        panel.Children.Clear();
+
+        foreach (var badge in badges)
+        {
+            var border = new Border
+            {
+                CornerRadius = BadgeCorner,
+                Padding = BadgePadding,
+                Background = HexColorToBrushConverter.ToBrush(badge.Colour),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = badge.Name,
+                    FontSize = BadgeFontSize,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = ObjectBadgeForeground
+                }
+            };
+
+            ToolTipService.SetToolTip(border, badge.StageName);
+
+            panel.Children.Add(border);
+        }
+
+        panel.Tag = badges;
+    }
+
+    private static void SetTargets(StackPanel panel, IReadOnlyList<ActionLink> targets)
+    {
+        panel.Children.Clear();
+
+        var isList = targets.Count > 1;
+
+        if (isList)
+        {
+            panel.Children.Add(CreateSecondaryText(ListStart));
+        }
+
+        for (var index = 0; index < Math.Min(targets.Count, PointerArrayText.MaximumShown); index++)
+        {
+            if (index > 0)
+            {
+                panel.Children.Add(CreateSecondaryText(ListSeparator));
+            }
+
+            var button = new HyperlinkButton { Style = (Style)Application.Current.Resources["DetailLinkStyle"] };
+
+            button.Click += OnActionClick;
+
+            SetAction(button, targets[index]);
+
+            panel.Children.Add(button);
+        }
+
+        if (targets.Count > PointerArrayText.MaximumShown)
+        {
+            panel.Children.Add(CreateSecondaryText($"{ListSeparator}{PointerArrayText.GetMoreText(targets.Count)}"));
+        }
+
+        if (isList)
+        {
+            panel.Children.Add(CreateSecondaryText(ListEnd));
+        }
+    }
+
+    private static TextBlock CreateSecondaryText(string text) => new()
+    {
+        Text = text,
+        VerticalAlignment = VerticalAlignment.Center,
+        TextLineBounds = TextLineBounds.TrimToCapHeight,
+        Foreground = Resource("TextFillColorSecondaryBrush")
+    };
+
+    private static void SetLabel(TextBlock text, string label)
+    {
+        text.Inlines.Clear();
+
+        if (TextLabel.GetString(label) is { } value)
+        {
+            StringText.AddRuns(text.Inlines, value);
+        }
+        else
+        {
+            text.Inlines.Add(new Run { Text = label });
         }
     }
 
@@ -479,16 +650,21 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         }
         else
         {
-            var text = button.Content as TextBlock ?? new TextBlock { TextLineBounds = TextLineBounds.TrimToCapHeight };
-
-            HexText.Apply(text, link.Text);
-
-            button.Content = text;
+            SetLinkText(button, link.Text);
         }
 
         ToolTipService.SetToolTip(button, link.Glyph is null ? null : link.Text);
 
         button.Tag = link;
+    }
+
+    private static void SetLinkText(HyperlinkButton button, string text)
+    {
+        var block = button.Content as TextBlock ?? new TextBlock { TextLineBounds = TextLineBounds.TrimToCapHeight };
+
+        HexText.Apply(block, text);
+
+        button.Content = block;
     }
 
     private static void ApplyBadges(ContentControl host, BadgeText value)

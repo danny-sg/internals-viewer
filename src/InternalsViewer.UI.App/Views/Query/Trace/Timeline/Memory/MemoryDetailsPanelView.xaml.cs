@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -64,7 +65,7 @@ public sealed partial class MemoryDetailsPanelView : UserControl
     }
 
     private void OnInitialisedContextRequested(UIElement sender, ContextRequestedEventArgs e)
-        => ShowLinkMenu(ViewModel?.Details.InitialisedLink, sender, e);
+        => ShowLinkMenu(ViewModel?.Details.InitialisedLink, ViewModel?.Details.InitialisedAt?.Position, sender, e);
 
     private void OnInitialisedByContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
@@ -81,7 +82,10 @@ public sealed partial class MemoryDetailsPanelView : UserControl
     }
 
     private void OnDestroyedContextRequested(UIElement sender, ContextRequestedEventArgs e)
-        => ShowLinkMenu(ViewModel?.Details.DestroyedLink, sender, e);
+        => ShowLinkMenu(ViewModel?.Details.DestroyedLink,
+                        ViewModel is { Details.DestroyedAt: { } point } viewModel ? viewModel.GetLiveBefore(point.Position) : null,
+                        sender,
+                        e);
 
     private void OnWriterContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
@@ -167,11 +171,22 @@ public sealed partial class MemoryDetailsPanelView : UserControl
 
     private void OnReaderPointerExited(object sender, PointerRoutedEventArgs e) => ViewModel?.MarkReader(null);
 
-    private void ShowLinkMenu(TraceCallLink? link, UIElement sender, ContextRequestedEventArgs e)
+    private void ShowLinkMenu(TraceCallLink? link, TracePosition? snapshot, UIElement sender, ContextRequestedEventArgs e)
     {
-        if (ViewModel?.Navigator is { } navigator && link is not null)
+        if (ViewModel is not { Navigator: { } navigator } viewModel || link is null)
         {
-            TraceLinkMenu.Show(TraceLinkMenu.CreateForPosition(navigator, link), sender, e);
+            return;
         }
+
+        var menu = TraceLinkMenu.CreateForPosition(navigator, link);
+
+        if (snapshot is { } position)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+
+            menu.Items.Add(MenuItems.Create("Open As Snapshot", () => viewModel.OpenSnapshot(position)));
+        }
+
+        TraceLinkMenu.Show(menu, sender, e);
     }
 }

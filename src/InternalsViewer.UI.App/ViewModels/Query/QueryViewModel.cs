@@ -415,7 +415,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         MemoryHistory = new MemoryHistoryViewModel(OpenCallTree)
         {
-            Records = new PlanOutputRecordReader(pageService, recordService, database, logger)
+            Records = new PlanOutputRecordReader(pageService, recordService, database, logger),
+            Logger = logger
         };
 
         TraceSummary = new TraceSummaryViewModel(MemoryHistory, () => TraceTimelineTab);
@@ -2917,7 +2918,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.MemoryHistory,
                             result.MemoryObjects,
                             StorageIdMap.Build(Database.AllocationUnits.Values),
-                            result.BufferPool);
+                            result.BufferPool,
+                            b => result.GetVtableClass(b) ?? result.GetTextLabel(b),
+                            result.GetModuleLabel,
+                            result.GetVtableBase);
 
         FullTraceTimeline = result.Timeline;
 

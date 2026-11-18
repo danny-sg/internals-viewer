@@ -4,5 +4,6 @@ public enum MemoryChangeState : byte
 {
     Unchanged,
     Changed,
-    Pending
+    Pending,
+    Read
 }

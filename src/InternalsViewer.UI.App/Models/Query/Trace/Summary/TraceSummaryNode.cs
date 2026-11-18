@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
@@ -39,7 +40,13 @@ public sealed partial class TraceSummaryNode(string name, string detail, string 
 
     public string? DataPathColumn { get; init; }
 
+    public CallTreeNode? Call { get; init; }
+
+    public int CallIndex { get; init; }
+
     public bool IsObject => Block >= 0;
+
+    public bool IsCall => Call is not null;
 
     public bool IsColumn => ColumnType is not null;
 

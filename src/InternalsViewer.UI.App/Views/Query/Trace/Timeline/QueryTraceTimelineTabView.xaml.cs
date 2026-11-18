@@ -44,14 +44,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private const string MemoryGroup = "TraceTimelineViewMemory";
 
-    private const string StepGroup = "TraceTimelineStep";
-
-    private const string CallStepText = "Call";
-
-    private const string SameCallStepText = "Same Call";
-
-    private const string TracksStepText = "Tracks";
-
     private const int MemoryRefreshMilliseconds = 50;
 
     private const int StackRefreshMilliseconds = 100;
@@ -70,7 +62,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private Button? _nextFrameButton;
 
-    private TextBlock? _stepLabel;
+    private ToggleButton? _cropToggle;
 
     private long _rulerPinnedToken;
 
@@ -94,7 +86,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.SearchRequested += Search;
 
-        TraceTimeline.CallStackVisibilityRequested += OnCallStackVisibilityRequested;
+        TraceTimeline.CallStackRequested += OnCallStackRequested;
 
         TraceTimeline.PaneVisibilityChanged += OnPaneVisibilityChanged;
 
@@ -113,8 +105,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.TickTrackAddRequested += OnTickTrackAddRequested;
 
         TraceTimeline.PlayStateChanged += OnPlayStateChanged;
-
-        TraceTimeline.StepModeChanged += OnStepModeChanged;
 
         TraceTimeline.CallStackChanged += OnCallStackChanged;
 
@@ -144,6 +134,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private QueryViewModel? RulerOwner { get; set; }
 
     private QueryLayoutViewModel? GuideLayout { get; set; }
+
+    private QueryOptionsViewModel? Options { get; set; }
 
     private (PlayheadStepMode Mode, string? Track)? StepModeBeforeGuide { get; set; }
 
@@ -187,6 +179,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         UpdatePlaybackVisibility();
 
+        _cropToggle = TabCommands.Toggle(TabCommands.Label("Crop to query"),
+                                         Options?.CropToQuery == true,
+                                         "Crop to the query, hiding compilation, setup and teardown",
+                                         (sender, _) => Options?.CropToQuery = TabCommands.IsChecked(sender));
+
         _searchToggle = TabCommands.Toggle(TabCommands.Glyph(SearchGlyph),
                                            false,
                                            "Search Calls and Memory",
@@ -204,7 +201,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                  _callsToggle,
                                  _playButton,
                                  TabCommands.Separator(),
-                                 CreateStepMenu(),
+                                 _cropToggle,
                                  _previousFrameButton,
                                  _nextFrameButton,
                                  TabCommands.Separator(),
@@ -232,7 +229,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.SearchRequested -= Search;
 
-        TraceTimeline.CallStackVisibilityRequested -= OnCallStackVisibilityRequested;
+        TraceTimeline.CallStackRequested -= OnCallStackRequested;
 
         TraceTimeline.PaneVisibilityChanged -= OnPaneVisibilityChanged;
 
@@ -251,8 +248,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.TickTrackAddRequested -= OnTickTrackAddRequested;
 
         TraceTimeline.PlayStateChanged -= OnPlayStateChanged;
-
-        TraceTimeline.StepModeChanged -= OnStepModeChanged;
 
         TraceTimeline.CallStackChanged -= OnCallStackChanged;
 
@@ -276,6 +271,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         AttachGuide(null);
 
+        AttachOptions(null);
+
         Ruler.Dispose();
 
         TraceTimeline.Dispose();
@@ -290,6 +287,32 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         AttachRuler(ViewModel);
 
         AttachGuide(ViewModel?.Layout);
+
+        AttachOptions(ViewModel?.QueryOptions);
+    }
+
+    private void AttachOptions(QueryOptionsViewModel? options)
+    {
+        if (ReferenceEquals(Options, options))
+        {
+            return;
+        }
+
+        Options?.PropertyChanged -= OnOptionsPropertyChanged;
+
+        Options = options;
+
+        options?.PropertyChanged += OnOptionsPropertyChanged;
+
+        _cropToggle?.IsChecked = options?.CropToQuery == true;
+    }
+
+    private void OnOptionsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryOptionsViewModel.CropToQuery))
+        {
+            _cropToggle?.IsChecked = Options?.CropToQuery == true;
+        }
     }
 
     private void AttachGuide(QueryLayoutViewModel? layout)
@@ -536,73 +559,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         return menu;
     }
-
-    private Button CreateStepMenu()
-    {
-        _stepLabel = TabCommands.Label(GetStepLabel());
-
-        var menu = new MenuFlyout();
-
-        menu.Opening += (_, _) => FillStepMenu(menu);
-
-        return TabCommands.Menu(_stepLabel,
-                                "Choose what Previous Frame and Next Frame step to. With Tracks or a track, Play steps through their ticks",
-                                menu);
-    }
-
-    private void FillStepMenu(MenuFlyout menu)
-    {
-        menu.Items.Clear();
-
-        menu.Items.Add(StepItem(CallStepText, PlayheadStepMode.Call, null));
-
-        menu.Items.Add(StepItem(SameCallStepText, PlayheadStepMode.SameCall, null));
-
-        menu.Items.Add(new MenuFlyoutSeparator());
-
-        menu.Items.Add(StepItem(TracksStepText, PlayheadStepMode.Tracks, null));
-
-        var tracks = TraceTimeline.GetStepTracks().ToList();
-
-        if (tracks.Count > 0)
-        {
-            menu.Items.Add(new MenuFlyoutSeparator());
-        }
-
-        foreach (var track in tracks)
-        {
-            menu.Items.Add(StepItem(track.MenuText, PlayheadStepMode.Track, track.Name));
-        }
-    }
-
-    private RadioMenuFlyoutItem StepItem(string text, PlayheadStepMode mode, string? track)
-    {
-        var item = new RadioMenuFlyoutItem
-        {
-            Text = text,
-            GroupName = StepGroup,
-            IsChecked = TraceTimeline.StepMode == mode && string.Equals(TraceTimeline.StepTrack, track, StringComparison.Ordinal)
-        };
-
-        item.Click += (_, _) => TraceTimeline.SetStepMode(mode, track);
-
-        return item;
-    }
-
-    private string GetStepLabel()
-    {
-        var text = TraceTimeline.StepMode switch
-        {
-            PlayheadStepMode.SameCall => SameCallStepText,
-            PlayheadStepMode.Tracks => TracksStepText,
-            PlayheadStepMode.Track => TraceTimeline.GetStepTrack(TraceTimeline.StepTrack)?.MenuText ?? CallStepText,
-            _ => CallStepText
-        };
-
-        return $"Step {text}";
-    }
-
-    private void OnStepModeChanged() => _stepLabel?.Text = GetStepLabel();
 
     private RadioMenuFlyoutItem MemoryItem(string text, TraceTimelineMemoryMode? mode)
     {
@@ -862,7 +818,17 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         }
     }
 
-    private void OnCallStackVisibilityRequested(bool isVisible) => ViewModel?.TraceTimelineTab.IsCallStackVisible = isVisible;
+    private void OnCallStackRequested(TracePoint? point)
+    {
+        if (point is { } found)
+        {
+            Tab?.ShowCallStack(found);
+        }
+        else
+        {
+            Tab?.ShowCallStack();
+        }
+    }
 
     private void OnPaneVisibilityChanged()
     {
