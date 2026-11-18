@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.FullTrace.Replay;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline;

@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 

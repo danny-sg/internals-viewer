@@ -10,6 +10,7 @@ using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 

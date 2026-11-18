@@ -22,6 +22,7 @@ using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Mcp.Tests;
 

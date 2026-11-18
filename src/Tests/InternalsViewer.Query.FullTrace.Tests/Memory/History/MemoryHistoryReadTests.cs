@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Replay;
 using static InternalsViewer.Query.FullTrace.Tests.Memory.History.MemoryHistoryStoreHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 

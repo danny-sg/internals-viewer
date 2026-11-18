@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Replay;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 

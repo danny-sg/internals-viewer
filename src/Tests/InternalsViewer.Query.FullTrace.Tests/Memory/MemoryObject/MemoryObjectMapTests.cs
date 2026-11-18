@@ -10,6 +10,7 @@ using InternalsViewer.Query.Memory;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 

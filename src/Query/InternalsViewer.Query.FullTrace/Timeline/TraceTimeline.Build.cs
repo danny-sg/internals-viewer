@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 

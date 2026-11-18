@@ -3,8 +3,9 @@ using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Calls;
 
-namespace InternalsViewer.Query.FullTrace.Calls;
+namespace InternalsViewer.Query.FullTrace.Replay;
 
 internal sealed class ReplayCallLog
 {

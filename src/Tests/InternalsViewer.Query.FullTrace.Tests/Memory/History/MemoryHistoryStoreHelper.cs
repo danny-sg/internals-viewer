@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Replay;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.History;

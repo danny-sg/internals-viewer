@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Events.BatchMode.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 

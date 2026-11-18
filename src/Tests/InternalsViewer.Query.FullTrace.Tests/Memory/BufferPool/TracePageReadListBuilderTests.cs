@@ -1,6 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Replay.Native;
+using InternalsViewer.Query.FullTrace.Replay;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
