@@ -27,22 +27,6 @@ public sealed class TraceTimelineThread
 
     internal TraceSpanStore Store { get; }
 
-    public int Depth
-    {
-        get
-        {
-            for (var depth = Rows.Count; depth > 0; depth--)
-            {
-                if (Rows[depth - 1].Count > 0)
-                {
-                    return depth;
-                }
-            }
-
-            return 0;
-        }
-    }
-
     public TracePoint Start
         => Rows.Where(r => r.Count > 0).Select(r => r.GetFrom(0)).DefaultIfEmpty(default).MinBy(p => p.Position);
 

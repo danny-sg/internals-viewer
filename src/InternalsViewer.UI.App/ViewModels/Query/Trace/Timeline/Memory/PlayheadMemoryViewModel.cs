@@ -526,9 +526,17 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void GoToWrite(int index)
     {
-        if (IsOpen && index >= 0 && index < History.Store.Blocks[Block].WriteCount)
+        if (GetWritePoint(index) is { } point)
         {
-            RequestPlayhead(History.Store.GetPoint(History.Store.Blocks[Block].FirstWrite + index));
+            RequestPlayhead(point);
+        }
+    }
+
+    public void ShowWriteCallStack(int index)
+    {
+        if (GetWritePoint(index) is { } point)
+        {
+            Navigator?.ShowCallStack(point);
         }
     }
 
@@ -593,6 +601,14 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         if (GetReadIndex(index) is { } read)
         {
             RequestPlayhead(History.Store.GetReadPoint(read));
+        }
+    }
+
+    public void ShowReadCallStack(int index)
+    {
+        if (GetReadIndex(index) is { } read)
+        {
+            Navigator?.ShowCallStack(History.Store.GetReadPoint(read));
         }
     }
 
@@ -967,6 +983,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         return (0, null, null, default);
     }
+
+    private TracePoint? GetWritePoint(int index)
+        => IsOpen && index >= 0 && index < History.Store.Blocks[Block].WriteCount
+            ? History.Store.GetPoint(History.Store.Blocks[Block].FirstWrite + index)
+            : null;
 
     private int? GetReadIndex(int index)
     {

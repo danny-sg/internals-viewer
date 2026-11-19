@@ -1,5 +1,4 @@
-﻿using System;
-using Windows.UI;
+﻿using Windows.UI;
 using InternalsViewer.Query.Results;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Data;

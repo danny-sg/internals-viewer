@@ -189,7 +189,7 @@ public sealed partial class TraceTimelineControl
 
             var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
 
-            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
+            for (var depth = 0; depth < DepthOf(lane) && depth < thread.Rows.Count; depth++)
             {
                 var top = rowsTop + depth * _rowHeight;
 
@@ -475,7 +475,7 @@ public sealed partial class TraceTimelineControl
 
         var thread = timeline.Threads[hit.Lane];
 
-        if (hit.Depth >= DepthOf(thread))
+        if (hit.Depth >= DepthOf(hit.Lane))
         {
             return null;
         }

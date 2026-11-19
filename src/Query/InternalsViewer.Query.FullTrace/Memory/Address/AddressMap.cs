@@ -165,8 +165,8 @@ public sealed partial class AddressMap
         => Entries.Values.Sum(e => e.Count(entry => Labels[entry.LabelIndex] is { Operation: AddressMapOperation.Allocated, Site: not null }));
 
     internal static AddressMap Build(IEnumerable<AddressEntry> entries,
-                                    Func<int, CallTreeNode?> getNode,
-                                    Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation = null)
+                                     Func<int, CallTreeNode?> getNode,
+                                     Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation = null)
         => new(entries.Select(e => GetEntry(e, getNode, getAllocation))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
@@ -210,8 +210,8 @@ public sealed partial class AddressMap
     }
 
     private static AddressMapEntry GetEntry(AddressEntry entry,
-                                           Func<int, CallTreeNode?> getNode,
-                                           Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation)
+                                            Func<int, CallTreeNode?> getNode,
+                                            Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation)
     {
         var operation = entry.Operation;
 
@@ -224,19 +224,19 @@ public sealed partial class AddressMap
             : new AddressMapAllocation(entry.Bytes, entry.Site, entry.MemoryObject);
 
         return new AddressMapEntry(entry.Address,
-                                  operation,
-                                  entry.CallIndex,
-                                  entry.Owner,
-                                  entry.FromPosition,
-                                  entry.ToPosition,
-                                  entry.Thread,
-                                  entry.ReplayNodeIndex,
-                                  entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Function?.ClassName)),
-                                  allocates ? GetName(node?.Symbol) : null,
-                                  bytes,
-                                  site,
-                                  memoryObject,
-                                  entry.VtableClassName);
+                                   operation,
+                                   entry.CallIndex,
+                                   entry.Owner,
+                                   entry.FromPosition,
+                                   entry.ToPosition,
+                                   entry.Thread,
+                                   entry.ReplayNodeIndex,
+                                   entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Function?.ClassName)),
+                                   allocates ? GetName(node?.Symbol) : null,
+                                   bytes,
+                                   site,
+                                   memoryObject,
+                                   entry.VtableClassName);
     }
 
     private static AddressMapEntry[] Link(AddressMapEntry[] entries)
@@ -360,19 +360,19 @@ public sealed partial class AddressMap
         var label = Labels[entry.LabelIndex];
 
         return new AddressMapEntry(address,
-                                  label.Operation,
-                                  entry.CallIndex,
-                                  entry.Owner,
-                                  entry.FromPosition,
-                                  entry.ToPosition,
-                                  entry.Thread,
-                                  entry.ReplayNodeIndex,
-                                  label.ClassName,
-                                  label.Allocator,
-                                  entry.Bytes,
-                                  label.Site,
-                                  label.MemoryObject,
-                                  label.VtableClassName);
+                                   label.Operation,
+                                   entry.CallIndex,
+                                   entry.Owner,
+                                   entry.FromPosition,
+                                   entry.ToPosition,
+                                   entry.Thread,
+                                   entry.ReplayNodeIndex,
+                                   label.ClassName,
+                                   label.Allocator,
+                                   entry.Bytes,
+                                   label.Site,
+                                   label.MemoryObject,
+                                   label.VtableClassName);
     }
 
     private readonly record struct StoredEntry(ulong Owner,

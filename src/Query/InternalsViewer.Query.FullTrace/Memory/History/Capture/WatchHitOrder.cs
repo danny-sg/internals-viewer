@@ -4,169 +4,93 @@ namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
 
 internal sealed class WatchHitOrder
 {
-    private WatchHitOrder(WatchResult watched, int[] starts, int[] next, int[] heads, (TracePosition Position, long Location)[] sorted)
+    private WatchHitOrder(WatchHitStore hits, (ChunkHit Hit, byte[] Data)[] sorted)
     {
-        Watched = watched;
-        Starts = starts;
-        Next = next;
-        Heads = heads;
+        Hits = hits;
         Sorted = sorted;
     }
 
-    private WatchResult Watched { get; }
+    private WatchHitStore Hits { get; }
 
-    private int[] Starts { get; }
-
-    private int[] Next { get; }
-
-    private int[] Heads { get; }
-
-    private (TracePosition Position, long Location)[] Sorted { get; }
+    private (ChunkHit Hit, byte[] Data)[] Sorted { get; }
 
     public static WatchHitOrder Get(WatchResult watched)
-        => IsOrdered(watched) ? new WatchHitOrder(watched, [], [], [], []) : GetMerged(watched);
+    {
+        var hits = watched.Hits;
+
+        return hits.IsOrdered || hits.Streams.TrueForAll(s => s.IsOrdered) ? new WatchHitOrder(hits, []) : GetSorted(hits);
+    }
 
     public IEnumerable<(ChunkHit Hit, byte[] Data)> GetHits()
     {
         if (Sorted.Length > 0)
         {
-            return GetSortedHits();
+            return Sorted;
         }
 
-        return Heads.Length > 0 ? GetMergedHits() : Watched.Chunks.SelectMany(c => c.Hits.Select(h => (Hit: h, c.Data)));
+        return Hits.IsOrdered ? GetArrivalHits(Hits) : GetMergedHits(Hits);
     }
 
-    private static WatchHitOrder GetMerged(WatchResult watched)
+    private static WatchHitOrder GetSorted(WatchHitStore hits)
     {
-        var chunks = watched.Chunks;
+        var sorted = new (ChunkHit Hit, byte[] Data)[hits.Count];
 
-        var starts = new int[chunks.Count];
+        var keys = new (TracePosition Position, int Arrival)[hits.Count];
 
-        var total = 0;
+        var arrival = 0;
 
-        for (var chunk = 0; chunk < chunks.Count; chunk++)
+        foreach (var hit in GetArrivalHits(hits))
         {
-            starts[chunk] = total;
+            sorted[arrival] = hit;
 
-            total += chunks[chunk].Hits.Length;
+            keys[arrival] = (hit.Hit.Position, arrival);
+
+            arrival++;
         }
 
-        var next = new int[total];
+        Array.Sort(keys, sorted);
 
-        var lasts = new Dictionary<uint, (int Index, TracePosition Position)>();
-
-        var heads = new List<int>();
-
-        for (var chunk = 0; chunk < chunks.Count; chunk++)
-        {
-            var hits = chunks[chunk].Hits;
-
-            for (var index = 0; index < hits.Length; index++)
-            {
-                var hit = hits[index];
-
-                var global = starts[chunk] + index;
-
-                next[global] = -1;
-
-                if (lasts.TryGetValue(hit.Thread, out var last))
-                {
-                    if (hit.Position < last.Position)
-                    {
-                        return GetSorted(watched);
-                    }
-
-                    next[last.Index] = global;
-                }
-                else
-                {
-                    heads.Add(global);
-                }
-
-                lasts[hit.Thread] = (global, hit.Position);
-            }
-        }
-
-        return new WatchHitOrder(watched, starts, next, [.. heads], []);
+        return new WatchHitOrder(hits, sorted);
     }
 
-    private static WatchHitOrder GetSorted(WatchResult watched)
+    private static IEnumerable<(ChunkHit Hit, byte[] Data)> GetArrivalHits(WatchHitStore hits)
     {
-        var keys = new (TracePosition Position, long Location)[watched.HitCount];
+        var readers = hits.Streams.ConvertAll(s => s.GetReader());
 
-        var at = 0;
-
-        for (var chunk = 0; chunk < watched.Chunks.Count; chunk++)
+        foreach (var (stream, count) in hits.Runs)
         {
-            var hits = watched.Chunks[chunk].Hits;
-
-            for (var index = 0; index < hits.Length; index++)
+            for (var index = 0; index < count; index++)
             {
-                keys[at++] = (hits[index].Position, (long)chunk << 32 | (uint)index);
-            }
-        }
-
-        Array.Sort(keys);
-
-        return new WatchHitOrder(watched, [], [], [], keys);
-    }
-
-    private static bool IsOrdered(WatchResult watched)
-    {
-        var last = default(TracePosition);
-
-        foreach (var chunk in watched.Chunks)
-        {
-            foreach (var hit in chunk.Hits)
-            {
-                if (hit.Position < last)
-                {
-                    return false;
-                }
-
-                last = hit.Position;
-            }
-        }
-
-        return true;
-    }
-
-    private IEnumerable<(ChunkHit Hit, byte[] Data)> GetMergedHits()
-    {
-        var queue = new PriorityQueue<int, TracePosition>(Heads.Length);
-
-        foreach (var head in Heads)
-        {
-            queue.Enqueue(head, GetHit(head).Hit.Position);
-        }
-
-        while (queue.TryDequeue(out var global, out _))
-        {
-            yield return GetHit(global);
-
-            if (Next[global] is >= 0 and var following)
-            {
-                queue.Enqueue(following, GetHit(following).Hit.Position);
+                yield return readers[stream].Read();
             }
         }
     }
 
-    private IEnumerable<(ChunkHit Hit, byte[] Data)> GetSortedHits()
+    private static IEnumerable<(ChunkHit Hit, byte[] Data)> GetMergedHits(WatchHitStore hits)
     {
-        foreach (var (_, location) in Sorted)
+        var readers = hits.Streams.ConvertAll(s => s.GetReader());
+
+        var current = new (ChunkHit Hit, byte[] Data)[readers.Count];
+
+        var queue = new PriorityQueue<int, TracePosition>(readers.Count);
+
+        for (var stream = 0; stream < readers.Count; stream++)
         {
-            var chunk = Watched.Chunks[(int)(location >> 32)];
+            current[stream] = readers[stream].Read();
 
-            yield return (chunk.Hits[(int)location], chunk.Data);
+            queue.Enqueue(stream, current[stream].Hit.Position);
         }
-    }
 
-    private (ChunkHit Hit, byte[] Data) GetHit(int global)
-    {
-        var index = Array.BinarySearch(Starts, global);
+        while (queue.TryDequeue(out var stream, out _))
+        {
+            yield return current[stream];
 
-        var chunk = index >= 0 ? index : ~index - 1;
+            if (readers[stream].TryRead(out var hit, out var data))
+            {
+                current[stream] = (hit, data);
 
-        return (Watched.Chunks[chunk].Hits[global - Starts[chunk]], Watched.Chunks[chunk].Data);
+                queue.Enqueue(stream, hit.Position);
+            }
+        }
     }
 }

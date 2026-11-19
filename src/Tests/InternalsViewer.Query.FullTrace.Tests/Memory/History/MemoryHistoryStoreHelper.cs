@@ -35,21 +35,17 @@ internal static class MemoryHistoryStoreHelper
                                            TraceTimeline? timeline = null,
                                            bool isArray = false)
     {
-        var data = new List<byte>();
-
-        var hits = new List<ChunkHit>();
+        var hits = new WatchHitStore();
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
-
-            data.AddRange(bytes);
+            hits.Add(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), bytes);
         }
 
         return new MemoryHistoryBuilder([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
                                                   new ulong[blocks.Length],
                                                   new Dictionary<ulong, TracePosition>(),
-                                                  timeline).Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
+                                                  timeline).Build(new WatchResult(hits, 1)).Store;
     }
 
     public static MemoryHistoryStore BuildWithReads(MemoryBlock[] blocks,
@@ -57,15 +53,11 @@ internal static class MemoryHistoryStoreHelper
                                                     (ulong Sequence, ulong Address, uint Size)[] reads,
                                                     TraceTimeline timeline)
     {
-        var data = new List<byte>();
-
-        var hits = new List<ChunkHit>();
+        var hits = new WatchHitStore();
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
-
-            data.AddRange(bytes);
+            hits.Add(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), bytes);
         }
 
         var recording = new MemoryHistoryBuilder([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
@@ -78,7 +70,7 @@ internal static class MemoryHistoryStoreHelper
             recording.AddRead(new WatchHit(sequence, 0, address, Writer, Thread, size, 0, 0));
         }
 
-        return recording.Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
+        return recording.Build(new WatchResult(hits, 1)).Store;
     }
 
     public static int GetBlock(MemoryHistoryStore store, ulong address)

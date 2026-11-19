@@ -232,6 +232,8 @@ public sealed partial class TraceTimelineControl
 
     public event Action<int, ulong, TracePosition>? MemoryBlockSelected;
 
+    public event Action<int, ulong, TracePosition>? MemorySnapshotRequested;
+
     public event Action<int, TracePosition>? ReferenceGraphRequested;
 
     public event Action? PaneVisibilityChanged;
@@ -386,7 +388,7 @@ public sealed partial class TraceTimelineControl
 
             var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
 
-            var rowsBottom = rowsTop + DepthOf(timeline.Threads[lane]) * _rowHeight;
+            var rowsBottom = rowsTop + DepthOf(lane) * _rowHeight;
 
             if (rowsBottom < ContentTop || rowsTop > bottom)
             {
@@ -503,7 +505,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        AddPaneItems(flyout);
+        flyout.Items.Add(CreatePaneMenu());
 
         flyout.Items.Add(CreateSubMenu("Tracks (All)", CreateTickTrackItems()));
 

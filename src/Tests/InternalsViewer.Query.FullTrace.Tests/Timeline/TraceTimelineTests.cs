@@ -135,7 +135,6 @@ public class TraceTimelineTests
         var thread = Assert.Single(timeline.Filter(n => n != 2).Threads);
 
         Assert.Equal([1, 1, 0], thread.Rows.Select(r => r.Count));
-        Assert.Equal(2, thread.Depth);
         Assert.Equal(2, thread.CallCount);
     }
 

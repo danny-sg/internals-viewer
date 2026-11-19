@@ -49,7 +49,7 @@ public sealed partial class TraceTimeline
 
     public TraceScale Scale { get; }
 
-    public TracePoint Start { get; private set; }
+    public TracePoint Start { get; }
 
     public TracePoint End { get; }
 

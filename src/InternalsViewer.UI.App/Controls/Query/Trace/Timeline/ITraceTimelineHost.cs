@@ -31,6 +31,8 @@ internal interface ITraceTimelineHost
 
     double GetOrigin(TraceTimelineAxis axis);
 
+    TracePosition? GetPosition(double value);
+
     SKColor GetColour(int replayNodeIndex);
 
     string GetLabel(int replayNodeIndex);
@@ -54,4 +56,6 @@ internal interface ITraceTimelineHost
     void SelectMemoryWrite(int block, TracePosition? position);
 
     void ShowMemory(int block, ulong address, TracePosition position);
+
+    void ShowMemorySnapshot(int block, ulong address, TracePosition position);
 }

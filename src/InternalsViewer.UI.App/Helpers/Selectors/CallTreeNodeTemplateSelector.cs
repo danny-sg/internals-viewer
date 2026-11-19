@@ -1,4 +1,3 @@
-using System;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Tree;
 using Microsoft.UI.Xaml.Controls;
 

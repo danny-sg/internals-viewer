@@ -118,7 +118,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         using var session = replayed.Value.Session;
 
-        if (!request.IsHeapCaptured && !request.IsPageReadCaptured)
+        if (request is { IsHeapCaptured: false, IsPageReadCaptured: false })
         {
             session.Dispose();
         }

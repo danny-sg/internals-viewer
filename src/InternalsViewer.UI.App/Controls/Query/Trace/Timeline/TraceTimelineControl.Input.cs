@@ -480,7 +480,7 @@ public sealed partial class TraceTimelineControl
         }
         else if (_isPressed && !_isDragging && _pressedMemory)
         {
-            _memory.Click(position);
+            _memory.Click(position, _isShiftPressed);
         }
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
@@ -797,9 +797,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        AddPaneItems(flyout);
-
-        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(CreatePaneMenu());
 
         flyout.Items.Add(CreateMemoryMenu());
 
@@ -831,7 +829,7 @@ public sealed partial class TraceTimelineControl
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
 
-        AddPaneItems(flyout);
+        flyout.Items.Add(CreatePaneMenu());
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
@@ -856,14 +854,11 @@ public sealed partial class TraceTimelineControl
         return flyout;
     }
 
-    private void AddPaneItems(MenuFlyout flyout)
-    {
-        flyout.Items.Add(PaneItem("Operators", ShowOperators, ShowsOperators, isChecked => ShowOperators = isChecked));
-
-        flyout.Items.Add(PaneItem("Memory History", ShowMemoryHistory, ShowsMemory, isChecked => ShowMemoryHistory = isChecked));
-
-        flyout.Items.Add(PaneItem("Flame Chart", ShowFlameChart, ShowsFlameChart, isChecked => ShowFlameChart = isChecked));
-    }
+    private MenuFlyoutSubItem CreatePaneMenu()
+        => MenuItems.SubMenu("View",
+                             PaneItem("Operators", ShowOperators, ShowsOperators, isChecked => ShowOperators = isChecked),
+                             PaneItem("Memory History", ShowMemoryHistory, ShowsMemory, isChecked => ShowMemoryHistory = isChecked),
+                             PaneItem("Flame Chart", ShowFlameChart, ShowsFlameChart, isChecked => ShowFlameChart = isChecked));
 
     private ToggleMenuFlyoutItem PaneItem(string text, bool isChecked, bool isShowing, Action<bool> setChecked)
     {
@@ -1156,14 +1151,14 @@ public sealed partial class TraceTimelineControl
 
             var inLane = contentY - _laneTops[lane] - LaneHeaderHeight;
 
-            if (contentY < _laneTops[lane] || contentY >= _laneTops[lane] + LaneHeight(thread))
+            if (contentY < _laneTops[lane] || contentY >= _laneTops[lane] + LaneHeight(lane, thread))
             {
                 continue;
             }
 
             var depth = (int)Math.Floor(inLane / _rowHeight);
 
-            if (inLane < 0 || depth >= DepthOf(thread))
+            if (inLane < 0 || depth >= DepthOf(lane))
             {
                 return null;
             }

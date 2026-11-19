@@ -387,7 +387,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return string.Join(Environment.NewLine, block.Label, $"0x{block.Address:X16} +0x{found.Offset:X}, {block.Size} Bytes");
     }
 
-    public void Click(Point position)
+    public void Click(Point position, bool isSnapshot)
     {
         if (GetClickHit(position) is not { } hit)
         {
@@ -396,16 +396,25 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var block = Blocks[hit.Block];
 
-        var marks = GetMarks(block, hit.IsRead);
+        var mark = hit.Write >= 0 ? GetMarks(block, hit.IsRead).GetPoint(hit.Write) : (TracePoint?)null;
 
-        if (hit.Write >= 0)
+        var value = mark is { } point ? TraceScale.GetValue(point, Host.Axis) : Host.ViewStart + position.X / Host.Scale;
+
+        var address = block.Address + (ulong)hit.Offset;
+
+        if (isSnapshot)
         {
-            Host.MovePlayhead(TraceScale.GetValue(marks[hit.Write].Point, Host.Axis));
+            if ((mark?.Position ?? Host.GetPosition(value)) is { } snapshot)
+            {
+                Host.ShowMemorySnapshot(block.Block, address, snapshot);
+            }
+
+            return;
         }
 
-        Host.ShowMemory(block.Block,
-                        block.Address + (ulong)hit.Offset,
-                        hit.Write >= 0 ? marks[hit.Write].Point.Position : block.From.Position);
+        Host.MovePlayhead(value);
+
+        Host.ShowMemory(block.Block, address, mark?.Position ?? Host.GetPosition(value) ?? block.From.Position);
     }
 
     public void DoubleClick(Point position)
@@ -417,7 +426,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         if (hit.IsRead)
         {
-            Click(position);
+            Click(position, isSnapshot: false);
 
             return;
         }

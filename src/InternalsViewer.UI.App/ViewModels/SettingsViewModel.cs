@@ -69,7 +69,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string McpServerStoppedStatus = "Stopped";
 
     private const string DefaultCallTreeHiddenCategories =
-        "Compilation;Networking;Query Store;Security;Tracing;Transaction Management";
+        "Compilation;Memory;Networking;Query Store;SQL OS;SQL OS Scheduling;SQL OS Synchronisation;"
+        + "Security;System;Tracing;Transaction Management";
 
     private const string DefaultTraceTimelineHiddenTickTracks = "Open";
 

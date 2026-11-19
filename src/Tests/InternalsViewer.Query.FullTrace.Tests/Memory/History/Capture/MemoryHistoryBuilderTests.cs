@@ -413,11 +413,24 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
-    public void Writes_From_Later_Chunks_Are_Applied_In_Position_Order()
+    public void A_64_KB_Write_Keeps_Every_Byte()
     {
-        var watched = new WatchResult([new([ChunkHit.Create(Hit(5, Owned, 1), 0)], [2]),
-                                       new([ChunkHit.Create(Hit(3, Owned, 1), 0)], [1])],
-                                      1);
+        var bytes = new byte[0x10000];
+
+        new Random(1119).NextBytes(bytes);
+
+        var store = Build([Block(Owned, 0x10000, from: 1)], [Write(2, Owned, bytes)]);
+
+        var writes = store.GetWrites(0);
+
+        Assert.Equal(0x10000, writes.Sum(w => w.Length));
+        Assert.Equal(bytes, store.GetImage(0, writes.Count - 1).Data);
+    }
+
+    [Fact]
+    public void Writes_Out_Of_Order_On_A_Thread_Are_Applied_In_Position_Order()
+    {
+        var watched = Watched((Hit(5, Owned, 1), [2]), (Hit(3, Owned, 1), [1]));
 
         var (store, _) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
                                                             [0],
@@ -433,9 +446,7 @@ public class MemoryHistoryBuilderTests
     {
         var other = new WatchHit(4, 0, Owned + 1, Writer, Thread + 1, 1, 0, 1);
 
-        var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0), ChunkHit.Create(Hit(6, Owned, 1), 1)], [1, 3]),
-                                       new([ChunkHit.Create(other, 0)], [2])],
-                                      1);
+        var watched = Watched((Hit(2, Owned, 1), [1]), (Hit(6, Owned, 1), [3]), (other, [2]));
 
         var (store, _) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
                                                             [0],
@@ -449,12 +460,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Each_Watched_Write_Is_Counted_By_What_Became_Of_It()
     {
-        var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0),
-                                                       ChunkHit.Create(Hit(3, Owned, 1), 1),
-                                                       ChunkHit.Create(Hit(4, Page, 1), 2),
-                                                       ChunkHit.Create(Hit(5, Owned + 0x500, 1), 3)],
-                                                      [1, 1, 1, 1])],
-                                      2);
+        var watched = Watched((Hit(2, Owned, 1), [1]), (Hit(3, Owned, 1), [1]), (Hit(4, Page, 1), [1]), (Hit(5, Owned + 0x500, 1), [1]));
 
         var (_, counts) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false),
                                                               new MemoryHistoryAllocation(Block(Page, 0x2000, from: 1), true)],
@@ -468,7 +474,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void A_Buffer_Descriptor_Keeps_Its_Writes_Although_It_Belongs_To_The_Buffer_Pool()
     {
-        var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0)], [1])], 1);
+        var watched = Watched((Hit(2, Owned, 1), [1]));
 
         var (store, counts) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0xC0, from: 1),
                                                                                               IsClerkPage: true,
@@ -547,7 +553,7 @@ public class MemoryHistoryBuilderTests
                                                            null,
                                                            stack);
 
-        var store = recording.Build(new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0)], [1])], 1)).Store;
+        var store = recording.Build(Watched((Hit(2, Owned, 1), [1]))).Store;
 
         Assert.Equal((1, -1, 0),
                      (store.GetBlock(StackAddress + 2, At(70)),
@@ -592,22 +598,18 @@ public class MemoryHistoryBuilderTests
                                        [new(runs, [1, 2, 3, 4, 9])],
                                        2);
 
-        var data = new List<byte>();
-
-        var hits = new List<ChunkHit>();
+        var hits = new WatchHitStore();
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.Create(Hit(sequence, address, (uint)bytes.Length), data.Count));
-
-            data.AddRange(bytes);
+            hits.Add(Hit(sequence, address, (uint)bytes.Length), bytes);
         }
 
         return new MemoryHistoryBuilder([],
                                                   [],
                                                   new Dictionary<ulong, TracePosition>(),
                                                   null,
-                                                  stack).Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
+                                                  stack).Build(new WatchResult(hits, 1)).Store;
     }
 
     private static (TraceTimeline Timeline, (CallTreeNode Query, CallTreeNode GetRow, CallTreeNode Scanner) Nodes) BuildTimeline()
@@ -662,6 +664,18 @@ public class MemoryHistoryBuilderTests
 
     private static WatchHit Hit(ulong sequence, ulong address, uint size) => new(sequence, 0, address, Writer, Thread, size, 0, 1);
 
+    private static WatchResult Watched(params (WatchHit Hit, byte[] Bytes)[] hits)
+    {
+        var store = new WatchHitStore();
+
+        foreach (var (hit, bytes) in hits)
+        {
+            store.Add(hit, bytes);
+        }
+
+        return new WatchResult(store, 1);
+    }
+
     private static (ulong Sequence, ulong Address, byte[] Bytes) Write(ulong sequence, ulong address, params byte[] bytes)
         => (sequence, address, bytes);
 
@@ -673,15 +687,11 @@ public class MemoryHistoryBuilderTests
                                             ulong[]? clerkPages = null,
                                             Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
     {
-        var data = new List<byte>();
-
-        var hits = new List<ChunkHit>();
+        var hits = new WatchHitStore();
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
-
-            data.AddRange(bytes);
+            hits.Add(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), bytes);
         }
 
         var allocations = blocks.Select(b => new MemoryHistoryAllocation(b, clerkPages?.Contains(b.Address) ?? false)).ToList();
@@ -692,6 +702,6 @@ public class MemoryHistoryBuilderTests
                                                            timeline,
                                                            getPageOwner: getPageOwner);
 
-        return recording.Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
+        return recording.Build(new WatchResult(hits, 1)).Store;
     }
 }

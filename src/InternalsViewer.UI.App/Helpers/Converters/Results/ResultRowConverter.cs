@@ -1,4 +1,3 @@
-using System;
 using InternalsViewer.Query.Results;
 using Microsoft.UI.Xaml.Data;
 

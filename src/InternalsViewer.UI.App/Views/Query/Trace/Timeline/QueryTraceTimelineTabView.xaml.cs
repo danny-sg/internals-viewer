@@ -100,6 +100,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.MemoryBlockSelected += OnMemoryBlockSelected;
 
+        TraceTimeline.MemorySnapshotRequested += OnMemorySnapshotRequested;
+
         TraceTimeline.TickTrackVisibilityChanged += OnTickTrackVisibilityChanged;
 
         TraceTimeline.TickTrackAddRequested += OnTickTrackAddRequested;
@@ -242,6 +244,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.MemoryWriteSelected -= OnMemoryWriteSelected;
 
         TraceTimeline.MemoryBlockSelected -= OnMemoryBlockSelected;
+
+        TraceTimeline.MemorySnapshotRequested -= OnMemorySnapshotRequested;
 
         TraceTimeline.TickTrackVisibilityChanged -= OnTickTrackVisibilityChanged;
 
@@ -883,6 +887,9 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnMemoryBlockSelected(int block, ulong address, TracePosition position)
         => ViewModel?.TraceTimelineTab.OpenMemory(block, address, position);
+
+    private void OnMemorySnapshotRequested(int block, ulong address, TracePosition position)
+        => ViewModel?.TraceTimelineTab.OpenMemorySnapshot(block, address, position);
 
     private void OnExecutionPlanRequested(PlanNodeIdentifier? identifier)
     {

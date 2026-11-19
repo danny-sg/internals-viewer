@@ -108,7 +108,7 @@ internal sealed class MemoryHistoryWriteBuilder(WatchedBlockIndex lookup, WatchH
 
             if (lookup.GetInnermost(address, hit.Position) is not { } found)
             {
-                var skip = lookup.HasPage(address) ? 1 : (int)Math.Min((ulong)bytes.Length, pageEnd - address);
+                var skip = (int)Math.Min((ulong)bytes.Length, Math.Min(pageEnd, lookup.GetNextLiveStart(address, hit.Position)) - address);
 
                 address += (ulong)skip;
 

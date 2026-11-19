@@ -1,4 +1,3 @@
-using System;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Services.Markers;
 using Microsoft.UI.Xaml.Data;

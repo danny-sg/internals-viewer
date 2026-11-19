@@ -216,16 +216,16 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock" Version="0.1.251217-build.2433" />
-        <PackageReference Include="GitVersion.MsBuild" Version="6.8.2">
+        <PackageReference Include="GitVersion.MsBuild" Version="7.0.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.VisualStudio.Sdk.Analyzers" Version="17.7.113" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.VisualStudio.Sdk.Analyzers" Version="17.7.179" PrivateAssets="all" />
         <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.12.1">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.7.0" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -237,10 +237,10 @@
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
 
-        <PackageReference Include="SkiaSharp" Version="4.155.0" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.155.0" />
+        <PackageReference Include="SkiaSharp" Version="4.157.0" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.157.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
-        <PackageReference Include="WinUI.TableView" Version="1.5.1" />
+        <PackageReference Include="WinUI.TableView" Version="1.5.2" />
         <PackageReference Include="WinUIEx" Version="2.9.3" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>

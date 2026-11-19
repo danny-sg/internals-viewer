@@ -219,7 +219,7 @@ public sealed class TraceRowReturnMarkMap
     {
         var next = index + 1 < group.Calls.Length ? group.Calls[index + 1].FromPosition : TracePosition.Unknown;
 
-        var returned = SortedSearch.FirstAtOrAfter<TracePosition>(parent.RowEnds, group.Calls[index].ToPosition);
+        var returned = SortedSearch.FirstAtOrAfter(parent.RowEnds, group.Calls[index].ToPosition);
 
         return returned < parent.RowEnds.Length && parent.RowEnds[returned] < next;
     }

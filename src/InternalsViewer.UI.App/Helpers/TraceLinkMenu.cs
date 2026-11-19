@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;

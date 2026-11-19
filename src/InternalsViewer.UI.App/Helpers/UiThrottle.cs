@@ -1,4 +1,3 @@
-using System;
 using Microsoft.UI.Dispatching;
 
 namespace InternalsViewer.UI.App.Helpers;

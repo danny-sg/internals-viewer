@@ -39,6 +39,13 @@ public sealed partial class MemoryWritesPanelView : UserControl
         e.Menu.Items.Add(new MenuFlyoutSeparator());
 
         e.Menu.Items.Add(MenuItems.Create("Open As Snapshot", () => viewModel.Writes.OpenSnapshot(index)));
+
+        if (e.Ordinal == MemoryWritesViewModel.PositionColumn)
+        {
+            e.Menu.Items.Add(MenuItems.Create("Call Stack", () => viewModel.ShowWriteCallStack(index)));
+        }
+
+        MenuItems.AddCopy(e.Menu, e.Cell);
     }
 
     private void OnCellHovered(object? sender, ResultCellHoverEventArgs e)

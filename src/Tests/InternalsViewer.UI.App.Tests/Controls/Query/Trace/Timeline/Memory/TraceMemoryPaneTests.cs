@@ -197,9 +197,34 @@ public class TraceMemoryPaneTests
 
         using var _ = host;
 
-        pane.Click(new Point(41, PaneTop + 20));
+        pane.Click(new Point(41, PaneTop + 20), isSnapshot: false);
 
         Assert.Equal(((3, 0x1000_0020ul, new TracePosition(20, 0)), (double?)20), (host.Shown, host.MovedTo));
+    }
+
+    [Fact]
+    public void Clicking_A_Block_Away_From_Its_Writes_Moves_The_Playhead_To_The_Click()
+    {
+        var (pane, host) = Create([Block(3, 0x1000_0000, 0x40, Write(0x20, 8))]);
+
+        using var _ = host;
+
+        pane.Click(new Point(121, PaneTop + 20), isSnapshot: false);
+
+        Assert.Equal(((3, 0x1000_0020ul, new TracePosition(60, 0)), (double?)60.5), (host.Shown, host.MovedTo));
+    }
+
+    [Fact]
+    public void Snapshot_Click_Opens_A_Snapshot_At_The_Click_Without_Moving_The_Playhead()
+    {
+        var (pane, host) = Create([Block(3, 0x1000_0000, 0x40, Write(0x20, 8))]);
+
+        using var _ = host;
+
+        pane.Click(new Point(121, PaneTop + 20), isSnapshot: true);
+
+        Assert.Equal(((3, 0x1000_0020ul, new TracePosition(60, 0)), ((int, ulong, TracePosition)?)null, (double?)null),
+                     (host.Snapshot, host.Shown, host.MovedTo));
     }
 
     [Fact]
@@ -472,6 +497,8 @@ public class TraceMemoryPaneTests
 
         public (int Block, ulong Address, TracePosition Position)? Shown { get; private set; }
 
+        public (int Block, ulong Address, TracePosition Position)? Snapshot { get; private set; }
+
         private TaskCompletionSource<Action> Posted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public double? MovedTo { get; private set; }
@@ -479,6 +506,8 @@ public class TraceMemoryPaneTests
         public bool IsProgressVisible { get; private set; }
 
         public double GetOrigin(TraceTimelineAxis axis) => 0;
+
+        public TracePosition? GetPosition(double value) => new TracePosition((ulong)value, 0);
 
         public SKColor GetColour(int replayNodeIndex) => replayNodeIndex switch
         {
@@ -520,6 +549,8 @@ public class TraceMemoryPaneTests
         public void SelectMemoryWrite(int block, TracePosition? position) => Selected = (block, position);
 
         public void ShowMemory(int block, ulong address, TracePosition position) => Shown = (block, address, position);
+
+        public void ShowMemorySnapshot(int block, ulong address, TracePosition position) => Snapshot = (block, address, position);
 
         public void Dispose()
         {

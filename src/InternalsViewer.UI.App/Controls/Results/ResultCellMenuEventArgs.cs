@@ -11,4 +11,6 @@ public sealed class ResultCellMenuEventArgs(ResultRow<long> row, int ordinal, Me
     public int Ordinal { get; } = ordinal;
 
     public MenuFlyout Menu { get; } = menu;
+
+    public object? Cell => Ordinal >= 0 && Ordinal < Row.FieldCount ? Row[Ordinal] : null;
 }

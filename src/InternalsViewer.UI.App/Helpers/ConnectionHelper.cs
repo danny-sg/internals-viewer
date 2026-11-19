@@ -1,5 +1,4 @@
-﻿using System;
-using InternalsViewer.UI.App.Models.Connections;
+﻿using InternalsViewer.UI.App.Models.Connections;
 using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.UI.App.Helpers;

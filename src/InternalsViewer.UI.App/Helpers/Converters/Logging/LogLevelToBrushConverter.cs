@@ -1,5 +1,4 @@
-﻿using System;
-using Windows.UI;
+﻿using Windows.UI;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;

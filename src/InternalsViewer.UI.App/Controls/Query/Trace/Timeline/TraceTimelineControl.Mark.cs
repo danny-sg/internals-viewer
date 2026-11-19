@@ -220,7 +220,7 @@ public sealed partial class TraceTimelineControl
                     continue;
                 }
 
-                return ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight + Math.Min(depth, DepthOf(thread)) * _rowHeight;
+                return ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight + Math.Min(depth, DepthOf(lane)) * _rowHeight;
             }
 
             return null;

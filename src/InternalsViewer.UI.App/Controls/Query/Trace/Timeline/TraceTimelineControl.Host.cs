@@ -32,6 +32,8 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     double ITraceTimelineHost.GetOrigin(TraceTimelineAxis axis) => OriginOf(axis);
 
+    TracePosition? ITraceTimelineHost.GetPosition(double value) => GetPosition(value);
+
     SKColor ITraceTimelineHost.GetColour(int replayNodeIndex) => GetPaneColour(replayNodeIndex);
 
     string ITraceTimelineHost.GetLabel(int replayNodeIndex) => LabelOf(replayNodeIndex);
@@ -86,6 +88,9 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     void ITraceTimelineHost.ShowMemory(int block, ulong address, TracePosition position)
         => MemoryBlockSelected?.Invoke(block, address, position);
+
+    void ITraceTimelineHost.ShowMemorySnapshot(int block, ulong address, TracePosition position)
+        => MemorySnapshotRequested?.Invoke(block, address, position);
 
     void ITraceTimelineHost.OnSelectedOperatorChanged(ExecutionOperatorEvent? selected)
     {

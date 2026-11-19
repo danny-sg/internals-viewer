@@ -15,7 +15,8 @@
                     <results:ResultsGridControl Visibility="{x:Bind HasTable}"
                                                 IsStatusBarVisible="False"
                                                 ResultSet="{x:Bind Table, Mode=OneWay}"
-                                                SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"/>
+                                                SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"
+                                                CellMenuOpening="OnCellMenuOpening"/>
                     <local:MemoryObjectTabsView Visibility="{x:Bind HasTabs}" Tabs="{x:Bind Tabs}"/>
                     <memory:DataPathGraphControl Visibility="{x:Bind HasGraph}" Graph="{x:Bind Graph}"/>
                 </Grid>
@@ -25,7 +26,8 @@
         <DataTemplate x:Key="SingleTabTemplate" x:DataType="models:MemoryObjectTab">
             <results:ResultsGridControl IsStatusBarVisible="False"
                                         ResultSet="{x:Bind Table, Mode=OneWay}"
-                                        SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"/>
+                                        SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"
+                                        CellMenuOpening="OnCellMenuOpening"/>
         </DataTemplate>
     </UserControl.Resources>
 

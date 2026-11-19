@@ -273,6 +273,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private float[] _laneTops = [];
 
+    private int[] _laneDepths = [];
+
     private uint? _expandedThread;
 
     private float _focusPadding;
@@ -733,9 +735,12 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         foreach (var thread in timeline.Threads)
         {
-            var depth = allRows ? thread.Rows.Count : Math.Min(DepthOf(thread), thread.Rows.Count);
+            if (!allRows && !IsExpanded(thread))
+            {
+                continue;
+            }
 
-            foreach (var row in thread.Rows.Take(depth))
+            foreach (var row in thread.Rows)
             {
                 next = (forward ? FindStartAfter(row, matches, from, next) : FindStartBefore(row, matches, from, next)) ?? next;
             }
@@ -909,6 +914,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _viewEnd = start + range;
         }
 
+        BuildLayout();
+
         ApplyScroll();
     }
 
@@ -1000,7 +1007,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _expandedThread = null;
         }
 
-        var rows = threads.Sum(DepthOf);
+        _laneDepths = [.. threads.Select(GetVisibleDepth)];
+
+        var rows = _laneDepths.Sum();
 
         var available = (float)ViewportHeight - threads.Count * (LaneHeaderHeight + LaneGap);
 
@@ -1018,16 +1027,38 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             _laneTops[lane] = top;
 
-            top += LaneHeight(threads[lane]);
+            top += LaneHeight(lane, threads[lane]);
         }
 
         _contentHeight = top;
     }
 
-    private float LaneHeight(TraceTimelineThread thread)
-        => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
+    private float LaneHeight(int lane, TraceTimelineThread thread)
+        => LaneHeaderHeight + DepthOf(lane) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
 
-    private int DepthOf(TraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
+    private int DepthOf(int lane) => lane < _laneDepths.Length ? _laneDepths[lane] : 0;
+
+    private int GetVisibleDepth(TraceTimelineThread thread)
+    {
+        if (!IsExpanded(thread))
+        {
+            return 0;
+        }
+
+        for (var depth = thread.Rows.Count; depth > 0; depth--)
+        {
+            var row = thread.Rows[depth - 1];
+
+            var index = row.GetFirstEndingAfter(_axis, _viewStart);
+
+            if (index < row.Count && row.GetStart(_axis, index) <= _viewEnd)
+            {
+                return depth;
+            }
+        }
+
+        return 0;
+    }
 
     private bool IsExpanded(TraceTimelineThread thread) => _expandedThread is not { } expanded || thread.ThreadId == expanded;
 
@@ -1353,13 +1384,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _version++;
         }
 
-        var top = _laneTops[hit.Lane] + LaneHeaderHeight + hit.Depth * _rowHeight;
-
-        if (top < _scrollY || top + _rowHeight > _scrollY + ViewportHeight)
-        {
-            _scrollY = top - ViewportHeight / 3;
-        }
-
         var start = TraceScale.GetValue(span.From, _axis);
 
         var end = TraceScale.GetValue(span.To, _axis);
@@ -1372,10 +1396,15 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             CentreViewOn((start + end) / 2);
         }
-        else
+
+        var top = _laneTops[hit.Lane] + LaneHeaderHeight + hit.Depth * _rowHeight;
+
+        if (top < _scrollY || top + _rowHeight > _scrollY + ViewportHeight)
         {
-            ApplyScroll();
+            _scrollY = top - ViewportHeight / 3;
         }
+
+        ApplyScroll();
     }
 
     private static void OnTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

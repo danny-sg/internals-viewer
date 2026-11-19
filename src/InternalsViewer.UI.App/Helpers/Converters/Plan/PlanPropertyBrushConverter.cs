@@ -1,4 +1,3 @@
-using System;
 using InternalsViewer.UI.App.Models.Query;
 using Microsoft.UI.Xaml.Data;
 

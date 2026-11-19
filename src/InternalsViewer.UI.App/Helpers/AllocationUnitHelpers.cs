@@ -1,4 +1,3 @@
-using System;
 using InternalsViewer.Internals.Engine.Database;
 using IndexType = InternalsViewer.Internals.Engine.Database.Enums.IndexType;
 

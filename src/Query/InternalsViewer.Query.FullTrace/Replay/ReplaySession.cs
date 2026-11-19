@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
-using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Replay.Native.Enums;
 using InternalsViewer.Query.Recording;
@@ -314,11 +313,9 @@ internal sealed class ReplaySession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
-        var chunks = new List<DataChunk<ChunkHit>>();
+        var hits = new WatchHitStore();
 
         var received = 0L;
-
-        var selected = Array.Empty<bool>();
 
         ReplayBridge.WatchHitCallback onHits = (pointer, count, bytes, length) =>
         {
@@ -326,68 +323,24 @@ internal sealed class ReplaySession : IDisposable
 
             var chunk = new ReadOnlySpan<byte>((void*)bytes, length);
 
-            if (selected.Length < count)
-            {
-                selected = new bool[count];
-            }
-
-            var hitCount = 0;
-
-            var byteCount = 0;
-
             for (var index = 0; index < count; index++)
             {
-                if (source[index].Type == ReadType)
-                {
-                    onRead?.Invoke(source[index]);
+                ref readonly var hit = ref source[index];
 
-                    selected[index] = false;
+                if (hit.Type == ReadType)
+                {
+                    onRead?.Invoke(hit);
 
                     continue;
                 }
 
                 received++;
 
-                selected[index] = keep(source[index]);
-
-                if (selected[index])
+                if (keep(hit))
                 {
-                    hitCount++;
-
-                    byteCount += (int)source[index].Size;
+                    hits.Add(hit, chunk.Slice((int)hit.Offset, (int)hit.Size));
                 }
             }
-
-            if (hitCount == 0)
-            {
-                return;
-            }
-
-            var hits = new ChunkHit[hitCount];
-
-            var data = new byte[byteCount];
-
-            var kept = 0;
-
-            var offset = 0;
-
-            for (var index = 0; index < count; index++)
-            {
-                if (!selected[index])
-                {
-                    continue;
-                }
-
-                var hit = source[index];
-
-                chunk.Slice((int)hit.Offset, (int)hit.Size).CopyTo(data.AsSpan(offset));
-
-                hits[kept++] = ChunkHit.Create(hit, offset);
-
-                offset += (int)hit.Size;
-            }
-
-            chunks.Add(new DataChunk<ChunkHit>(hits, data));
         };
 
         ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);
@@ -416,7 +369,7 @@ internal sealed class ReplaySession : IDisposable
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return new WatchResult([.. chunks], watched, received);
+            return new WatchResult(hits, watched, received);
         }
         finally
         {

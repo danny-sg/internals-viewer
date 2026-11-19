@@ -1,5 +1,4 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 

@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
-        <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.140.0" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.2" />
+        <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.154.0" />
         <PackageReference Include="Microsoft.SqlServer.Types" Version="170.1000.7" />
         <PackageReference Include="System.ServiceProcess.ServiceController" Version="11.0.0" />
     </ItemGroup>

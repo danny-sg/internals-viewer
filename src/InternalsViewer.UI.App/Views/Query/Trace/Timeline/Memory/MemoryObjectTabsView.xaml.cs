@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using InternalsViewer.UI.App.Controls.Results;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -39,6 +41,8 @@ public sealed partial class MemoryObjectTabsView : UserControl
     }
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) => SelectFirst();
+
+    private void OnCellMenuOpening(object? sender, ResultCellMenuEventArgs e) => MenuItems.AddCopy(e.Menu, e.Cell);
 
     private void SelectFirst()
     {

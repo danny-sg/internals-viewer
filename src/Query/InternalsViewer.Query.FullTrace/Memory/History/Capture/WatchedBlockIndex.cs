@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
@@ -24,9 +25,7 @@ internal sealed class WatchedBlockIndex
 
     public List<WatchedBlock> Blocks { get; }
 
-    private Dictionary<ulong, List<int>> Pages { get; } = [];
-
-    public bool HasPage(ulong address) => Pages.ContainsKey(address >> PageShift);
+    private Dictionary<ulong, WatchedPage> Pages { get; } = [];
 
     public bool IsLive(ulong address, ulong size, TracePosition position)
     {
@@ -37,21 +36,18 @@ internal sealed class WatchedBlockIndex
 
         var end = address + size;
 
-        for (var page = address >> PageShift; page <= (end - 1) >> PageShift; page++)
+        for (var pageNumber = address >> PageShift; pageNumber <= (end - 1) >> PageShift; pageNumber++)
         {
-            if (!Pages.TryGetValue(page, out var list))
+            if (!Pages.TryGetValue(pageNumber, out var page))
             {
                 continue;
             }
 
-            foreach (var index in list)
+            for (var at = page.GetLast(position); at >= 0; at = page.GetPrevious(at, position))
             {
-                var block = Blocks[index];
+                var block = Blocks[page.GetBlock(at)];
 
-                if (block.Address < end
-                    && address < block.Address + block.Size
-                    && block.FromPosition <= position
-                    && position < block.ToPosition)
+                if (block.Address < end && address < block.Address + block.Size)
                 {
                     return true;
                 }
@@ -70,9 +66,13 @@ internal sealed class WatchedBlockIndex
 
         int? found = null;
 
-        foreach (var index in page)
+        for (var at = page.GetLast(position); at >= 0; at = page.GetPrevious(at, position))
         {
-            if (Blocks[index].Contains(address, position) && (found is not { } current || Blocks[index].Size < Blocks[current].Size))
+            var index = page.GetBlock(at);
+
+            var block = Blocks[index];
+
+            if (address >= block.Address && address - block.Address < block.Size && (found is not { } current || IsInside(index, current)))
             {
                 found = index;
             }
@@ -82,32 +82,10 @@ internal sealed class WatchedBlockIndex
     }
 
     public ulong GetNextInner(int container, ulong address, TracePosition position)
-    {
-        var next = ulong.MaxValue;
+        => GetNextLiveStart(address, position, Blocks[container].Size);
 
-        if (!Pages.TryGetValue(address >> PageShift, out var page))
-        {
-            return next;
-        }
-
-        var size = Blocks[container].Size;
-
-        foreach (var index in page)
-        {
-            var block = Blocks[index];
-
-            if (block.Address > address
-                && block.Address < next
-                && block.Size < size
-                && block.FromPosition <= position
-                && position < block.ToPosition)
-            {
-                next = block.Address;
-            }
-        }
-
-        return next;
-    }
+    public ulong GetNextLiveStart(ulong address, TracePosition position)
+        => GetNextLiveStart(address, position, ulong.MaxValue);
 
     public void EndReusedBlocks(Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
     {
@@ -124,7 +102,7 @@ internal sealed class WatchedBlockIndex
 
             for (var page = block.Address >> PageShift; page <= (end - 1) >> PageShift; page++)
             {
-                foreach (var older in Pages.GetValueOrDefault(page) ?? [])
+                foreach (var older in Pages.GetValueOrDefault(page)?.BlockIndexes ?? [])
                 {
                     var previous = Blocks[older];
 
@@ -141,6 +119,8 @@ internal sealed class WatchedBlockIndex
                 }
             }
         }
+
+        ResetPages();
     }
 
     public void ClipToContainers()
@@ -154,6 +134,8 @@ internal sealed class WatchedBlockIndex
                 block.ToPosition = Blocks[container].ToPosition;
             }
         }
+
+        ResetPages();
     }
 
     public void AddIterators(IReadOnlyDictionary<ulong, TracePosition> iterators)
@@ -198,12 +180,12 @@ internal sealed class WatchedBlockIndex
 
         for (var page = iterator >> PageShift; page <= (next - 1) >> PageShift; page++)
         {
-            if (!Pages.TryGetValue(page, out var list))
+            if (!Pages.TryGetValue(page, out var watched))
             {
                 continue;
             }
 
-            foreach (var candidate in list)
+            foreach (var candidate in watched.BlockIndexes)
             {
                 var block = Blocks[candidate];
 
@@ -241,7 +223,7 @@ internal sealed class WatchedBlockIndex
 
         int? found = null;
 
-        foreach (var candidate in page)
+        foreach (var candidate in page.BlockIndexes)
         {
             var container = Blocks[candidate];
 
@@ -258,17 +240,177 @@ internal sealed class WatchedBlockIndex
         return found;
     }
 
+    private ulong GetNextLiveStart(ulong address, TracePosition position, ulong size)
+    {
+        var next = ulong.MaxValue;
+
+        if (!Pages.TryGetValue(address >> PageShift, out var page))
+        {
+            return next;
+        }
+
+        for (var at = page.GetLast(position); at >= 0; at = page.GetPrevious(at, position))
+        {
+            var block = Blocks[page.GetBlock(at)];
+
+            if (block.Address > address && block.Address < next && block.Size < size)
+            {
+                next = block.Address;
+            }
+        }
+
+        return next;
+    }
+
+    private bool IsInside(int index, int current)
+        => Blocks[index].Size < Blocks[current].Size || (Blocks[index].Size == Blocks[current].Size && index < current);
+
     private void AddToPages(int index)
     {
         var block = Blocks[index];
 
         for (var page = block.Address >> PageShift; page <= (block.Address + block.Size - 1) >> PageShift; page++)
         {
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(Pages, page, out _);
+            ref var watched = ref CollectionsMarshal.GetValueRefOrAddDefault(Pages, page, out _);
 
-            list ??= [];
+            watched ??= new WatchedPage(Blocks);
 
-            list.Add(index);
+            watched.Add(index);
+        }
+    }
+
+    private void ResetPages()
+    {
+        foreach (var page in Pages.Values)
+        {
+            page.Reset();
+        }
+    }
+
+    private sealed class WatchedPage(List<WatchedBlock> blocks)
+    {
+        public List<int> BlockIndexes { get; } = [];
+
+        private int[] Order { get; set; } = [];
+
+        private TracePosition[] Starts { get; set; } = [];
+
+        private TracePosition[] Ends { get; set; } = [];
+
+        private int LeafCount { get; set; }
+
+        private bool IsBuilt { get; set; }
+
+        public void Add(int index)
+        {
+            BlockIndexes.Add(index);
+
+            IsBuilt = false;
+        }
+
+        public void Reset() => IsBuilt = false;
+
+        public int GetBlock(int at) => Order[at];
+
+        public int GetLast(TracePosition position)
+        {
+            if (!IsBuilt)
+            {
+                Build();
+            }
+
+            return GetPrevious(GetStartedCount(position), position);
+        }
+
+        public int GetPrevious(int at, TracePosition position)
+        {
+            if (at <= 0)
+            {
+                return -1;
+            }
+
+            var node = LeafCount + at - 1;
+
+            if (Ends[node] > position)
+            {
+                return at - 1;
+            }
+
+            while (node > 1)
+            {
+                if ((node & 1) == 1 && Ends[node - 1] > position)
+                {
+                    node--;
+
+                    while (node < LeafCount)
+                    {
+                        node = Ends[2 * node + 1] > position ? 2 * node + 1 : 2 * node;
+                    }
+
+                    return node - LeafCount;
+                }
+
+                node >>= 1;
+            }
+
+            return -1;
+        }
+
+        private int GetStartedCount(TracePosition position)
+        {
+            var low = 0;
+
+            var high = Starts.Length;
+
+            while (low < high)
+            {
+                var middle = low + (high - low) / 2;
+
+                if (Starts[middle] <= position)
+                {
+                    low = middle + 1;
+                }
+                else
+                {
+                    high = middle;
+                }
+            }
+
+            return low;
+        }
+
+        private void Build()
+        {
+            var order = BlockIndexes.ToArray();
+
+            var starts = new TracePosition[order.Length];
+
+            for (var index = 0; index < order.Length; index++)
+            {
+                starts[index] = blocks[order[index]].FromPosition;
+            }
+
+            Array.Sort(starts, order);
+
+            var leafCount = (int)BitOperations.RoundUpToPowerOf2((uint)Math.Max(order.Length, 1));
+
+            var ends = new TracePosition[2 * leafCount];
+
+            for (var index = 0; index < order.Length; index++)
+            {
+                ends[leafCount + index] = blocks[order[index]].ToPosition;
+            }
+
+            for (var node = leafCount - 1; node > 0; node--)
+            {
+                ends[node] = ends[2 * node] > ends[2 * node + 1] ? ends[2 * node] : ends[2 * node + 1];
+            }
+
+            Order = order;
+            Starts = starts;
+            Ends = ends;
+            LeafCount = leafCount;
+            IsBuilt = true;
         }
     }
 }

@@ -258,14 +258,16 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
     {
         var closed = TraceTimeline.GetIndicatorClose(id) ?? throw new InvalidOperationException($"No indicator {id}.");
 
-        if (await Task.WhenAny(closed, Task.Delay(timeout)) != closed)
+        try
+        {
+            var result = await closed.WaitAsync(timeout);
+
+            return new McpIndicatorResult(GetClose(result.Reason), result.Step, result.Steps);
+        }
+        catch (TimeoutException)
         {
             return null;
         }
-
-        var result = await closed;
-
-        return new McpIndicatorResult(GetClose(result.Reason), result.Step, result.Steps);
     }
 
     public bool ClearIndicator() => TraceTimeline.CloseIndicator(TraceIndicatorClose.Cleared);

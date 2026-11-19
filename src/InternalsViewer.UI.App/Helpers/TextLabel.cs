@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.UI.App.Models;

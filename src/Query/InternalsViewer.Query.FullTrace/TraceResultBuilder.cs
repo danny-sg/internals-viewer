@@ -160,8 +160,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
         }
 
         var classes = vtables.Count > 0
-            ? VtableResolver.GetUniqueClasses(AddressTable<string[]>.Merge(vtables))
-            : new Dictionary<ulong, string>();
+                      ? VtableResolver.GetUniqueClasses(AddressTable<string[]>.Merge(vtables))
+                      : new Dictionary<ulong, string>();
 
         return (new ModuleSymbolIndex(symbols), classes);
     }
