@@ -2,6 +2,7 @@ using System.Data;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Plans.Values.Enums;
 
 namespace InternalsViewer.Query.Plans.Values;
@@ -213,7 +214,7 @@ internal static class AccessValueComparer
             AccessValueType.Integer 
                 => value.Numeric,
             AccessValueType.Real 
-                => (decimal)value.Real,
+                => NumberHelpers.ToDecimal(value.Real),
             _ => value.ToDecimal()
         };
     }

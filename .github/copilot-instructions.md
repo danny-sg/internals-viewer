@@ -1,7 +1,7 @@
 # Copilot Instructions
 
 ## General
-- Target `.NET 10` and use the language version configured by the project.
+- Target `.NET 11` and use the language version configured by the project.
 - Always use braces for control blocks (`if`, `for`, `foreach`, `while`, `switch` cases with blocks).
 - Keep lines at 140 characters or less.
 - Prefer properties over fields.

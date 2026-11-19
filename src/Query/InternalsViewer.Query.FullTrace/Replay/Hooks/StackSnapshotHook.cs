@@ -200,23 +200,30 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         var kept = new int[Candidates.Count];
 
-        var objects = new List<StackObject>();
+        var objectCount = 0;
 
         for (var index = 0; index < Candidates.Count; index++)
         {
+            kept[index] = Candidates[index].Size > 0 ? objectCount++ : -1;
+        }
+
+        var objects = new StackObject[objectCount];
+
+        for (var index = 0; index < Candidates.Count; index++)
+        {
+            if (kept[index] < 0)
+            {
+                continue;
+            }
+
             var target = Candidates[index];
 
-            kept[index] = target.Size > 0 ? objects.Count : -1;
-
-            if (target.Size > 0)
-            {
-                objects.Add(new StackObject(target.Address,
-                                            target.Size,
-                                            target.Thread,
-                                            target.OwnerReplayNodeIndex,
-                                            target.FromPosition,
-                                            target.ToPosition));
-            }
+            objects[kept[index]] = new StackObject(target.Address,
+                                                   target.Size,
+                                                   target.Thread,
+                                                   target.OwnerReplayNodeIndex,
+                                                   target.FromPosition,
+                                                   target.ToPosition);
         }
 
         var chunks = new List<DataChunk<StackSnapshotRun>>(Chunks.Count);
@@ -250,7 +257,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
             chunks.Add(new DataChunk<StackSnapshotRun>(clipped, data));
         }
 
-        return new StackSnapshotResult([.. objects], [.. chunks], SnapshotCount);
+        return new StackSnapshotResult(objects, [.. chunks], SnapshotCount);
     }
 
     private static bool IsWatched(AddressMapFunction function)

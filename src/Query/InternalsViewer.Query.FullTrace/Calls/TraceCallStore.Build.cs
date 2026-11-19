@@ -1,6 +1,7 @@
-using System.IO.Compression;
+using System.Buffers;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Replay;
 
@@ -12,8 +13,6 @@ public sealed partial class TraceCallStore
     {
         var functions = log.GetChunks();
 
-        using var compressed = new MemoryStream();
-
         foreach (var (key, chunks) in functions)
         {
             var ends = log.CallEnds.GetValueOrDefault(key);
@@ -22,31 +21,56 @@ public sealed partial class TraceCallStore
 
             if (ends is not null || stackArguments is not null)
             {
-                Apply(chunks, ends, stackArguments, compressed);
+                Apply(chunks, ends, stackArguments);
             }
         }
 
         return new TraceCallStore(functions, TraceLocatorSet.Build(log), nodes);
     }
 
-    internal static Chunk Compress(Span<ulong> columns, int calls, int stackSlots, MemoryStream compressed)
+    internal static Chunk[] CompressBlocks(Span<ulong> columns, int calls)
+    {
+        if (calls <= BlockCallCount)
+        {
+            return [Compress(columns, calls, 0)];
+        }
+
+        var blocks = new Chunk[(calls + BlockCallCount - 1) / BlockCallCount];
+
+        var block = ArrayPool<ulong>.Shared.Rent(BlockCallCount * TraceCallColumnSet.ValueCount);
+
+        try
+        {
+            for (var index = 0; index < blocks.Length; index++)
+            {
+                var first = index * BlockCallCount;
+
+                var count = Math.Min(BlockCallCount, calls - first);
+
+                for (var column = 0; column < TraceCallColumnSet.ValueCount; column++)
+                {
+                    columns.Slice(column * calls + first, count).CopyTo(block.AsSpan(column * count, count));
+                }
+
+                blocks[index] = Compress(block.AsSpan(0, count * TraceCallColumnSet.ValueCount), count, 0);
+            }
+        }
+        finally
+        {
+            ArrayPool<ulong>.Shared.Return(block);
+        }
+
+        return blocks;
+    }
+
+    internal static Chunk Compress(Span<ulong> columns, int calls, int stackSlots)
     {
         TraceCallColumnSet.Encode(columns, calls);
 
-        compressed.SetLength(0);
-
-        using (var stream = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
-        {
-            stream.Write(MemoryMarshal.AsBytes(columns));
-        }
-
-        return new Chunk(calls, stackSlots, compressed.ToArray());
+        return new Chunk(calls, stackSlots, ZLibCompression.Compress(MemoryMarshal.AsBytes(columns)));
     }
 
-    private static void Apply(Chunk[] chunks,
-                              List<ReplayCallLog.CallEnd>? ends,
-                              ReplayCallLog.StackArgumentList? stackArguments,
-                              MemoryStream compressed)
+    private static void Apply(Chunk[] chunks, List<ReplayCallLog.CallEnd>? ends, ReplayCallLog.StackArgumentList? stackArguments)
     {
         var first = 0;
 
@@ -100,7 +124,7 @@ public sealed partial class TraceCallStore
                 columns.SetToPosition((int)callIndex - first, toPosition, returnValue, returned);
             }
 
-            chunks[index] = Compress(buffer.AsSpan(0, length), calls, slots, compressed);
+            chunks[index] = Compress(buffer.AsSpan(0, length), calls, slots);
 
             first += calls;
         }

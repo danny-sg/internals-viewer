@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.IO.Compression;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -16,8 +15,6 @@ internal sealed partial class MemoryHistoryAccessTable
     private const int ChunkMask = ChunkSize - 1;
 
     private const int EntryBytes = sizeof(ulong) + 5 * sizeof(uint) + sizeof(byte);
-
-    private const int CompressionReserve = 1024;
 
     private MemoryHistoryAccessTable(byte[][] chunks, int[] dataLengths, int count, int cacheSlots)
     {
@@ -203,12 +200,11 @@ internal sealed partial class MemoryHistoryAccessTable
 
         var data = buffer.ResizeData(DataLengths[chunk]);
 
-        using (var stream = new ZLibStream(new MemoryStream(Chunks[chunk]), CompressionMode.Decompress))
-        {
-            stream.ReadExactly(bytes);
+        var reader = ZLibCompression.Open(Chunks[chunk]);
 
-            stream.ReadExactly(data);
-        }
+        reader.ReadExactly(bytes);
+
+        reader.ReadExactly(data);
 
         var columns = new ColumnLayout(bytes, count);
 
@@ -248,36 +244,19 @@ internal sealed partial class MemoryHistoryAccessTable
 
     private static byte[] Compress(ReadOnlySpan<MemoryHistoryAccessEntry> entries, ReadOnlySpan<byte> data)
     {
-        var count = entries.Length;
-
-        var columnLength = count * EntryBytes;
-
-        var length = columnLength + data.Length;
+        var columnLength = entries.Length * EntryBytes;
 
         var bytes = ArrayPool<byte>.Shared.Rent(columnLength);
-
-        var output = ArrayPool<byte>.Shared.Rent(length + (length >> 3) + CompressionReserve);
 
         try
         {
             WriteColumns(entries, bytes.AsSpan(0, columnLength));
 
-            using var compressed = new MemoryStream(output);
-
-            using (var stream = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
-            {
-                stream.Write(bytes.AsSpan(0, columnLength));
-
-                stream.Write(data);
-            }
-
-            return output.AsSpan(0, (int)compressed.Position).ToArray();
+            return ZLibCompression.Compress(bytes.AsSpan(0, columnLength), data);
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(bytes);
-
-            ArrayPool<byte>.Shared.Return(output);
         }
     }
 

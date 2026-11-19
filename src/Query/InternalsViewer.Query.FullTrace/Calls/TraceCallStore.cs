@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
-using System.IO.Compression;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 
@@ -8,6 +8,8 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed partial class TraceCallStore
 {
+    internal const int BlockCallCount = 1024;
+
     private const long CachedColumnBytes = 16L * 1024 * 1024;
 
     private const long CachedColumns = CachedColumnBytes / sizeof(ulong);
@@ -121,11 +123,9 @@ public sealed partial class TraceCallStore
             buffer = new ulong[length];
         }
 
-        using var stream = new ZLibStream(new MemoryStream(chunk.Columns), CompressionMode.Decompress);
-
         var bytes = MemoryMarshal.AsBytes(buffer.AsSpan(0, length));
 
-        var read = stream.ReadAtLeast(bytes, bytes.Length, throwOnEndOfStream: false);
+        var read = ZLibCompression.Open(chunk.Columns).Read(bytes);
 
         bytes[read..].Clear();
 
@@ -164,6 +164,8 @@ public sealed partial class TraceCallStore
 
         private List<ulong[]> Pool { get; } = [];
 
+        private Stack<LinkedListNode<(Chunk Chunk, TraceCallColumnSet Columns)>> FreeNodes { get; } = [];
+
         private Lock Sync { get; } = new();
 
         private long Size { get; set; }
@@ -200,7 +202,13 @@ public sealed partial class TraceCallStore
                     return read(added.Value.Columns, callIndex, state);
                 }
 
-                Entries[chunk] = Order.AddFirst((chunk, columns));
+                var node = FreeNodes.TryPop(out var free) ? free : new LinkedListNode<(Chunk Chunk, TraceCallColumnSet Columns)>(default);
+
+                node.Value = (chunk, columns);
+
+                Order.AddFirst(node);
+
+                Entries[chunk] = node;
 
                 Size += buffer.Length;
 
@@ -213,6 +221,10 @@ public sealed partial class TraceCallStore
                     Size -= oldest.Value.Columns.Values.Length;
 
                     Return(oldest.Value.Columns.Values);
+
+                    oldest.Value = default;
+
+                    FreeNodes.Push(oldest);
                 }
 
                 return read(columns, callIndex, state);
@@ -228,6 +240,8 @@ public sealed partial class TraceCallStore
                 Entries.Clear();
 
                 Pool.Clear();
+
+                FreeNodes.Clear();
 
                 Size = 0;
 

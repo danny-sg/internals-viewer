@@ -10,7 +10,7 @@ in a WinUI 3 desktop app.
 
 ## Build
 
-The solution is `src/InternalsViewer.slnx` (.NET 10). Most projects are `x64`-only — `InternalsViewer.UI.App`
+The solution is `src/InternalsViewer.slnx` (.NET 11). Most projects are `x64`-only — `InternalsViewer.UI.App`
 and the native `InternalsViewer.Query.DiaBridge` never build under `Any CPU`.
 
 ```bash

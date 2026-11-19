@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Helpers;
@@ -17,13 +16,11 @@ internal sealed class ReplayCallLog
 
     internal LocatorPool LocatorPool { get; } = new();
 
-    private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), List<Task<TraceCallStore.Chunk>>> Pending { get; } = new();
+    private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), List<Task<TraceCallStore.Chunk[]>>> Pending { get; } = new();
 
     private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
     private ArrayPool<long> ColumnBuffers { get; } = ArrayPool<long>.Create(1 << 24, Environment.ProcessorCount * 2);
-
-    private ConcurrentBag<MemoryStream> CompressionBuffers { get; } = [];
 
     public void AddChunk(ulong functionAddress, ulong instanceAddress, IntPtr columns, int callCount)
     {
@@ -37,16 +34,12 @@ internal sealed class ReplayCallLog
 
         var chunk = Task.Run(() =>
         {
-            var compressed = CompressionBuffers.TryTake(out var stream) ? stream : new MemoryStream();
-
             try
             {
-                return TraceCallStore.Compress(MemoryMarshal.Cast<long, ulong>(buffer.AsSpan(0, count)), callCount, 0, compressed);
+                return TraceCallStore.CompressBlocks(MemoryMarshal.Cast<long, ulong>(buffer.AsSpan(0, count)), callCount);
             }
             finally
             {
-                CompressionBuffers.Add(compressed);
-
                 ColumnBuffers.Return(buffer);
 
                 Compressing.Release();
@@ -87,10 +80,10 @@ internal sealed class ReplayCallLog
     {
         Task.WaitAll([.. Pending.Values.SelectMany(c => c)]);
 
-        return Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray());
+        return Pending.ToDictionary(p => p.Key, p => p.Value.SelectMany(c => c.Result).ToArray());
     }
 
-    private List<Task<TraceCallStore.Chunk>> GetChunks(ulong functionAddress, ulong instanceAddress)
+    private List<Task<TraceCallStore.Chunk[]>> GetChunks(ulong functionAddress, ulong instanceAddress)
     {
         ref var chunks = ref CollectionsMarshal.GetValueRefOrAddDefault(Pending, (functionAddress, instanceAddress), out _);
 

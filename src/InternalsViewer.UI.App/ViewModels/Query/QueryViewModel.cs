@@ -544,7 +544,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
     /// </summary>
-    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.Children ?? [];
+    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.Children.AsEnumerable() ?? [];
 
     public IReadOnlyList<CallTreeNode>? CroppedRoots
         => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallTree, CallTree)

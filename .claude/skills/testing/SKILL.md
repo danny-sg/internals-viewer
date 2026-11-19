@@ -14,7 +14,7 @@ there is a global `using Xunit`, so test files need no using block for the frame
 dotnet test src/Tests/InternalsViewer.Internals.Tests -p:Platform=x64
 ```
 
-`InternalsViewer.UI.App.Tests` targets `net10.0-windows` and references the app project, so it needs the MSIX
+`InternalsViewer.UI.App.Tests` targets `net11.0-windows` and references the app project, so it needs the MSIX
 opt-out as well — without it the reference build runs the app's packaging step, which fails on most machines:
 
 ```bash

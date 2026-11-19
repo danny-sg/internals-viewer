@@ -80,7 +80,7 @@ public sealed class CallTreeNode
     /// <summary>
     /// Child frames keyed by identity (RVA before resolution, resolved function after) so equal frames merge to one
     /// </summary>
-    internal Dictionary<(ulong FunctionAddress, ulong InstanceAddress), CallTreeNode> ChildrenByKey { get; } = [];
+    internal Dictionary<(ulong FunctionAddress, ulong InstanceAddress), CallTreeNode> ChildrenByKey => AddedChildren ?? NoChildren;
 
     public long CallCount { get; set; }
 
@@ -127,6 +127,15 @@ public sealed class CallTreeNode
 
     private HashSet<CallTreeNode>? CutBelowNodes { get; set; }
 
+    private static Dictionary<(ulong FunctionAddress, ulong InstanceAddress), CallTreeNode> NoChildren { get; } = [];
+
+    private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), CallTreeNode>? AddedChildren { get; set; }
+
+    internal void AddChild(CallTreeNode child)
+    {
+        (AddedChildren ??= [])[child.Key] = child;
+    }
+
     internal void AddCutBelow(CallTreeNode node)
     {
         (CutBelowNodes ??= []).Add(node);
@@ -150,7 +159,7 @@ public sealed class CallTreeNode
         AllocatedBytes + Children.Sum(c => c.AllocatedBytesIncludingChildren),
         AllocationCount + Children.Sum(c => c.AllocationCountIncludingChildren));
 
-    public IReadOnlyCollection<CallTreeNode> Children => ChildrenByKey.Values;
+    public Dictionary<(ulong FunctionAddress, ulong InstanceAddress), CallTreeNode>.ValueCollection Children => ChildrenByKey.Values;
 
     /// <summary>
     /// The frame's symbol category name (e.g. AccessMethod, Buffer), falling back to the module

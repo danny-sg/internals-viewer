@@ -68,19 +68,21 @@ public sealed class TraceTimelineThread
             return [];
         }
 
-        List<TracePosition> kept = [];
+        var kept = new TracePosition[Rows.Sum(r => r.Count)];
+
+        var next = 0;
 
         foreach (var row in Rows)
         {
             for (var index = 0; index < row.Count; index++)
             {
-                kept.Add(row.GetFromPosition(index));
+                kept[next++] = row.GetFromPosition(index);
             }
         }
 
         dead.Sort((left, right) => left.From.CompareTo(right.From));
 
-        kept.Sort();
+        Array.Sort(kept);
 
         var start = Start.Position;
 
@@ -114,19 +116,30 @@ public sealed class TraceTimelineThread
 
     internal bool HasBoundaryWithin(TracePosition from, TracePosition to)
     {
-        Boundaries ??= [.. Rows.SelectMany(GetBoundaries).Order()];
+        Boundaries ??= GetBoundaries();
 
         return HasPositionBetween(Boundaries, from, to);
     }
 
-    private static IEnumerable<TracePosition> GetBoundaries(TraceTimelineRow row)
+    private TracePosition[] GetBoundaries()
     {
-        for (var index = 0; index < row.Count; index++)
-        {
-            yield return row.GetFromPosition(index);
+        var boundaries = new TracePosition[Rows.Sum(r => 2 * r.Count)];
 
-            yield return row.GetToPosition(index);
+        var next = 0;
+
+        foreach (var row in Rows)
+        {
+            for (var index = 0; index < row.Count; index++)
+            {
+                boundaries[next++] = row.GetFromPosition(index);
+
+                boundaries[next++] = row.GetToPosition(index);
+            }
         }
+
+        Array.Sort(boundaries);
+
+        return boundaries;
     }
 
     private static bool HasPositionBetween(IReadOnlyList<TracePosition> positions, TracePosition from, TracePosition to)

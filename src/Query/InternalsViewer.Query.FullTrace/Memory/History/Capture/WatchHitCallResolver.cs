@@ -26,8 +26,12 @@ internal sealed class WatchHitCallResolver(TraceTimeline? timeline)
 
     public TracePosition? GetFrameStart(uint thread, TracePosition position, int replayNodeIndex)
     {
-        foreach (var lane in timeline?.Threads ?? [])
+        var lanes = timeline?.Threads ?? [];
+
+        for (var laneIndex = 0; laneIndex < lanes.Count; laneIndex++)
         {
+            var lane = lanes[laneIndex];
+
             if (lane.ThreadId != thread)
             {
                 continue;

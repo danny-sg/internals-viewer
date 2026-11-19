@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -34,6 +35,8 @@ internal static class ReplayFunctionScan
 
         var classes = new StringInternPool();
 
+        var layouts = new Dictionary<FunctionSignature, ArgumentLayout>(SignatureComparer.Instance);
+
         var symbol = table.Read();
 
         while (symbol.MoveNext())
@@ -55,7 +58,7 @@ internal static class ReplayFunctionScan
                 continue;
             }
 
-            var layout = signature is null ? null : ArgumentLayout.GetLayout(signature);
+            var layout = signature is null ? null : GetLayout(layouts, signature);
 
             if (signature is not null && layout is not null && !symbol.HasFoldedParameters)
             {
@@ -160,5 +163,68 @@ internal static class ReplayFunctionScan
 
         return mappings.Classify(module, className, methodName)
                        .IsInstrumentation(mappings.ClassifyOperator(module, className, methodName).OperatorName is not null);
+    }
+
+    private static ArgumentLayout GetLayout(Dictionary<FunctionSignature, ArgumentLayout> layouts, FunctionSignature signature)
+    {
+        ref var layout = ref CollectionsMarshal.GetValueRefOrAddDefault(layouts, signature, out var exists);
+
+        if (!exists)
+        {
+            layout = ArgumentLayout.GetLayout(signature);
+        }
+
+        return layout!;
+    }
+
+    private sealed class SignatureComparer : IEqualityComparer<FunctionSignature>
+    {
+        public static SignatureComparer Instance { get; } = new();
+
+        public bool Equals(FunctionSignature? left, FunctionSignature? right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left is null
+                || right is null
+                || left.Type != right.Type
+                || left.HasReturnBuffer != right.HasReturnBuffer
+                || left.ReturnType != right.ReturnType
+                || left.Parameters.Count != right.Parameters.Count)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < left.Parameters.Count; index++)
+            {
+                if (left.Parameters[index] != right.Parameters[index])
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public int GetHashCode(FunctionSignature signature)
+        {
+            var hash = new HashCode();
+
+            hash.Add(signature.Type);
+
+            hash.Add(signature.HasReturnBuffer);
+
+            hash.Add(signature.ReturnType);
+
+            for (var index = 0; index < signature.Parameters.Count; index++)
+            {
+                hash.Add(signature.Parameters[index]);
+            }
+
+            return hash.ToHashCode();
+        }
     }
 }

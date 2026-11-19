@@ -46,7 +46,7 @@ Steps:
 ### Technologies
 
 - C#
-- .NET 10.0
+- .NET 11.0
 - Windows App SDK (WinUI 3)
 
 ## Advisory

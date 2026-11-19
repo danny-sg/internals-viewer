@@ -73,7 +73,7 @@ internal static class TraceCallTreeExport
 
                 node.Parent = parent;
 
-                parent.ChildrenByKey[node.Key] = node;
+                parent.AddChild(node);
             }
 
             node.CallCount = line.Calls;

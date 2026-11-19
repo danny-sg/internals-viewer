@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <OutputType>Library</OutputType>
         <PublishUrl>publish\</PublishUrl>
         <Install>true</Install>
@@ -37,8 +37,6 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
         <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.12.1">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

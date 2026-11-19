@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Columnstore.Decoding;
 
@@ -54,7 +55,7 @@ public sealed class SegmentValueDecoder(ColumnSegment segment,
 
         if (Segment.Magnitude > 0 && Math.Abs(Segment.Magnitude - 1) > double.Epsilon)
         {
-            return value * (decimal)Segment.Magnitude;
+            return value * NumberHelpers.ToDecimal(Segment.Magnitude);
         }
 
         return value;

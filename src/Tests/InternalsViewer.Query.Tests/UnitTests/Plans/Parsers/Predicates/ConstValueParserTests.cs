@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Globalization;
 using System.Text;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
 using InternalsViewer.Query.Plans.Values;
@@ -55,18 +56,18 @@ public class ConstValueParserTests
     }
 
     [Theory]
-    [InlineData("($500.0000)", 500)]
-    [InlineData("$19.99", 19.99)]
-    [InlineData("(-$12.50)", -12.5)]
-    [InlineData("($-12.50)", -12.5)]
-    [InlineData("$500", 500)]
-    public void Money_Literal_Keeps_Its_Value_Despite_The_Currency_Symbol(string literal, double expected)
+    [InlineData("($500.0000)", "500")]
+    [InlineData("$19.99", "19.99")]
+    [InlineData("(-$12.50)", "-12.5")]
+    [InlineData("($-12.50)", "-12.5")]
+    [InlineData("$500", "500")]
+    public void Money_Literal_Keeps_Its_Value_Despite_The_Currency_Symbol(string literal, string expected)
     {
         var value = ConstValueParser.Parse(literal);
 
         Assert.Equal(AccessValueType.Decimal, value.Type);
         Assert.Equal(SqlDbType.Money, value.DataType);
-        Assert.Equal((decimal)expected, value.ToDecimal());
+        Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), value.ToDecimal());
     }
 
     [Fact]

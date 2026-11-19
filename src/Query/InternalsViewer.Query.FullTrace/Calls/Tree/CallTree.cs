@@ -106,7 +106,7 @@ public sealed class CallTree
         {
             child = new CallTreeNode { Frame = frame, Parent = parent, Order = NextOrder++ };
 
-            parent.ChildrenByKey[child.Key] = child;
+            parent.AddChild(child);
         }
 
         return child;

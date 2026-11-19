@@ -1,10 +1,10 @@
-using System.IO.Compression;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;
+using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;
 
@@ -278,9 +278,9 @@ internal sealed class SymbolTable
 
         target.Index = -1;
 
-        using var stream = new ZLibStream(new MemoryStream(Chunks[chunk]), CompressionMode.Decompress);
+        var reader = ZLibCompression.Open(Chunks[chunk]);
 
-        stream.ReadExactly(MemoryMarshal.AsBytes(target.Starts.AsSpan(1, fields)));
+        reader.ReadExactly(MemoryMarshal.AsBytes(target.Starts.AsSpan(1, fields)));
 
         target.Starts[0] = 0;
 
@@ -289,7 +289,7 @@ internal sealed class SymbolTable
             target.Starts[at] += target.Starts[at - 1];
         }
 
-        stream.ReadExactly(target.Resize(target.Starts[fields]));
+        reader.ReadExactly(target.Resize(target.Starts[fields]));
 
         target.Fields = fields;
 
@@ -358,8 +358,6 @@ internal sealed class SymbolTable
         private int PendingCount { get; set; }
 
         private int PendingLength { get; set; }
-
-        private MemoryStream Compressed { get; } = new();
 
         public void Add(uint rva,
                         bool isFunction,
@@ -490,16 +488,8 @@ internal sealed class SymbolTable
                 return;
             }
 
-            Compressed.SetLength(0);
-
-            using (var stream = new ZLibStream(Compressed, CompressionLevel.Optimal, leaveOpen: true))
-            {
-                stream.Write(MemoryMarshal.AsBytes(PendingLengths.AsSpan(0, PendingCount * FieldCount)));
-
-                stream.Write(PendingText.AsSpan(0, PendingLength));
-            }
-
-            Chunks.Add(Compressed.ToArray());
+            Chunks.Add(ZLibCompression.Compress(MemoryMarshal.AsBytes(PendingLengths.AsSpan(0, PendingCount * FieldCount)),
+                                                PendingText.AsSpan(0, PendingLength)));
 
             PendingCount = 0;
 

@@ -24,6 +24,14 @@ public sealed partial class AddressMap
                                   Entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max());
     }
 
+    private AddressMap(Dictionary<ulong, StoredEntry[]> entries, Label[] labels, ulong[] addresses, AddressIndex blocks)
+    {
+        Entries = entries;
+        Labels = labels;
+        Addresses = addresses;
+        Blocks = blocks;
+    }
+
     public static AddressMap Empty { get; } = new([]);
 
     public int Count => Entries.Values.Sum(e => e.Length);
@@ -115,9 +123,43 @@ public sealed partial class AddressMap
 
     internal IEnumerable<AddressMapEntry> GetEntries() => Entries.SelectMany(e => e.Value.Select(entry => ToEntry(e.Key, entry)));
 
-    internal AddressMap WithVtableClasses(Func<AddressMapEntry, string?> getClassName)
-        => new(Entries.ToDictionary(e => e.Key,
-                                    e => Array.ConvertAll(e.Value, stored => WithVtableClass(ToEntry(e.Key, stored), getClassName))));
+    internal IEnumerable<(ulong Address, TracePosition FromPosition, AddressMapOperation Operation, string? ClassName)> GetOperations()
+    {
+        foreach (var (address, entries) in Entries)
+        {
+            foreach (var entry in entries)
+            {
+                var label = Labels[entry.LabelIndex];
+
+                yield return (address, entry.FromPosition, label.Operation, label.ClassName);
+            }
+        }
+    }
+
+    internal AddressMap WithVtableClasses(Func<ulong, TracePosition, string?, string?> getClassName)
+    {
+        var labels = new Dictionary<Label, int>();
+
+        var entries = new Dictionary<ulong, StoredEntry[]>(Entries.Count);
+
+        foreach (var (address, stored) in Entries)
+        {
+            var relabelled = new StoredEntry[stored.Length];
+
+            for (var index = 0; index < stored.Length; index++)
+            {
+                var label = Labels[stored[index].LabelIndex];
+
+                label = label with { VtableClassName = getClassName(address, stored[index].FromPosition, label.VtableClassName) };
+
+                relabelled[index] = stored[index] with { LabelIndex = Intern(label, labels) };
+            }
+
+            entries[address] = relabelled;
+        }
+
+        return new AddressMap(entries, [.. labels.OrderBy(l => l.Value).Select(l => l.Key)], Addresses, Blocks);
+    }
 
     internal int GetSiteCount()
         => Entries.Values.Sum(e => e.Count(entry => Labels[entry.LabelIndex] is { Operation: AddressMapOperation.Allocated, Site: not null }));
@@ -196,9 +238,6 @@ public sealed partial class AddressMap
                                   memoryObject,
                                   entry.VtableClassName);
     }
-
-    private static AddressMapEntry WithVtableClass(AddressMapEntry entry, Func<AddressMapEntry, string?> getClassName)
-        => entry with { VtableClassName = getClassName(entry) };
 
     private static AddressMapEntry[] Link(AddressMapEntry[] entries)
     {
@@ -279,13 +318,6 @@ public sealed partial class AddressMap
     {
         var label = new Label(entry.Operation, entry.ClassName, entry.Allocator, entry.Site, entry.MemoryObject, entry.VtableClassName);
 
-        ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(labels, label, out var exists);
-
-        if (!exists)
-        {
-            index = labels.Count - 1;
-        }
-
         return new StoredEntry(entry.Owner,
                                entry.FromPosition,
                                entry.ToPosition,
@@ -293,7 +325,19 @@ public sealed partial class AddressMap
                                entry.CallIndex,
                                entry.Thread,
                                entry.ReplayNodeIndex,
-                               index);
+                               Intern(label, labels));
+    }
+
+    private static int Intern(Label label, Dictionary<Label, int> labels)
+    {
+        ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(labels, label, out var exists);
+
+        if (!exists)
+        {
+            index = labels.Count - 1;
+        }
+
+        return index;
     }
 
     private int GetEntryIndex(StoredEntry[] entries, TracePosition position)

@@ -40,6 +40,22 @@ public class AccessValueComparerTests
         Assert.Equal(expectedSign, Math.Sign(AccessValueComparer.Compare(column, literal)));
     }
 
+    [Theory]
+    [InlineData(19.99, "19.99", 0)]
+    [InlineData(19.99, "19.98", 1)]
+    [InlineData(0.1, "0.1", 0)]
+    [InlineData(-12.5, "-12.49", -1)]
+    public void A_Float_Column_Compares_Against_A_Decimal_By_Its_Shown_Value(double columnValue, string decimalText, int expectedSign)
+    {
+        var column = AccessValue.FromReal(SqlDbType.Float, columnValue);
+
+        var literal = AccessValue.FromDecimal(SqlDbType.Decimal, decimal.Parse(decimalText, CultureInfo.InvariantCulture));
+
+        Assert.Equal(expectedSign, Math.Sign(AccessValueComparer.Compare(column, literal)));
+
+        Assert.Equal(-expectedSign, Math.Sign(AccessValueComparer.Compare(literal, column)));
+    }
+
     private static AccessValue Literal(string text)
     {
         return AccessValue.FromBytes(SqlDbType.VarChar, Encoding.Latin1.GetBytes(text));

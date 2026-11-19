@@ -19,36 +19,37 @@ internal static class ObjectClassResolver
 
         var uses = new Dictionary<int, List<TracePosition>>();
 
-        foreach (var entry in map.GetEntries())
+        foreach (var (address, fromPosition, operation, className) in map.GetOperations())
         {
-            if (GetBlock(store, entry) is not (>= 0 and var block))
+            if (GetBlock(store, address, fromPosition) is not (>= 0 and var block))
             {
                 continue;
             }
 
-            if (IsKnownClass(entry))
+            if (IsKnownClass(operation, className))
             {
-                known[block] = known.GetValueOrDefault(block) || polymorphic.Contains(entry.ClassName!);
+                known[block] = known.GetValueOrDefault(block) || polymorphic.Contains(className!);
             }
 
-            if (entry.Operation is AddressMapOperation.Visited or AddressMapOperation.Declared)
+            if (operation is AddressMapOperation.Visited or AddressMapOperation.Declared)
             {
                 if (!uses.TryGetValue(block, out var positions))
                 {
                     uses[block] = positions = [];
                 }
 
-                positions.Add(entry.FromPosition);
+                positions.Add(fromPosition);
             }
         }
 
         var resolved = new Dictionary<int, string?>();
 
-        return map.WithVtableClasses(e => GetEntryClass(store, classes, known, uses, resolved, e) ?? e.VtableClassName);
+        return map.WithVtableClasses((address, fromPosition, vtableClassName)
+                                         => GetEntryClass(store, classes, known, uses, resolved, address, fromPosition) ?? vtableClassName);
     }
 
-    public static bool IsKnownClass(AddressMapEntry entry)
-        => entry is { Operation: AddressMapOperation.Constructed or AddressMapOperation.Visited, ClassName: not null };
+    public static bool IsKnownClass(AddressMapOperation operation, string? className)
+        => operation is AddressMapOperation.Constructed or AddressMapOperation.Visited && className is not null;
 
     public static ObjectClass GetClass(MemoryHistoryStore store,
                                        IReadOnlyDictionary<ulong, string> classes,
@@ -151,8 +152,8 @@ internal static class ObjectClassResolver
         return classes[^1];
     }
 
-    private static int GetBlock(MemoryHistoryStore store, AddressMapEntry entry)
-        => store.GetBlock(entry.Address, entry.FromPosition) is >= 0 and var block && store.Blocks[block].Address == entry.Address
+    private static int GetBlock(MemoryHistoryStore store, ulong address, TracePosition position)
+        => store.GetBlock(address, position) is >= 0 and var block && store.Blocks[block].Address == address
             ? block
             : -1;
 
@@ -161,9 +162,10 @@ internal static class ObjectClassResolver
                                          Dictionary<int, bool> known,
                                          Dictionary<int, List<TracePosition>> uses,
                                          Dictionary<int, string?> resolved,
-                                         AddressMapEntry entry)
+                                         ulong address,
+                                         TracePosition fromPosition)
     {
-        if (GetBlock(store, entry) is not (>= 0 and var block))
+        if (GetBlock(store, address, fromPosition) is not (>= 0 and var block))
         {
             return null;
         }

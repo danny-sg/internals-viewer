@@ -181,9 +181,27 @@ internal sealed class MemoryHistoryBuilder
     {
         var firstWrites = new int[blocks.Count];
 
-        var kept = new List<MemoryHistoryBlock>();
+        var keptCount = 0;
 
-        var instances = new List<MemoryHistoryInstance>();
+        var instanceCount = 0;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            if (isKept[index])
+            {
+                keptCount++;
+
+                instanceCount += blocks[index].Instances.Count;
+            }
+        }
+
+        var kept = new MemoryHistoryBlock[keptCount];
+
+        var instances = new MemoryHistoryInstance[instanceCount];
+
+        var keptIndex = 0;
+
+        var instanceIndex = 0;
 
         var firstWrite = 0;
 
@@ -200,17 +218,17 @@ internal sealed class MemoryHistoryBuilder
 
             var replayNodeIndex = block.IsStack ? block.ReplayNodeIndex : stacks.GetReplayNodeIndex(block.Thread, block.FromPosition);
 
-            var firstInstance = instances.Count;
+            var firstInstance = instanceIndex;
 
             foreach (var (from, to) in block.Instances.OrderBy(i => i.From))
             {
-                instances.Add(new MemoryHistoryInstance(from,
-                                                        to,
-                                                        stacks.GetInstructions(block.Thread, from),
-                                                        to.IsKnown ? stacks.GetInstructions(block.Thread, to) : 0));
+                instances[instanceIndex++] = new MemoryHistoryInstance(from,
+                                                                       to,
+                                                                       stacks.GetInstructions(block.Thread, from),
+                                                                       to.IsKnown ? stacks.GetInstructions(block.Thread, to) : 0);
             }
 
-            kept.Add(new MemoryHistoryBlock(block.Iterator,
+            kept[keptIndex++] = new MemoryHistoryBlock(block.Iterator,
                                             block.Address,
                                             (int)block.Size,
                                             block.IsIterator,
@@ -228,11 +246,11 @@ internal sealed class MemoryHistoryBuilder
                 IsArray = block.IsArray,
                 FirstInstance = firstInstance,
                 InstanceCount = block.Instances.Count
-            });
+            };
 
             firstWrite += written[index];
         }
 
-        return ([.. kept], firstWrites, [.. instances]);
+        return (kept, firstWrites, instances);
     }
 }

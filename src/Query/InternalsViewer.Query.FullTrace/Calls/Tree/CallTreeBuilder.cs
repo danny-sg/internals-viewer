@@ -29,7 +29,7 @@ internal static class CallTreeBuilder
             nodes[i] = replayed.AddCall(parent, CreateFrame(ordered, starts, call), (long)call.CallCount);
         }
 
-        var projected = new Dictionary<CallTreeNode, CallTreeNode>(ReferenceEqualityComparer.Instance);
+        var projected = new Dictionary<CallTreeNode, CallTreeNode>(nodes.Length, ReferenceEqualityComparer.Instance);
 
         var callTree = replayed.Project(onProjected: (original, node) => projected[original] = node);
 
