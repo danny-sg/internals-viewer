@@ -35,6 +35,7 @@
                 <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
                 <MenuFlyoutItem Text="Copy Symbol" Click="OnCopySymbolClick"/>
                 <MenuFlyoutItem Text="Copy Address" Click="OnCopyAddressClick"/>
+                <MenuFlyoutItem Text="Copy Call Stack" Click="OnCopyCallStackClick"/>
             </MenuFlyoutSubItem>
         </MenuFlyout>
 

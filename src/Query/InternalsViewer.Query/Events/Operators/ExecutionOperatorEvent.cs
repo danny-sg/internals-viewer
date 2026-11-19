@@ -20,7 +20,7 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     [EventProperty("Parent Node")]
     public int? ParentNodeId { get; set; }
 
-    public bool IsBlockingInput { get; set; }
+    public InputRole InputRole { get; set; }
 
     public PlanNodeIdentifier? AdaptedNode { get; init; }
 

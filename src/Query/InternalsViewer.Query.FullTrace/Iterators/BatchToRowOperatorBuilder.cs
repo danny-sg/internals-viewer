@@ -40,7 +40,7 @@ internal static class BatchToRowOperatorBuilder
                     LogicalOperator = OperatorName,
                     Category = OperatorCategory.Adapter,
                     NodeLevel = source.NodeLevel,
-                    IsBlockingInput = source.IsBlockingInput,
+                    InputRole = source.InputRole,
                     AdaptedNode = source.PlanNodeIdentifier
                 };
 

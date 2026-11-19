@@ -1,6 +1,7 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
@@ -37,6 +38,8 @@ public sealed class CallTreeNode
     public string? OperatorName => Frame?.Function?.OperatorName;
 
     public bool HasOperatorName => OperatorName is not null;
+
+    public bool IsInstrumentation => Frame?.Function is { } function && function.SymbolCategory.IsInstrumentation(HasOperatorName);
 
     /// <summary>
     /// Whether an operator's execution begins here, so the tree can be cut into a segment per operator
@@ -135,6 +138,8 @@ public sealed class CallTreeNode
     {
         (AddedChildren ??= [])[child.Key] = child;
     }
+
+    internal void RemoveChild(CallTreeNode child) => AddedChildren?.Remove(child.Key);
 
     internal void AddCutBelow(CallTreeNode node)
     {

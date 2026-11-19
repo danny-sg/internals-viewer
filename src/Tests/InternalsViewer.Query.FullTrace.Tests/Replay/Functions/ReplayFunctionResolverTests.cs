@@ -29,4 +29,18 @@ public class ReplayFunctionResolverTests
         Assert.Equal(SymbolCategory.QueryOperator, category);
         Assert.False(category.IsInstrumentation(iterator is not null));
     }
+
+    [Theory]
+    [InlineData("sqllang", "QueryHints", "AddHintXEventStringIfEnabled")]
+    [InlineData("sqllang", "QueryHints", "FireXEventForHints")]
+    [InlineData("sqllang", "IStatsCollection", "FireGuessXEvent")]
+    [InlineData("sqllang", "CNormalizeExpr", "FireXEventForOpsInExpr")]
+    [InlineData("sqllang", "BatchModeHeuristics", "FireHeuristicsXEvent")]
+    [InlineData("sqldk", null, "XEventNoInline<`SOS_Task::PushWait'::`14'::<lambda_1> >")]
+    public void A_Function_That_Fires_An_Extended_Event_Is_Cut(string module, string? className, string methodName)
+    {
+        var category = CategoryRuleTable.Default.Classify(module, className, methodName);
+
+        Assert.True(category.IsInstrumentation(hasOperatorName: false));
+    }
 }

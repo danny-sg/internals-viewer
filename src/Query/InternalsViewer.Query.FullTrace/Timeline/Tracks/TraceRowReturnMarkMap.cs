@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -14,8 +15,6 @@ namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 public sealed class TraceRowReturnMarkMap
 {
     private const uint RowStatus = 0;
-
-    private const string FilterOperator = "Filter";
 
     private TraceRowReturnMarkMap(HashSet<ExecutionOperatorEvent> batchOperators, TraceTickSeries ticks)
     {
@@ -77,18 +76,11 @@ public sealed class TraceRowReturnMarkMap
 
                 var enclosing = group.Enclosing[index];
 
-                var caller = enclosing == 0 ? null : owners[enclosing];
-
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
                 if (calls.GetCallList(call.FunctionAddress, group.InstanceAddress) is not { } list
                     || timeline.FindSpan(list, call.CallIndex) is not { } location
-                    || GetReturnType(layout.Iterator,
-                                     group,
-                                     index,
-                                     parent,
-                                     caller?.Name == FilterOperator,
-                                     operatorEvent.IsBlockingInput) is not { } type)
+                    || GetReturnType(layout.Iterator, group, index, parent, operatorEvent.InputRole) is not { } type)
                 {
                     continue;
                 }
@@ -199,15 +191,14 @@ public sealed class TraceRowReturnMarkMap
                                                 CallGroup group,
                                                 int index,
                                                 CallGroup? parent,
-                                                bool isFiltered,
-                                                bool isBlockingInput)
+                                                InputRole role)
         => group.Calls[index].Status switch
         {
-            null 
+            null
                 => null,
-            RowStatus when parent is null || isBlockingInput || IsPassedUp(group, index, parent) 
+            RowStatus when parent is null || role is InputRole.Streaming or InputRole.Blocking || IsPassedUp(group, index, parent)
                 => RowReturnType.Returned,
-            RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.Skipped,
+            RowStatus => role == InputRole.Filtered ? RowReturnType.Rejected : RowReturnType.Skipped,
             { } status when status == iterator.EndOfRowsStatus 
                 => RowReturnType.End,
             { } status when status == iterator.FakeRowStatus 

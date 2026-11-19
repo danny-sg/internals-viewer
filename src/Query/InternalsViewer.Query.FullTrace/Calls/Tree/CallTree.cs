@@ -249,6 +249,34 @@ public sealed class CallTree
         return builder.ToString();
     }
 
+    internal HashSet<CallTreeNode> RemoveSubtrees(Func<CallTreeNode, bool> isRemoved)
+    {
+        var removed = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
+
+        var stack = new Stack<(CallTreeNode Node, bool IsRemoved)>();
+
+        stack.Push((Root, false));
+
+        while (stack.Count > 0)
+        {
+            var (node, isNodeRemoved) = stack.Pop();
+
+            foreach (var child in node.Children.ToList())
+            {
+                var isChildRemoved = isNodeRemoved || isRemoved(child);
+
+                if (isChildRemoved && removed.Add(child) && !isNodeRemoved)
+                {
+                    node.RemoveChild(child);
+                }
+
+                stack.Push((child, isChildRemoved));
+            }
+        }
+
+        return removed;
+    }
+
     private static void RenderNode(CallTreeNode node, int depth, StringBuilder builder)
     {
         builder.Append(' ', depth * 2);

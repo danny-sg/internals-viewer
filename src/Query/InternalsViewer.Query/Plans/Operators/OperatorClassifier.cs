@@ -89,6 +89,9 @@ public static class OperatorClassifier
     public static bool IsHashJoin(PlanNode n) =>
         IsHash(n) && n.Children.Count >= 2;
 
+    public static bool IsFlowDistinct(PlanNode n) =>
+        IsHash(n) && Contains(n.LogicalOperator, "Flow Distinct");
+
     /// <summary>
     /// How <paramref name="parent"/> consumes the given <paramref name="child"/> input
     /// </summary>
@@ -97,13 +100,23 @@ public static class OperatorClassifier
         // Hash join: the build side is blocking, the probe side streams.
         if (IsHashJoin(parent))
         {
-            return child == GetHashBuildChild(parent) ? InputRole.Blocking : InputRole.Streaming;
+            return child == GetHashBuildChild(parent) ? InputRole.Blocking : InputRole.Matched;
         }
 
         // Single-input blocking operators (sort, hash aggregate, eager spool) consume all input first.
         if (IsBlocking(parent))
         {
             return InputRole.Blocking;
+        }
+
+        if (IsFilter(parent))
+        {
+            return InputRole.Filtered;
+        }
+
+        if (IsNestedLoop(parent) || IsMergeJoin(parent) || IsFlowDistinct(parent))
+        {
+            return InputRole.Matched;
         }
 
         return InputRole.Streaming;

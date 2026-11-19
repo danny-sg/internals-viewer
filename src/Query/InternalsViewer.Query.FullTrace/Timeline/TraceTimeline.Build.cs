@@ -18,7 +18,7 @@ public sealed partial class TraceTimeline
 
         var scale = new TraceScale(spans.Threads.Values.Select(t => t.MaximumSteps).DefaultIfEmpty(0ul).Max() + 1d);
 
-        var threads = spans.Threads.Select(t => BuildThread(t.Key, t.Value, depths, scale))
+        var threads = spans.Threads.Select(t => BuildThread(t.Key, t.Value, nodes, depths, scale))
                            .Where(t => t.CallCount > 0)
                            .OrderBy(t => t.Start.Position)
                            .ToList();
@@ -30,9 +30,13 @@ public sealed partial class TraceTimeline
         return timeline;
     }
 
-    private static TraceTimelineThread BuildThread(uint threadId, ReplaySpans.ThreadSpans spans, int[] depths, TraceScale scale)
+    private static TraceTimelineThread BuildThread(uint threadId,
+                                                   ReplaySpans.ThreadSpans spans,
+                                                   TraceNodeMap nodes,
+                                                   int[] depths,
+                                                   TraceScale scale)
     {
-        var count = spans.Count;
+        var count = 0;
 
         var rowCounts = new List<int>();
 
@@ -40,6 +44,13 @@ public sealed partial class TraceTimeline
         {
             foreach (var span in spans.GetChunk(chunk))
             {
+                if (nodes.IsCut(span.ReplayNodeIndex))
+                {
+                    continue;
+                }
+
+                count++;
+
                 var depth = GetDepth(span, depths);
 
                 while (rowCounts.Count <= depth)
@@ -62,11 +73,20 @@ public sealed partial class TraceTimeline
 
         var store = new TraceSpanStore(count);
 
+        List<(TracePosition From, TracePosition To)> excluded = [.. spans.Excluded];
+
         for (var chunk = 0; chunk < spans.ChunkCount; chunk++)
         {
             foreach (var span in spans.TakeChunk(chunk))
             {
-                store.Set(next[GetDepth(span, depths)]++, span.From, span.To, span.ReplayNodeIndex, span.CallIndex, span.Flags);
+                if (!nodes.IsCut(span.ReplayNodeIndex))
+                {
+                    store.Set(next[GetDepth(span, depths)]++, span.From, span.To, span.ReplayNodeIndex, span.CallIndex, span.Flags);
+                }
+                else if (!nodes.IsCut(nodes.GetParent(span.ReplayNodeIndex)))
+                {
+                    excluded.Add((span.From, span.To));
+                }
             }
         }
 
@@ -83,7 +103,7 @@ public sealed partial class TraceTimeline
 
         var thread = new TraceTimelineThread(threadId, clock, store, rows, count);
 
-        clock.AddDeadSpans(thread.GetMaterialDeadSpans(spans.Excluded, scale));
+        clock.AddDeadSpans(thread.GetMaterialDeadSpans(excluded, scale));
 
         return thread;
     }

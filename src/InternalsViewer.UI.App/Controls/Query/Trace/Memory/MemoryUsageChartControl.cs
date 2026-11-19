@@ -29,6 +29,8 @@ public sealed partial class MemoryUsageChartControl : SKXamlCanvas
 
     private const float LegendGap = 12f;
 
+    private const float LegendMargin = 8f;
+
     private const float HoverDistance = 6f;
 
     private const string PlayheadKey = "SystemAccentColorDark1";
@@ -116,9 +118,9 @@ public sealed partial class MemoryUsageChartControl : SKXamlCanvas
 
     private static SKRect GetPlot(float width, float height)
         => new(PlotMargin,
-               PlotMargin + LabelHeight,
+               PlotMargin + LabelHeight + LegendMargin,
                Math.Max(PlotMargin + 1, width - PlotMargin),
-               Math.Max(PlotMargin + LabelHeight + 1, height - PlotMargin));
+               Math.Max(PlotMargin + LabelHeight + LegendMargin + 1, height - PlotMargin));
 
     private static float GetX(SKRect plot, int index, int count) => plot.Left + (index + 0.5f) / count * plot.Width;
 

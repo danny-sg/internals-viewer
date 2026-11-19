@@ -26,5 +26,16 @@ public class ModuleExportReaderTests
     }
 
     [Fact]
+    public void An_Export_That_Jumps_To_Its_Body_Also_Names_The_Body()
+    {
+        var exports = ModuleExportReader.Read(Path.Combine(Environment.SystemDirectory, "vcruntime140.dll"));
+
+        var memset = exports.Where(e => e.Name == "memset").Select(e => e.Rva).ToList();
+
+        Assert.Equal(2, memset.Count);
+        Assert.NotEqual(memset[0], memset[1]);
+    }
+
+    [Fact]
     public void A_Missing_File_Has_No_Exports() => Assert.Empty(ModuleExportReader.Read(@"Z:\missing\module.dll"));
 }

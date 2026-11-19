@@ -22,8 +22,49 @@ public class OperatorEventBuilderTests
 
         var events = new OperatorEventBuilder(plan, []).Build().ToDictionary(e => e.PlanNodeIdentifier!.NodeId);
 
-        Assert.Equal((false, true, true, false),
-                     (events[0].IsBlockingInput, events[1].IsBlockingInput, events[2].IsBlockingInput, events[3].IsBlockingInput));
+        Assert.Equal((InputRole.Streaming, InputRole.Blocking, InputRole.Blocking, InputRole.Matched),
+                     (events[0].InputRole, events[1].InputRole, events[2].InputRole, events[3].InputRole));
+    }
+
+    [Fact]
+    public void Only_Inputs_A_Parent_Can_Drop_Rows_From_Are_Filtered_Or_Matched()
+    {
+        var outer = Node(3, "Index Scan", "Index Scan");
+
+        var inner = Node(4, "Index Seek", "Index Seek");
+
+        var loop = Node(2, "Nested Loops", "Inner Join", children: [outer, inner]);
+
+        var aggregate = Node(1, "Stream Aggregate", "Aggregate", children: [loop]);
+
+        var filter = Node(0, "Filter", "Filter", children: [aggregate]);
+
+        var plan = new ExecutionPlan(1)
+        {
+            Root = [filter],
+            NodesById = new() { [0] = filter, [1] = aggregate, [2] = loop, [3] = outer, [4] = inner }
+        };
+
+        var events = new OperatorEventBuilder(plan, []).Build().ToDictionary(e => e.PlanNodeIdentifier!.NodeId);
+
+        Assert.Equal((InputRole.Filtered, InputRole.Streaming, InputRole.Matched, InputRole.Matched),
+                     (events[1].InputRole, events[2].InputRole, events[3].InputRole, events[4].InputRole));
+    }
+
+    [Fact]
+    public void The_Input_Of_A_Compute_Scalar_Takes_The_Role_The_Compute_Scalar_Has()
+    {
+        var scan = Node(2, "Index Scan", "Index Scan");
+
+        var computeScalar = Node(1, "Compute Scalar", "Compute Scalar", children: [scan]);
+
+        var filter = Node(0, "Filter", "Filter", children: [computeScalar]);
+
+        var plan = new ExecutionPlan(1) { Root = [filter], NodesById = new() { [0] = filter, [1] = computeScalar, [2] = scan } };
+
+        var events = new OperatorEventBuilder(plan, []).Build().ToDictionary(e => e.PlanNodeIdentifier!.NodeId);
+
+        Assert.Equal((InputRole.Filtered, InputRole.Filtered), (events[1].InputRole, events[2].InputRole));
     }
 
     [Fact]
@@ -39,7 +80,7 @@ public class OperatorEventBuilderTests
 
         var events = new OperatorEventBuilder(plan, []).Build().ToDictionary(e => e.PlanNodeIdentifier!.NodeId);
 
-        Assert.Equal((true, false), (events[1].IsBlockingInput, events[2].IsBlockingInput));
+        Assert.Equal((InputRole.Blocking, InputRole.Matched), (events[1].InputRole, events[2].InputRole));
     }
 
     private static PlanNode Node(int nodeId,

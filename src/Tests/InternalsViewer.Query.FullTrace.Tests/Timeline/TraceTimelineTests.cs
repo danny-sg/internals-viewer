@@ -632,6 +632,27 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void A_Call_Cut_From_The_Tree_Is_A_Dead_Span_And_Its_Callees_Are_Dropped()
+    {
+        var nodes = CreateNodes();
+
+        var spans = new ReplaySpans();
+
+        spans.Add([Span(replayNodeIndex: 0, start: 0, end: 1000),
+                   Span(replayNodeIndex: 1, start: 100, end: 500),
+                   Span(replayNodeIndex: 2, start: 200, end: 300)]);
+
+        var map = TraceNodeMap.Build(Nodes, nodes).Without(new HashSet<CallTreeNode> { nodes[1], nodes[2] });
+
+        var timeline = TraceTimeline.Build(spans, map);
+
+        var thread = Assert.Single(timeline.Threads);
+
+        Assert.Equal((1L, 600d), (Calls: thread.CallCount, timeline.End.Instructions));
+        Assert.Equal([(new TracePosition(1, 100), new TracePosition(1, 500))], thread.Clock.GetDeadSpans());
+    }
+
+    [Fact]
     public void An_Excluded_Call_Too_Small_To_Matter_Leaves_No_Dead_Span()
     {
         var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000), Span(replayNodeIndex: -2, start: 100, end: 105));

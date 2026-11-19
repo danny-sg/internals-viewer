@@ -6,6 +6,22 @@ namespace InternalsViewer.Query.FullTrace.Tests.Calls.Tree;
 public class CallTreeTests
 {
     [Fact]
+    public void Removing_Subtrees_Takes_Each_Matching_Node_With_Everything_Under_It()
+    {
+        var tree = new CallTree();
+
+        var caller = tree.AddCall(tree.Root, Frame("Caller", 0x10), 1);
+        var removed = tree.AddCall(caller, Frame("Removed", 0x20), 1);
+        var callee = tree.AddCall(removed, Frame("Callee", 0x30), 1);
+        var sibling = tree.AddCall(caller, Frame("Sibling", 0x40), 1);
+
+        var cut = tree.RemoveSubtrees(n => n.Frame?.Address == 0x20);
+
+        Assert.Equal([removed, callee], cut.OrderBy(n => n.Frame!.Address));
+        Assert.Equal([caller, sibling], tree.GetNodes().OrderBy(n => n.Frame!.Address));
+    }
+
+    [Fact]
     public void Merged_Nodes_Add_Up_Their_Calls_And_Allocations_And_Keep_Their_Members()
     {
         var tree = new CallTree();

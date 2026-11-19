@@ -187,7 +187,7 @@ internal sealed class OperatorEventBuilder
 
         var consumeEnd = blocking.Max(c => Timing(c).EndUs);
 
-        var streaming = node.Children.Where(c => OperatorClassifier.RoleOf(node, c) == InputRole.Streaming).ToList();
+        var streaming = node.Children.Where(c => OperatorClassifier.RoleOf(node, c) != InputRole.Blocking).ToList();
 
         // Emit begins when the streaming (probe) input opens, or when consumption finishes if there is none.
         return streaming.Count > 0 ? streaming.Min(c => Timing(c).StartUs) : consumeEnd;
@@ -212,7 +212,7 @@ internal sealed class OperatorEventBuilder
             PlanHandleId = _plan.PlanHandleId,
             NodeLevel = node.NodeLevel,
             ParentNodeId = _parentByNode.TryGetValue(node.NodeId, out var parent) ? parent : null,
-            IsBlockingInput = IsBlockingInput(node),
+            InputRole = GetInputRole(node),
             Cost = OwnCost(node),
             RowsProcessed = node.RowsProcessed,
             OperatorObjectName = ObjectName(node),
@@ -233,10 +233,20 @@ internal sealed class OperatorEventBuilder
         return operatorEvent;
     }
 
-    private bool IsBlockingInput(PlanNode node)
-        => _parentByNode.TryGetValue(node.NodeId, out var parent)
-           && _plan.NodesById.TryGetValue(parent, out var parentNode)
-           && OperatorClassifier.RoleOf(parentNode, node) == InputRole.Blocking;
+    private InputRole GetInputRole(PlanNode node)
+    {
+        while (_parentByNode.TryGetValue(node.NodeId, out var parent) && _plan.NodesById.TryGetValue(parent, out var parentNode))
+        {
+            if (!OperatorClassifier.IsComputeScalar(parentNode))
+            {
+                return OperatorClassifier.RoleOf(parentNode, node);
+            }
+
+            node = parentNode;
+        }
+
+        return InputRole.Streaming;
+    }
 
     /// <summary>
     /// Splits a blocking/hybrid operator into a consume (build) phase and an emit (probe) phase, around

@@ -11,5 +11,9 @@ public enum InputRole
     /// <summary>
     /// The whole input is consumed before any output is produced (e.g. a hash build, a sort)
     /// </summary>
-    Blocking
+    Blocking,
+
+    Filtered,
+
+    Matched
 }

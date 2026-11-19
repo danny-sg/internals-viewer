@@ -323,6 +323,9 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     private void OnCopyAddressClick(object sender, RoutedEventArgs e)
         => WithContextRow((_, row) => ClipboardText.Copy(row.Node.Frame is { } frame ? $"0x{frame.Address:X}" : string.Empty));
 
+    private void OnCopyCallStackClick(object sender, RoutedEventArgs e)
+        => WithContextRow((stack, row) => ClipboardText.Copy(GetCallStackText(stack, row)));
+
     private void OnCopyRowSignatureClick(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row })
@@ -437,6 +440,10 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     }
 
     private string DisplayText(PlayheadCallRow row) => string.Concat(row.Signature.Select(p => p.GetDisplayText(Settings.DecodeValues)));
+
+    private string GetCallStackText(CallStackViewModel stack, PlayheadCallRow row)
+        => string.Join(Environment.NewLine,
+                       stack.Threads.SelectMany(t => t.Calls.SkipWhile(c => !ReferenceEquals(c, row))).Select(DisplayText));
 
     private void WithContextRow(Action<CallStackViewModel, PlayheadCallRow> action)
     {

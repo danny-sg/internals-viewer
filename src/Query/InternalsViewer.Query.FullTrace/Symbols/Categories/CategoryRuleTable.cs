@@ -44,7 +44,7 @@ public sealed class CategoryRuleTable
     public SymbolCategory Classify(string? module, ReadOnlySpan<char> className, ReadOnlySpan<char> methodName)
         => Classify(Rules, RuleIndex, module, className, methodName)
            ?? Classify(Fallbacks, FallbackIndex, module, className, methodName)
-           ?? SymbolCategory.Unknown;
+           ?? (GetModuleCategory(module) == ModuleCategory.System ? SymbolCategory.System : SymbolCategory.Unknown);
 
     public (string? OperatorName, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
                                                                                             ReadOnlySpan<char> className,

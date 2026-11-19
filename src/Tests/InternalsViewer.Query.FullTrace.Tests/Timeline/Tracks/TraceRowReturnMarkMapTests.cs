@@ -53,7 +53,8 @@ public class TraceRowReturnMarkMapTests
         Name = "Index Scan",
         OperatorDescription = "Index Scan",
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
-        ParentNodeId = 0
+        ParentNodeId = 0,
+        InputRole = InputRole.Matched
     };
 
     private static readonly ExecutionOperatorEvent BlockingInput = new()
@@ -62,7 +63,25 @@ public class TraceRowReturnMarkMapTests
         OperatorDescription = "Index Scan",
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
         ParentNodeId = 0,
-        IsBlockingInput = true
+        InputRole = InputRole.Blocking
+    };
+
+    private static readonly ExecutionOperatorEvent StreamingInput = new()
+    {
+        Name = "Index Scan",
+        OperatorDescription = "Index Scan",
+        PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
+        ParentNodeId = 0,
+        InputRole = InputRole.Streaming
+    };
+
+    private static readonly ExecutionOperatorEvent FilteredInput = new()
+    {
+        Name = "Index Scan",
+        OperatorDescription = "Index Scan",
+        PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
+        ParentNodeId = 0,
+        InputRole = InputRole.Filtered
     };
 
     private static readonly CallNode[] Nodes =
@@ -116,6 +135,26 @@ public class TraceRowReturnMarkMapTests
     }
 
     [Fact]
+    public void Rows_A_Stream_Aggregate_Reads_Before_Returning_A_Group_Are_Returned()
+    {
+        var streamAggregate = new ExecutionOperatorEvent
+        {
+            Name = "Stream Aggregate",
+            OperatorDescription = "Stream Aggregate",
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
+        };
+
+        var marks = Build([(10, 100, RowStatus), (110, 120, RowStatus), (130, 140, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
+                          top: streamAggregate,
+                          bottom: StreamingInput);
+
+        Assert.Equal((2, 0),
+                     (GetCount(marks, StreamingInput, Thread, RowReturnType.Returned),
+                      GetCount(marks, StreamingInput, Thread, RowReturnType.Skipped)));
+    }
+
+    [Fact]
     public void Batches_A_Blocking_Operator_Reads_Inside_Its_Open_Are_Returned()
     {
         var marks = Build([(50, 60, RowStatus), (70, 80, EndStatus)],
@@ -141,12 +180,13 @@ public class TraceRowReturnMarkMapTests
 
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
                           [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                          top: filter);
+                          top: filter,
+                          bottom: FilteredInput);
 
         Assert.Equal((1, 1, 0),
-                     (GetCount(marks, Scan, Thread, RowReturnType.Returned),
-                      GetCount(marks, Scan, Thread, RowReturnType.Rejected),
-                      GetCount(marks, Scan, Thread, RowReturnType.Skipped)));
+                     (GetCount(marks, FilteredInput, Thread, RowReturnType.Returned),
+                      GetCount(marks, FilteredInput, Thread, RowReturnType.Rejected),
+                      GetCount(marks, FilteredInput, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]

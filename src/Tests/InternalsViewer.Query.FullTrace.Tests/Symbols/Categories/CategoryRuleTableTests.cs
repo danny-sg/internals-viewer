@@ -52,6 +52,14 @@ public class CategoryRuleTableTests
     public void Default_Classifies(string? className, string? methodName, SymbolCategory expected) =>
         Assert.Equal(expected, CategoryRuleTable.Default.Classify(module: null, className, methodName));
 
+    [Theory]
+    [InlineData("ucrtbase", SymbolCategory.System)]
+    [InlineData("VCRUNTIME140", SymbolCategory.System)]
+    [InlineData("ntdll", SymbolCategory.System)]
+    [InlineData("nosuchmodule", SymbolCategory.Unknown)]
+    public void An_Unnamed_Function_Takes_A_System_Module_Category(string module, SymbolCategory expected)
+        => Assert.Equal(expected, CategoryRuleTable.Default.Classify(module, null, "0xB3D80"));
+
     [Fact]
     public void Default_Modules_Resolve()
     {

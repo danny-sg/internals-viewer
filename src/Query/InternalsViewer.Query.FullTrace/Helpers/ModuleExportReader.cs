@@ -17,6 +17,10 @@ internal static class ModuleExportReader
 
     private const uint EntrySize = sizeof(uint);
 
+    private const byte JumpOpcode = 0xE9;
+
+    private const int JumpLength = 5;
+
     public static List<(string Name, uint Rva)> Read(string path)
     {
         if (!File.Exists(path))
@@ -63,12 +67,38 @@ internal static class ModuleExportReader
                 exports.Add((ReadName(reader, ReadUInt32(reader, nameTable + index * EntrySize)), rva));
             }
 
+            var named = exports.Select(e => e.Rva).ToHashSet();
+
+            var imageSize = (uint)(reader.PEHeaders.PEHeader?.SizeOfImage ?? 0);
+
+            foreach (var (name, rva) in exports.ToList())
+            {
+                if (GetJumpTarget(reader, rva, imageSize) is { } target && named.Add(target))
+                {
+                    exports.Add((name, target));
+                }
+            }
+
             return exports;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or BadImageFormatException)
         {
             return [];
         }
+    }
+
+    private static uint? GetJumpTarget(PEReader reader, uint rva, uint imageSize)
+    {
+        var code = reader.GetSectionData((int)rva).GetReader();
+
+        if (code.RemainingBytes < JumpLength || code.ReadByte() != JumpOpcode)
+        {
+            return null;
+        }
+
+        var target = (long)rva + JumpLength + code.ReadInt32();
+
+        return target > 0 && target < imageSize ? (uint)target : null;
     }
 
     private static uint ReadUInt32(PEReader reader, uint rva) => reader.GetSectionData((int)rva).GetReader().ReadUInt32();

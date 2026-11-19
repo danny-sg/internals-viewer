@@ -292,7 +292,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         LogUnknownEnums(callTree, resolver);
 
-        return (callTree, nodes);
+        var removed = callTree.RemoveSubtrees(n => n.IsInstrumentation);
+
+        Logger.LogInformation("{Paths} call path(s) in or under Extended Events and tracing removed after symbols were resolved",
+                              removed.Count);
+
+        return (callTree, nodes.Without(removed));
     }
 
     private void LogCalls(ReplayCapture capture, TraceStore store)
