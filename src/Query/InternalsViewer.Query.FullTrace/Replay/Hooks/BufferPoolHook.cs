@@ -4,13 +4,13 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
-using InternalsViewer.Query.FullTrace.Replay;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
-namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
+namespace InternalsViewer.Query.FullTrace.Replay.Hooks;
 
 /// <summary>
 /// Hook to capture BUF buffer pool structure

@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
-namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Tests.Replay.Hooks;
 
 [Trait("Category", "Unit")]
 public class PlanNodeHookTests

@@ -3,7 +3,6 @@ using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture;
-using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Diagnostics;
@@ -119,54 +118,28 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         using var session = replayed.Value.Session;
 
-        var (_, capture, functions) = replayed.Value;
+        if (!request.IsHeapCaptured && !request.IsPageReadCaptured)
+        {
+            session.Dispose();
+        }
 
-        var bufferPool = TraceBufferPool.Build(capture.BufferPool);
+        var (builder, memory) = await TranslateAsync(replayed.Value.Capture,
+                                                     replayed.Value.Functions,
+                                                     request,
+                                                     session.ServerVersion,
+                                                     steps,
+                                                     messages,
+                                                     cancellationToken);
 
-        steps.Begin(CallTreeStep);
+        var (history, pageReads) = memory is null
+            ? (MemoryHistoryStore.Empty, TracePageReadList.Empty)
+            : await CaptureMemoryAsync(session, request, builder.Store.Timeline, memory, steps, progress, cancellationToken);
 
-        var (callTree, nodes) = await BuildCallTreeAsync(capture, request.SymbolsPath, messages, cancellationToken);
+        await Task.Yield();
 
-        var store = TraceStore.Build(capture, nodes);
-
-        LogCalls(capture, store);
-
-        steps.Complete();
-
-        steps.Begin(OperatorsStep);
-
-        var builder = CreateResultBuilder(capture, store, bufferPool, functions, request, callTree, session.ServerVersion);
-
-        builder.LinkExecutionPlan();
-
-        LogExecutionPlanLink(request, capture, builder);
-
-        steps.Complete();
-
-        var memory = request.IsHeapCaptured || request.IsStackCaptured || request.IsPageReadCaptured
-            ? await CaptureMemoryAsync(session,
-                                       request,
-                                       capture,
-                                       store,
-                                       bufferPool,
-                                       functions,
-                                       builder.Lifetimes,
-                                       builder.MemoryObjects,
-                                       steps,
-                                       progress,
-                                       cancellationToken)
-            : null;
-
-        var result = builder.Build(memory?.History ?? MemoryHistoryStore.Empty, memory?.PageReads ?? TracePageReadList.Empty);
+        var result = builder.Build(history, pageReads);
 
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
-
-        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors, member calls and declared types",
-                              result.AddressMap.Count);
-
-        Logger.LogInformation("{Sites} allocation(s) labelled with their source line, {Vtables} named by their vtable",
-                              result.AddressMap.GetSiteCount(),
-                              capture.AddressEntries.Count(e => e is { Operation: AddressMapOperation.Allocated, ClassName: not null }));
 
         return result;
     }
@@ -233,6 +206,43 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             return null;
         }
+    }
+
+    private async Task<(TraceResultBuilder Builder, MemoryCapture? Memory)> TranslateAsync(ReplayCapture capture,
+                                                                                         ReplayFunctionTable functions,
+                                                                                         TraceRequest request,
+                                                                                         Version? serverVersion,
+                                                                                         StepProgress steps,
+                                                                                         StepLoggerProgress messages,
+                                                                                         CancellationToken cancellationToken)
+    {
+        var bufferPool = TraceBufferPool.Build(capture.BufferPool);
+
+        steps.Begin(CallTreeStep);
+
+        var (callTree, nodes) = await BuildCallTreeAsync(capture, request.SymbolsPath, messages, cancellationToken);
+
+        var store = TraceStore.Build(capture, nodes);
+
+        LogCalls(capture, store);
+
+        steps.Complete();
+
+        steps.Begin(OperatorsStep);
+
+        var builder = CreateResultBuilder(capture, store, bufferPool, functions, request, callTree, serverVersion);
+
+        builder.LinkExecutionPlan();
+
+        LogExecutionPlanLink(request, capture, builder);
+
+        steps.Complete();
+
+        var memory = request.IsHeapCaptured || request.IsStackCaptured || request.IsPageReadCaptured
+            ? PrepareMemoryCapture(request, capture, functions, builder)
+            : null;
+
+        return (builder, memory);
     }
 
     private static List<ProgressStep> GetSteps(TraceRequest request)
@@ -317,14 +327,23 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Allocations} allocation(s) of {Bytes}", allocationCount, StringHelpers.FormatSize(allocatedBytes));
 
-        return new TraceResultBuilder(callTree, store, request.Events, capture.PlanNodes)
-        {
-            Allocation = allocation,
-            AddressMap = AddressMap.Build(capture.AddressEntries,
+        var addressMap = AddressMap.Build(capture.AddressEntries,
                                           store.Nodes.GetNode,
                                           store.Calls,
                                           functions.AllocationFunctions,
-                                          memoryObjects),
+                                          memoryObjects);
+
+        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors, member calls and declared types",
+                              addressMap.Count);
+
+        Logger.LogInformation("{Sites} allocation(s) labelled with their source line, {Vtables} named by their vtable",
+                              addressMap.GetSiteCount(),
+                              capture.AddressEntries.Count(e => e is { Operation: AddressMapOperation.Allocated, ClassName: not null }));
+
+        return new TraceResultBuilder(callTree, store, request.Events, capture.PlanNodes)
+        {
+            Allocation = allocation,
+            AddressMap = addressMap,
             MemoryClerkObjects = request.MemoryClerks.MemoryObjects,
             BufferPool = bufferPool,
             ServerVersion = serverVersion,
@@ -354,27 +373,22 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               builder.Lifetimes.Select(l => l.Thread).Distinct().Count());
     }
 
-    private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)?> CaptureMemoryAsync(ReplaySession session,
-                                                                                                      TraceRequest request,
-                                                                                                      ReplayCapture capture,
-                                                                                                      TraceStore store,
-                                                                                                      TraceBufferPool bufferPool,
-                                                                                                      ReplayFunctionTable functions,
-                                                                                                      TraceOperatorLifetimeList lifetimes,
-                                                                                                      MemoryObjectMap memoryObjects,
-                                                                                                      StepProgress steps,
-                                                                                                      IProgress<ProgressDetail>? progress,
-                                                                                                      CancellationToken cancellationToken)
+    private MemoryCapture? PrepareMemoryCapture(TraceRequest request,
+                                                ReplayCapture capture,
+                                                ReplayFunctionTable functions,
+                                                TraceResultBuilder builder)
     {
+        var store = builder.Store;
+
         var allocations = request.IsHeapCaptured
             ? MemoryWatchPlanner.GetAllocations(store.Calls,
                                                   functions.AllocationFunctions,
                                                   capture.BufferBlocks,
-                                                  [.. memoryObjects.GetPageBlocks()])
+                                                  [.. builder.MemoryObjects.GetPageBlocks()])
             : [];
 
-        var pageReads = request.IsPageReadCaptured && bufferPool.Count > 0
-            ? new TracePageReadList.Builder(bufferPool)
+        var pageReads = request.IsPageReadCaptured && builder.BufferPool.Count > 0
+            ? new TracePageReadList.Builder(builder.BufferPool)
             : null;
 
         if (allocations.Length == 0 && capture.StackSnapshots.Objects.Length == 0 && pageReads is null)
@@ -382,7 +396,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             return null;
         }
 
-        HashSet<ulong> iterators = [.. lifetimes.OperatorsByInstance.Keys, .. capture.PlanNodes.Select(p => p.Iterator)];
+        HashSet<ulong> iterators = [.. builder.Lifetimes.OperatorsByInstance.Keys, .. capture.PlanNodes.Select(p => p.Iterator)];
 
         var firstPositions = MemoryWatchPlanner.GetFirstPositions(store.Calls, iterators);
 
@@ -397,51 +411,45 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                                            firstPositions,
                                                            store.Timeline,
                                                            capture.StackSnapshots,
-                                                           memoryObjects.GetOwner);
+                                                           builder.MemoryObjects.GetOwner);
 
         Logger.LogInformation("{Objects} stack object(s) handed between functions, read {Snapshots} time(s) into {Changes} change(s)",
                               capture.StackSnapshots.Objects.Length,
                               capture.StackSnapshots.SnapshotCount,
                               capture.StackSnapshots.RunCount);
 
-        var writes = allocations.Length > 0 || pageReads is not null
-            ? await WatchMemoryAsync(session,
-                                     request,
-                                     store.Timeline,
-                                     allocations,
-                                     historyBuilder,
-                                     pageReads,
-                                     steps,
-                                     progress,
-                                     cancellationToken)
+        return new MemoryCapture(allocations, historyBuilder, pageReads);
+    }
+
+    private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)> CaptureMemoryAsync(ReplaySession session,
+                                                                                                     TraceRequest request,
+                                                                                                     TraceTimeline timeline,
+                                                                                                     MemoryCapture memory,
+                                                                                                     StepProgress steps,
+                                                                                                     IProgress<ProgressDetail>? progress,
+                                                                                                     CancellationToken cancellationToken)
+    {
+        var writes = memory.IsWatched
+            ? await WatchMemoryAsync(session, request, timeline, memory, steps, progress, cancellationToken)
             : WatchResult.Empty;
 
-        if (writes is null)
-        {
-            return null;
-        }
+        session.Dispose();
 
-        steps.Begin(MemoryHistoryStep);
-
-        var history = BuildMemoryHistory(historyBuilder, writes, allocations.Length);
-
-        var reads = pageReads?.Build() ?? TracePageReadList.Empty;
-
-        steps.Complete();
-
-        return (history, reads);
+        return writes is null
+            ? (MemoryHistoryStore.Empty, TracePageReadList.Empty)
+            : BuildMemoryHistory(memory, writes, steps);
     }
 
     private async Task<WatchResult?> WatchMemoryAsync(ReplaySession session,
                                                       TraceRequest request,
                                                       TraceTimeline timeline,
-                                                      MemoryHistoryAllocation[] allocations,
-                                                      MemoryHistoryBuilder historyBuilder,
-                                                      TracePageReadList.Builder? pageReads,
+                                                      MemoryCapture memory,
                                                       StepProgress steps,
                                                       IProgress<ProgressDetail>? progress,
                                                       CancellationToken cancellationToken)
     {
+        var (allocations, historyBuilder, pageReads) = memory;
+
         steps.Begin(WatchStep);
 
         WatchResult writes;
@@ -525,8 +533,14 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         };
     }
 
-    private MemoryHistoryStore BuildMemoryHistory(MemoryHistoryBuilder historyBuilder, WatchResult writes, int allocationCount)
+    private (MemoryHistoryStore History, TracePageReadList PageReads) BuildMemoryHistory(MemoryCapture memory,
+                                                                                         WatchResult writes,
+                                                                                         StepProgress steps)
     {
+        var (allocations, historyBuilder, pageReads) = memory;
+
+        steps.Begin(MemoryHistoryStep);
+
         var (history, counts) = historyBuilder.Build(writes);
 
         Logger.LogInformation("{Recorded} kept write(s) recorded a change, {Unchanged} left values unchanged, {BufferPool} were to "
@@ -539,7 +553,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator",
                               history.Blocks.Where(b => !b.IsStack).Sum(b => (long)b.WriteCount),
                               history.Blocks.Count(b => !b.IsStack),
-                              allocationCount,
+                              allocations.Length,
                               history.Blocks.Count(b => b.Iterator != 0));
 
         Logger.LogInformation("{Writes} change(s) to {Sites} stack object(s), {Instances} call(s) of the functions holding them",
@@ -551,7 +565,11 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               history.ReadCount,
                               historyBuilder.ReadCounts.UnwrittenCount);
 
-        return history;
+        var reads = pageReads?.Build() ?? TracePageReadList.Empty;
+
+        steps.Complete();
+
+        return (history, reads);
     }
 
     private void LogOperators(IReadOnlyList<ExecutionOperatorEvent> operators,
@@ -637,5 +655,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         {
             Logger.LogDebug($"Unknown enum: {name} ({function})");
         }
+    }
+
+    private sealed record MemoryCapture(MemoryHistoryAllocation[] Allocations,
+                                        MemoryHistoryBuilder History,
+                                        TracePageReadList.Builder? PageReads)
+    {
+        public bool IsWatched => Allocations.Length > 0 || PageReads is not null;
     }
 }

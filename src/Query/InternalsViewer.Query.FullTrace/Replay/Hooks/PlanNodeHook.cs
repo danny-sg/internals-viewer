@@ -1,12 +1,12 @@
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
-namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Replay.Hooks;
 
 internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
                                    AddressTable<PlanObjectClass> planObjects) : ITraceHook

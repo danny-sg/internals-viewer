@@ -1,16 +1,14 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
-using InternalsViewer.Query.FullTrace.Replay;
+using InternalsViewer.Query.FullTrace.Locators;
 
-namespace InternalsViewer.Query.FullTrace.Locators;
+namespace InternalsViewer.Query.FullTrace.Replay.Hooks;
 
 internal sealed class LocatorHook : ITraceHook
 {

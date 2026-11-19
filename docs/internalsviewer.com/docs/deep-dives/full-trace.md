@@ -299,7 +299,7 @@ The recording itself is deleted once it has replayed successfully. Everything ab
 - `src/Query/InternalsViewer.Query.FullTrace/` - the managed side:
   - `Recording/` - preparing a recording: finding WinDbg, the TTD copy, the licence check, the trace folder, starting the harness and the events it signals
   - `TraceLoader.cs` - the load that ties the steps together
-  - `Replay/` - everything that drives the bridge, ending in the raw `ReplayCapture.cs`: `ReplaySession.cs` opens the recording and runs the passes, `Native/` calls the bridge, `Hooks/` dispatches calls to the hooks, `Functions/` holds the function sets the replay needs from the PDBs, and `Stubs/` resolves import stubs
+  - `Replay/` - everything that drives the bridge, ending in the raw `ReplayCapture.cs`: `ReplaySession.cs` opens the recording and runs the passes, `Native/` calls the bridge, `Hooks/` holds the hooks that run during the replay and the dispatcher that calls them, `Functions/` holds the function sets the replay needs from the PDBs, and `Stubs/` resolves import stubs
   - `TraceResultBuilder.cs` and `TraceStore.cs` - turning the raw captures into the final result, with the calls and the timeline held together in the store
   - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), the Module / Category classification and its mapping files (`Categories/`), and the virtual function tables (`VtableResolver.cs`)
   - `Calls/Tree/` - the call tree, with `CallTreeBuilder.cs` mapping nodes to frames

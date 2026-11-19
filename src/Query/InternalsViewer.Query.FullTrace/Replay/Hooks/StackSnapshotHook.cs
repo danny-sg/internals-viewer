@@ -2,13 +2,14 @@ using System.Buffers;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
+using InternalsViewer.Query.FullTrace.Memory.History.Capture;
+using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 
-namespace InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
+namespace InternalsViewer.Query.FullTrace.Replay.Hooks;
 
 /// <summary>
 /// Capture of stack objects

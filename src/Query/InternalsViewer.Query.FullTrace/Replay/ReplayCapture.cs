@@ -28,6 +28,9 @@ namespace InternalsViewer.Query.FullTrace.Replay;
 /// <param name="AddressEntries">
 /// Address sightings from the memory map hook: allocations, constructions, member calls and declared pointers
 /// </param>
+/// <param name="BufferPool">
+/// Buffer pool information
+/// </param>
 /// <param name="PlanNodes">
 /// Iterators linked to their plan object and plan node id by the plan node hook
 /// </param>

@@ -6,7 +6,7 @@ using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
-namespace InternalsViewer.Query.FullTrace.Tests.Memory.History.Capture.StackObjects;
+namespace InternalsViewer.Query.FullTrace.Tests.Replay.Hooks;
 
 [Trait("Category", "Unit")]
 public class StackSnapshotHookTests

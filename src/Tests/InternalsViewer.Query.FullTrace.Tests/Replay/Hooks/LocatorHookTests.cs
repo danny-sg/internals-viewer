@@ -12,7 +12,7 @@ using InternalsViewer.Query.FullTrace.Replay;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 
-namespace InternalsViewer.Query.FullTrace.Tests.Locators;
+namespace InternalsViewer.Query.FullTrace.Tests.Replay.Hooks;
 
 [Trait("Category", "Unit")]
 public class LocatorHookTests

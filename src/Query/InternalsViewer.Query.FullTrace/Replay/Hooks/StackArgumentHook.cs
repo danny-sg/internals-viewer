@@ -1,10 +1,8 @@
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
-using InternalsViewer.Query.FullTrace.Replay;
 
-namespace InternalsViewer.Query.FullTrace.Calls;
+namespace InternalsViewer.Query.FullTrace.Replay.Hooks;
 
 internal sealed class StackArgumentHook(AddressTable<int> functions, ReplayCallLog log) : ITraceHook
 {

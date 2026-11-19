@@ -38,6 +38,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
 
     public IReadOnlyList<TraceModule> ModuleImages { get; init; } = [];
 
+    public TraceStore Store { get; } = store;
+
     public IteratorPlanLink PlanLink { get; private set; } = IteratorPlanLink.Empty;
 
     public OperatorFrameMap OperatorFrames { get; private set; } = OperatorFrameMap.Empty;
@@ -47,8 +49,6 @@ internal sealed class TraceResultBuilder(CallTree callTree,
     public MemoryObjectMap MemoryObjects { get; private set; } = MemoryObjectMap.Empty;
 
     private CallTree CallTree { get; } = callTree;
-
-    private TraceStore Store { get; } = store;
 
     private IReadOnlyList<EngineEvent> Events { get; } = events;
 
