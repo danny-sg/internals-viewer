@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -101,6 +102,8 @@ public sealed record TraceResult(CallTree CallTree, TraceStore Store) : IRunExtr
 
     private PlanOutputResultReader StatementResults => field ??= new PlanOutputResultReader(this);
 
+    private DeclaredTypeMap DeclaredTypes => field ??= DeclaredTypeMap.Build(MemoryHistory, GetMapClass, GetVtableClass);
+
     public void SetActivityWindow(TraceTimeline window)
     {
         if (ReferenceEquals(ActivityWindow, window))
@@ -134,6 +137,44 @@ public sealed record TraceResult(CallTree CallTree, TraceStore Store) : IRunExtr
     public string? GetInterfaceName(ulong address, TracePosition position)
         => new MemoryHistoryReader(MemoryHistory, position).TryRead(address, out ulong vtable) ? GetVtableBase(vtable) : null;
 
+    public string? GetDeclaredType(int block) => DeclaredTypes.Get(block);
+
+    public ulong? GetInstructionOperand(ulong instruction, TracePosition position)
+    {
+        var block = MemoryHistory.GetBlock(instruction, position);
+
+        if (block < 0 || DeclaredTypes.GetSource(block) is not { } source)
+        {
+            return null;
+        }
+
+        var layout = MemoryHistory.Layout;
+
+        var memory = new MemoryHistoryReader(MemoryHistory, position);
+
+        var program = MemoryHistory.Blocks[source].Address;
+
+        if (!memory.TryRead(instruction + (ulong)layout.CodeInstruction.HandlerField.Offset, out ulong handler)
+            || !memory.TryRead(instruction + (ulong)layout.CodeInstruction.CountField.Offset, out int count)
+            || !memory.TryRead(instruction + (ulong)layout.CodeInstruction.OperandField.Offset, out int operand)
+            || !ExpressionInstructionLookup.IsOperandAccess(count, ModuleSymbols.Find(handler)?.Symbol)
+            || !memory.TryRead(program + (ulong)layout.Expression.OperandsField.Offset, out ulong operands)
+            || !memory.TryRead(program + (ulong)layout.Expression.OperandCountField.Offset, out int operandCount)
+            || operand < 0
+            || operand >= operandCount
+            || !memory.TryRead(operands + (ulong)(operand * layout.Expression.OperandField.Length), out ulong value))
+        {
+            return null;
+        }
+
+        return value;
+    }
+
+    public bool IsExpressionInstruction(ulong value)
+        => ModuleSymbols.Find(value) is { Offset: 0, Module: var module }
+           && ModuleSymbols.GetSignature(value) is { } signature
+           && ExpressionInstructionLookup.IsInstruction(module, signature);
+
     public string? GetModuleLabel(ulong value)
         => ModuleSymbols.Find(value) is { } found
             ? ModuleLabels.GetOrAdd(value, v => (found.IsString ? ReadLiteral(v) : null) ?? found.ToString())
@@ -154,6 +195,12 @@ public sealed record TraceResult(CallTree CallTree, TraceStore Store) : IRunExtr
         => OutputLinks.ReadDataPath(operators, isPlanObjectIncluded);
 
     internal void BuildOutputPaths() => OutputLinks.ReadAll();
+
+    private string? GetMapClass(int block)
+        => MemoryHistory.Blocks[block] is { IsStack: false } item
+            ? AddressMap.GetVtableClassName(item.Address, item.FromPosition, item.ToPosition)
+              ?? AddressMap.GetClassName(item.Address, item.FromPosition, item.ToPosition)
+            : null;
 
     private string? ReadLiteral(ulong address)
     {

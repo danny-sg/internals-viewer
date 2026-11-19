@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Windows.Foundation;
 using WinUI.TableView;
 
@@ -168,15 +169,13 @@ public sealed partial class ResultsGridControl : UserControl
 
         var table = (TableView)((DataTemplate)Resources["ResultsTableTemplate"]).LoadContent();
 
-        var first = rows.Count > 0 ? rows[0] : null;
-
         foreach (var column in columns)
         {
             var resultCellColumn = new ResultCellColumn(column.Ordinal)
             {
                 Header = CreateHeader(column),
                 BackgroundColour = column.BackgroundColour,
-                Width = GetColumnWidth(column, first, table.FontSize),
+                Width = GetColumnWidth(column, rows, table.FontSize),
                 Alignment = column.Alignment,
                 PageClicked = OnPageClicked,
                 ObjectClicked = ObjectClicked is null ? null : OnObjectClicked,
@@ -497,16 +496,18 @@ public sealed partial class ResultsGridControl : UserControl
         return _lastKnownSize;
     }
 
-    private static GridLength GetColumnWidth(ResultColumn column, ResultRow<long>? first, double fontSize)
+    private static GridLength GetColumnWidth(ResultColumn column, IReadOnlyList<ResultRow<long>> rows, double fontSize)
     {
         if (column.IsStar)
         {
             return new GridLength(1, GridUnitType.Star);
         }
 
-        if (column.Width is null && first is not null)
+        if (column.Width is null && rows.Count > 0)
         {
-            var content = ResultCellColumn.MeasureWidth(first[column.Ordinal], fontSize) + CellMargin;
+            var measured = column.IsFitToRows ? rows : rows.Take(1);
+
+            var content = measured.Max(r => ResultCellColumn.MeasureWidth(r[column.Ordinal], fontSize)) + CellMargin;
 
             return new GridLength(Math.Min(Math.Max(content, HeaderWidth(column)), MaximumFitWidth));
         }

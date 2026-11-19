@@ -15,6 +15,7 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
@@ -46,6 +47,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const int LoadInterval = 50;
 
+    private const string ExpressionInstructionBadge = "Expression Instruction";
+
     private const string OpenMemoryCommand = "Open Memory";
 
     private const string OpenPageCommand = "Open Page";
@@ -55,6 +58,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private const string IndirectPrefix = "→ ";
 
     private const string SnapshotPrefix = " @";
+
+    private static readonly Windows.UI.Color? ExpressionInstructionColour
+        = ColourHelpers.FromHex(SymbolCategory.ExpressionEvaluation.GetCategoryMetadata()?.ForegroundColor);
 
     [ObservableProperty]
     private bool _isOpen;
@@ -439,6 +445,22 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public object GetPointerCell(ulong pointer) => GetPointerCell(pointer, null);
 
+    public object GetOperandCell(ulong instruction, ulong index)
+    {
+        var text = $"{(int)(uint)index}";
+
+        if (History.GetInstructionOperand(instruction, Position) is not { } operand)
+        {
+            return text;
+        }
+
+        return new ActionLinks([new ActionLink(text, () => RequestMemory(operand))])
+        {
+            Suffix = History.GetPointerTarget(operand, Position),
+            ObjectBadges = GetTargetBadges(History.GetBlock(operand, Position))
+        };
+    }
+
     public object GetPointerCell(ulong pointer, string? target)
     {
         var text = $"0x{pointer:X16}";
@@ -460,7 +482,20 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
                 return freed;
             }
 
-            return History.GetUntrackedLabel(pointer, Position) is { } label ? new ActionLinks([]) { Prefix = text, Suffix = label } : text;
+            if (History.GetUntrackedLabel(pointer, Position) is not { } label)
+            {
+                return text;
+            }
+
+            var isInstruction = History.IsExpressionInstruction(pointer);
+
+            return new ActionLinks([])
+            {
+                Prefix = text,
+                Suffix = label,
+                Badges = isInstruction ? [ExpressionInstructionBadge] : [],
+                BadgeColour = isInstruction ? ExpressionInstructionColour : null
+            };
         }
 
         if (target is null && History.GetPointerArray(pointer, Position) is [{ Block: >= 0 and var innerBlock, Value: var inner }])
@@ -504,9 +539,20 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     partial void OnIsCategoryVisibleChanged(bool value) => RefreshGenerated();
 
+    public void OpenPointer(MemoryHistoryPointer pointer)
+    {
+        if (pointer.Page is { } page)
+        {
+            Navigator?.OpenBufferPage(page);
+        }
+        else
+        {
+            RequestMemory(pointer.Value);
+        }
+    }
+
     private ActionLink GetTargetLink(MemoryHistoryPointer pointer)
-        => new(History.GetPointerName(pointer, Position),
-               pointer.Page is { } page ? () => Navigator?.OpenBufferPage(page) : () => RequestMemory(pointer.Value));
+        => new(History.GetPointerName(pointer, Position), () => OpenPointer(pointer));
 
     public void OpenHashTable()
     {

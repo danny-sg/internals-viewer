@@ -29,5 +29,7 @@ public sealed record ResultColumn(int Ordinal, string Name, Type ClrType, bool I
 
     public bool IsStar { get; set; }
 
+    public bool IsFitToRows { get; set; }
+
     public ResultAlignment Alignment { get; set; } = ResultAlignment.Left;
 }

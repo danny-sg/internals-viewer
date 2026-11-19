@@ -6,6 +6,9 @@ Value Reference|CValRefComp|Column|
 Value Reference|CValRefSS|Column|
 Value Reference|CValRefBatchRedirect|Column|
 Expression|COptExpr|Column|
+Expression Executor|CEsExec|Column|
+Compiled Expression|CEsComp|Column|
+Instructions|CXCodeInst|Row|
 Buffer|BUF|Column|
 Accessor Bindings|AccBindings|Column|
 Column Bindings|ColumnBinding|Row|ColumnBindingInfrequent

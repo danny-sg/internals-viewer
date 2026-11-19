@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Tabs;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Tabs.Enums;
 using InternalsViewer.Query.Results;
@@ -454,17 +455,29 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
     private List<MemoryField> GetRowBufferFields(MemoryHistoryReader memory)
         => Scan is { } scan ? AccessorBindingLayout.GetRowBufferFields(AccessorBindingLayout.ReadScanColumns(memory, scan.Iterator)) : [];
 
+    private static object? GetOperandCell(PlayheadMemoryViewModel owner, MemoryField field, ulong slot, ulong? value)
+        => field.Decoder == MemoryFieldDecoder.Operand && value is { } operand
+            ? owner.GetOperandCell(slot - (ulong)field.Offset, operand)
+            : null;
+
     private MemoryObjectTab CreateObjectTab(PlayheadMemoryViewModel owner, LayoutObject item, int index)
     {
         var table = item.Layout == MemoryTabLayout.Row
-            ? CreateRowTable(owner.History.Store.Layout, GetPointerCell, item, Colours[index], GetBytes)
+            ? CreateRowTable(owner.History.Store.Layout,
+                             GetPointerCell,
+                             item,
+                             Colours[index],
+                             GetBytes,
+                             owner.History.GetFunctionLabel,
+                             (field, slot, value) => GetOperandCell(owner, field, slot, value))
             : PutInfrastructureLast(CreateFieldTable(owner.History.Store.Layout,
                                                      GetPointerCell,
                                                      item.Address,
                                                      item.Fields,
                                                      item.Rows[0],
                                                      Colours[index],
-                                                     GetBytes),
+                                                     GetBytes,
+                                                     owner.History.GetFunctionLabel),
                                     item.Fields);
 
         var key = string.Join(";", item.Rows.Select(r => string.Join(",", r)));

@@ -30,6 +30,7 @@ public static class MemoryFieldDecoderLookup
         MemoryFieldDecoder.Bitmap => GetBitmapText(value),
         MemoryFieldDecoder.TypeInfo => SqlTypeInfo.Create(value, 0).ToString(),
         MemoryFieldDecoder.TypeDetails => GetTypeDetailsText(SqlTypeInfo.Create(0, value)),
+        MemoryFieldDecoder.Signed or MemoryFieldDecoder.Operand => $"{(int)(uint)value}",
         _ => $"{value}"
     };
 

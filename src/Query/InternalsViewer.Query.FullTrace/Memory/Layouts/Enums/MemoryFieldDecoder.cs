@@ -8,5 +8,7 @@ public enum MemoryFieldDecoder
     RecordOffset,
     Bitmap,
     TypeInfo,
-    TypeDetails
+    TypeDetails,
+    Signed,
+    Operand
 }

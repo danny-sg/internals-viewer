@@ -53,6 +53,8 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public ExpressionLayout Expression { get; } = new(Get(structures, "Expression"), Get(structures, "OperandArray"));
 
+    public CodeInstructionLayout CodeInstruction { get; } = new(Get(structures, "CXCodeInst"));
+
     public ExecutionContextLayout ExecutionContext { get; } = new(Get(structures, "CExecContext"));
 
     public QueryContextLayout QueryContext { get; } = new(Get(structures, "CQueryExecContext"));
@@ -506,6 +508,15 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
         public MemoryField OperandCountField { get; } = structure.Get("Operand Count");
 
         public MemoryField OperandField { get; } = operands.Get("Operand");
+    }
+
+    public sealed class CodeInstructionLayout(MemoryStructure structure)
+    {
+        public MemoryField HandlerField { get; } = structure.Get("Handler");
+
+        public MemoryField CountField { get; } = structure.Get("Count");
+
+        public MemoryField OperandField { get; } = structure.Get("Operand");
     }
 
     public sealed class ExecutionContextLayout(MemoryStructure structure)

@@ -21,6 +21,7 @@ Base|CValRefJoin|CValRefComp
 Base|CValRefCalculated|CValRefComp
 Base|CValHashCachedSwitch|CValExec
 Base|CValExpr|CValExec
+Base|CEsComp|Expression
 Size|SortEntry|0x28
 Size|HashItem|0x80
 Size|BUF|0xC0
@@ -30,6 +31,7 @@ Size|ColumnBinding|0x50
 Size|ColumnBindingInfrequent|0x30
 Size|tagDBBINDING|0x58
 Size|COptExpr|0xB0
+Size|CXCodeInst|0x20
 Value|CQScanNew|End Of Rows Status|0x40EC6
 Value|CQScanNew|Fake Row Status|0x4FFFF
 Value|BUF|Latch Exclusive Flag|0x02
@@ -141,7 +143,19 @@ CValHashCachedSwitch|Cached Type|0x21|1|Hex||
 CValHashCachedSwitch|Cached Value|0x28|8|Pointer||
 CValHashCachedSwitch|Cached Length|0x30|8|Number||
 CValExpr|Executor|0x08|8|Pointer||
+CEsExec|Evaluate|0x08|8|Pointer||
+CEsExec|Program|0x10|8|Pointer||
+CEsExec|Evaluation Stack|0x18|8|Pointer||
+CEsExec|Current Instruction|0x20|8|Pointer||
 CEsExec|Input Values|0x28|8|Pointer||
+CEsExec|Temporary Buffers|0x38|8|Pointer||
+CEsExec|Execution Context|0x48|8|Pointer||
+CEsExec|Query Execution Context|0x50|8|Pointer||
+CEsComp|Instructions|0x18|8|*CXCodeInst||
+CXCodeInst|Handler|0x00|8|Function||
+CXCodeInst|Count|0x08|4|Signed||
+CXCodeInst|Operand|0x0C|4|Operand||
+CXCodeInst|Target|0x10|8|Pointer||
 ExecutorArray|Executor|0x00|8|Pointer||
 ExecutorValueArray|Value|0x00|8|Pointer||
 COptExpr|Operator|0x10|8|Pointer||COptExpr::COptExpr

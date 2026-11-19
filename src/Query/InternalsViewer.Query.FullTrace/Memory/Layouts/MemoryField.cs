@@ -12,6 +12,10 @@ public sealed record MemoryField(string Name, int Offset, int Length, bool IsHex
 
     public string? Structure { get; init; }
 
+    public string? Target { get; init; }
+
+    public bool IsFunction { get; init; }
+
     public bool IsBytes { get; init; }
 
     public MemoryFieldDecoder? Decoder { get; init; }

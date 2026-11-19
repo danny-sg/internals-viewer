@@ -16,6 +16,12 @@ public class MemoryFieldDecoderLookupTests
         => Assert.Equal(expected, MemoryFieldDecoderLookup.GetText(EngineLayout.Latest, MemoryFieldDecoder.Latch, state));
 
     [Theory]
+    [InlineData(0xFFFFFFFFUL, "-1")]
+    [InlineData(3UL, "3")]
+    public void A_Signed_Value_Shows_Negative_Numbers(ulong value, string expected)
+        => Assert.Equal(expected, MemoryFieldDecoderLookup.GetText(EngineLayout.Latest, MemoryFieldDecoder.Signed, value));
+
+    [Theory]
     [InlineData(56UL, "Int")]
     [InlineData(167UL, "VarChar")]
     [InlineData(0xFFUL, "0xFF")]

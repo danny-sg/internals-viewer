@@ -18,6 +18,12 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
     private const string HeapMemory = "Heap";
 
+    private const string ListStart = "[";
+
+    private const string ListSeparator = ", ";
+
+    private const string ListEnd = "]";
+
     [ObservableProperty]
     private string _address = string.Empty;
 
@@ -31,6 +37,11 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _type = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTypeParts))]
+    [NotifyPropertyChangedFor(nameof(IsTypeText))]
+    private List<MemoryTypePart> _typeParts = [];
 
     [ObservableProperty]
     private string _length = string.Empty;
@@ -83,6 +94,10 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
     public bool HasMemoryKind => MemoryKind.Length > 0;
 
+    public bool HasTypeParts => TypeParts.Count > 0;
+
+    public bool IsTypeText => TypeParts.Count == 0;
+
     public bool IsReadVisible => !IsStack;
 
     public ulong BlockAddress { get; private set; }
@@ -112,6 +127,8 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         MemoryKind = block.IsStack ? StackMemory : HeapMemory;
 
         Type = owner.History.GetObjectName(owner.Block);
+
+        TypeParts = GetTypeParts(owner, block.Address, block.Size);
 
         Length = $"{block.Size:N0} Bytes";
 
@@ -155,6 +172,8 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
         Type = string.Empty;
 
+        TypeParts = [];
+
         Length = string.Empty;
 
         BlockAddress = 0;
@@ -178,6 +197,39 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         ReadCount = string.Empty;
 
         Readers = [];
+    }
+
+    private static List<MemoryTypePart> GetTypeParts(PlayheadMemoryViewModel owner, ulong address, int size)
+    {
+        var pointers = owner.History.GetListedPointers(owner.Block);
+
+        if (pointers.Count == 0)
+        {
+            return [];
+        }
+
+        List<MemoryTypePart> parts = [new(PointerArrayText.PointerName, () => owner.RequestMemory(address, size)), new(ListStart, null)];
+
+        for (var index = 0; index < Math.Min(pointers.Count, PointerArrayText.MaximumShown); index++)
+        {
+            if (index > 0)
+            {
+                parts.Add(new(ListSeparator, null));
+            }
+
+            var (name, pointer) = pointers[index];
+
+            parts.Add(new(name, () => owner.OpenPointer(pointer)));
+        }
+
+        if (pointers.Count > PointerArrayText.MaximumShown)
+        {
+            parts.Add(new($"{ListSeparator}{PointerArrayText.GetMoreText(pointers.Count)}", null));
+        }
+
+        parts.Add(new(ListEnd, null));
+
+        return parts;
     }
 
     private static MemoryWriterSummary GetWriter(PlayheadMemoryViewModel owner, int replayNodeIndex, int first, int count)

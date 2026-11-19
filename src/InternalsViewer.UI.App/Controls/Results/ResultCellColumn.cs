@@ -74,6 +74,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static readonly SolidColorBrush BadgeForeground = new(Microsoft.UI.Colors.Black);
 
+    private static readonly SolidColorBrush ColouredBadgeForeground = new(Microsoft.UI.Colors.White);
+
 
     public int Ordinal { get; } = ordinal;
 
@@ -100,18 +102,17 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     public static double MeasureWidth(object? value, double fontSize)
     {
-        var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
+        if (value is ActionLinks actions)
+        {
+            return MeasureActions(actions, fontSize);
+        }
 
-        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or ActionLinks or BadgeText
+        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or BadgeText
                             or ColouredText or Models.SwatchText or ActionText
             ? value.ToString()
             : ResultRowConverter.FormatValue(value);
 
-        HexText.Apply(block, text);
-
-        block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-
-        return block.DesiredSize.Width;
+        return CellPadding.Left + MeasureText(text, fontSize) + CellPadding.Right;
     }
 
     public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
@@ -484,9 +485,11 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         for (var index = 0; index < actions.Badges.Count; index++)
         {
-            if (panel.Children[first + actions.Links.Count + index] is Border { Child: TextBlock badge })
+            if (panel.Children[first + actions.Links.Count + index] is Border { Child: TextBlock badge } border)
             {
                 badge.Text = actions.Badges[index];
+
+                SetBadgeColour(border, badge, actions.BadgeColour);
             }
         }
 
@@ -505,6 +508,17 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         {
             SetObjectBadges(objects, actions.ObjectBadges);
         }
+    }
+
+    private static void SetBadgeColour(Border border, TextBlock badge, Windows.UI.Color? colour)
+    {
+        var background = colour is { } found ? new SolidColorBrush(found) : BadgeBackground;
+
+        border.Background = background;
+
+        border.BorderBrush = background;
+
+        badge.Foreground = colour is null ? BadgeForeground : ColouredBadgeForeground;
     }
 
     private static void SetObjectBadges(StackPanel panel, IReadOnlyList<ObjectBadge> badges)
@@ -797,6 +811,52 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 Foreground = BadgeForeground
             }
         };
+
+    private static double MeasureActions(ActionLinks actions, double fontSize)
+    {
+        var widths = new List<double>();
+
+        if (actions.Prefix is { } prefix)
+        {
+            widths.Add(MeasureText(prefix, fontSize) + 2 * LinkInset);
+        }
+
+        widths.AddRange(actions.Links.Select((l, i) => (l.Glyph is null ? MeasureText(l.Text, fontSize) : ActionGlyphSize)
+                                                       + 2 * LinkInset
+                                                       + (actions.IsChained && i > 0 ? ChainedLinkMargin.Left : 0)));
+
+        widths.AddRange(actions.Badges.Select(b => MeasureBadge(b) + BadgeBorder.Left + BadgeBorder.Right));
+
+        var label = actions.Targets.Count > 0 ? PointerArrayText.Get([.. actions.Targets.Select(t => t.Text)]) : actions.Suffix;
+
+        if (label is not null)
+        {
+            widths.Add(MeasureText(label, fontSize) + (actions.Badges.Count == 0 ? LabelMargin.Left : 0));
+        }
+
+        if (actions.ObjectBadges.Count > 0)
+        {
+            widths.Add(actions.ObjectBadges.Sum(b => MeasureBadge(b.Name))
+                       + BadgeSpacing * (actions.ObjectBadges.Count - 1)
+                       + ObjectBadgeMargin.Left);
+        }
+
+        return ActionPadding.Left + widths.Sum() + ActionSpacing * Math.Max(0, widths.Count - 1) + CellPadding.Right;
+    }
+
+    private static double MeasureBadge(string text)
+        => MeasureText(text, BadgeFontSize, FontWeights.SemiBold) + BadgePadding.Left + BadgePadding.Right;
+
+    private static double MeasureText(string? text, double fontSize, Windows.UI.Text.FontWeight? weight = null)
+    {
+        var block = new TextBlock { FontSize = fontSize, FontWeight = weight ?? FontWeights.Normal };
+
+        HexText.Apply(block, text);
+
+        block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+
+        return block.DesiredSize.Width;
+    }
 
     private static void OnActionClick(object sender, RoutedEventArgs e)
     {

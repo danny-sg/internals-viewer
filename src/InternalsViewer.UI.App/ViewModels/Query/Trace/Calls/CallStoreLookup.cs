@@ -137,12 +137,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, allocated) { Origin = entry };
         }
 
-        if (MemoryHistoryPointerReader.ReadArray(memoryHistory, bufferPool, value, GetPosition(slot, call)) is { } array)
+        if (GetPointerArrayLabel(value, GetPosition(slot, call)) is { } pointers)
         {
-            return new ValueDescription(address, PointerArrayText.Get([.. array.Select(p => GetTargetName(p, GetPosition(slot, call)))]))
-            {
-                Origin = entry
-            };
+            return new ValueDescription(address, pointers) { Origin = entry };
         }
 
         if ((entry?.Site ?? entry?.Allocator) is { } allocation)
@@ -317,6 +314,23 @@ public sealed class CallStoreLookup(TraceCallStore store,
         }
 
         return entry?.Site ?? $"0x{pointer.Value:X}";
+    }
+
+    private string? GetPointerArrayLabel(ulong value, TracePosition position)
+    {
+        if (memoryHistory.GetBlock(value, position) is >= 0 and var block
+            && memoryHistory.Blocks[block] is { IsStack: false } item
+            && item.Address == value)
+        {
+            return MemoryHistoryPointerReader.ReadLastArray(memoryHistory, bufferPool, block) is { } last
+                ? PointerArrayText.GetLabel([.. last.Pointers.Select(p => GetTargetName(p, last.Position))],
+                                            item.Size != MemoryHistoryPointerReader.PointerSize)
+                : null;
+        }
+
+        return MemoryHistoryPointerReader.ReadArray(memoryHistory, bufferPool, value, position) is { } array
+            ? PointerArrayText.GetLabel([.. array.Select(p => GetTargetName(p, position))], array.Count > 1)
+            : null;
     }
 
     private string? GetContentLabel(ulong value, TracePosition position)

@@ -15,6 +15,8 @@ public sealed record ActionLinks(IReadOnlyList<ActionLink> Links)
 
     public IReadOnlyList<string> Badges { get; init; } = [];
 
+    public Windows.UI.Color? BadgeColour { get; init; }
+
     public IReadOnlyList<ActionLink> Targets { get; init; } = [];
 
     public IReadOnlyList<ObjectBadge> ObjectBadges { get; init; } = [];

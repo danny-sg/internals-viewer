@@ -65,7 +65,31 @@
             <TextBlock Grid.Row="1" Grid.Column="2"
                        Text="{x:Bind ViewModel.Details.Type, Mode=OneWay}"
                        Style="{StaticResource DetailValueStyle}"
+                       Visibility="{x:Bind ViewModel.Details.IsTypeText, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                        ContextRequested="OnTypeContextRequested"/>
+            <ItemsControl Grid.Row="1" Grid.Column="2"
+                          ItemsSource="{x:Bind ViewModel.Details.TypeParts, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.Details.HasTypeParts, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                          ContextRequested="OnTypeContextRequested">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:MemoryTypePart">
+                        <Grid>
+                            <HyperlinkButton Content="{x:Bind Text}"
+                                             Style="{StaticResource DetailLinkStyle}"
+                                             Visibility="{x:Bind IsLink, Converter={StaticResource BoolToVisibilityConverter}}"
+                                             Click="OnTypePartClick"/>
+                            <TextBlock Text="{x:Bind Text}"
+                                       Style="{StaticResource DetailValueStyle}"
+                                       Visibility="{x:Bind IsText, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <controls:CopyButton Grid.Row="1"
                                  Grid.Column="1"
                                  Style="{StaticResource DetailCopyButtonStyle}"

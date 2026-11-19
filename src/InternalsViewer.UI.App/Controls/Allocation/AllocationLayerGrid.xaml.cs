@@ -76,6 +76,11 @@ public sealed partial class AllocationLayerGrid
 
     public AllocationLayerGridViewModel ViewModel { get; } = new();
 
+    public void ShowRows()
+    {
+        ViewModel.IsPreparing = false;
+    }
+
     private void LayerTable_OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         var layers = SelectedLayers.ToList();

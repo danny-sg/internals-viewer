@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Tabs;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
@@ -58,7 +59,8 @@ internal static class MemoryFieldTableBuilder
                                                   List<MemoryField> fields,
                                                   ulong?[] values,
                                                   List<Colour> colours,
-                                                  Func<ulong, int, string>? getBytes = null)
+                                                  Func<ulong, int, string>? getBytes = null,
+                                                  Func<ulong, string?>? getFunction = null)
     {
         var columns = new List<ResultColumn>
         {
@@ -74,7 +76,8 @@ internal static class MemoryFieldTableBuilder
                                                                               f,
                                                                               address + (ulong)f.Offset,
                                                                               values[i],
-                                                                              getBytes)])
+                                                                              getBytes,
+                                                                              getFunction)])
         {
             Id = i
         });
@@ -86,7 +89,9 @@ internal static class MemoryFieldTableBuilder
                                                 Func<ulong?, ulong, object> getPointerCell,
                                                 LayoutObject item,
                                                 List<Colour> colours,
-                                                Func<ulong, int, string>? getBytes = null)
+                                                Func<ulong, int, string>? getBytes = null,
+                                                Func<ulong, string?>? getFunction = null,
+                                                Func<MemoryField, ulong, ulong?, object?>? getCell = null)
     {
         var columns = new List<ResultColumn>
         {
@@ -95,19 +100,22 @@ internal static class MemoryFieldTableBuilder
 
         columns.AddRange(item.Fields.Select((f, i) => new ResultColumn(i + 1, f.Name, typeof(string), true)
         {
-            Width = RowFieldWidth,
+            Width = f.Decoder == MemoryFieldDecoder.Operand ? null : RowFieldWidth,
+            IsFitToRows = f.Decoder == MemoryFieldDecoder.Operand,
             MarkerColour = colours[i]
         }));
 
         var rows = item.Rows.Select((r, i) => new ResultRow<long>(
         [
             $"{i}",
-            .. item.Fields.Select((f, j) => GetValueCell(layout,
-                                                         getPointerCell,
-                                                         f,
-                                                         item.Address + (ulong)(i * item.Stride + f.Offset),
-                                                         r[j],
-                                                         getBytes))
+            .. item.Fields.Select((f, j) => getCell?.Invoke(f, item.Address + (ulong)(i * item.Stride + f.Offset), r[j])
+                                            ?? GetValueCell(layout,
+                                                            getPointerCell,
+                                                            f,
+                                                            item.Address + (ulong)(i * item.Stride + f.Offset),
+                                                            r[j],
+                                                            getBytes,
+                                                            getFunction))
         ])
         {
             Id = i
@@ -121,7 +129,8 @@ internal static class MemoryFieldTableBuilder
                                       MemoryField field,
                                       ulong? slot,
                                       ulong? value,
-                                      Func<ulong, int, string>? getBytes = null)
+                                      Func<ulong, int, string>? getBytes = null,
+                                      Func<ulong, string?>? getFunction = null)
     {
         if (value is not { } found)
         {
@@ -146,6 +155,11 @@ internal static class MemoryFieldTableBuilder
         if (field.IsHex)
         {
             return $"0x{found:X8}";
+        }
+
+        if (field.IsFunction)
+        {
+            return getFunction?.Invoke(found) ?? $"0x{found:X16}";
         }
 
         return field.IsPointer ? getPointerCell(slot, found) : $"{found}";

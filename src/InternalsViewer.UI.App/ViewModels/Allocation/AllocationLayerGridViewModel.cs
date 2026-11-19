@@ -21,6 +21,9 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<AllocationLayerRow> _dataSource = [];
 
+    [ObservableProperty]
+    private bool _isPreparing = true;
+
     private List<AllocationLayer> Layers { get; set; } = [];
 
     private string SortProperty { get; set; } = string.Empty;

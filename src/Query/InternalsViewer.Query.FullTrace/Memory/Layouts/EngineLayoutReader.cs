@@ -25,6 +25,8 @@ internal static class EngineLayoutReader
 
     private const string HexKind = "Hex";
 
+    private const string FunctionKind = "Function";
+
     private const string HexPrefix = "0x";
 
     private const string Wildcard = "*";
@@ -32,6 +34,8 @@ internal static class EngineLayoutReader
     private const char Separator = '|';
 
     private const char WriterSeparator = ',';
+
+    private const char TargetPrefix = '*';
 
     private const char RangeSeparator = '-';
 
@@ -120,6 +124,11 @@ internal static class EngineLayoutReader
             {
                 throw new InvalidDataException($"{name} has an unknown kind {unknown.Structure} on {structure.Name} {unknown.Name}");
             }
+
+            if (structure.Fields.FirstOrDefault(f => f.Target is { } target && !structures.ContainsKey(target)) is { } missing)
+            {
+                throw new InvalidDataException($"{name} has an unknown target {missing.Target} on {structure.Name} {missing.Name}");
+            }
         }
 
         return range is { } versions
@@ -155,12 +164,18 @@ internal static class EngineLayoutReader
 
         MemoryFieldDecoder? decoder = Enum.TryParse<MemoryFieldDecoder>(kind, out var found) ? found : null;
 
+        var target = kind.Length > 1 && kind[0] == TargetPrefix ? kind[1..] : null;
+
         var field = new MemoryField(columns[1], ReadNumber(columns[2]), ReadNumber(columns[3]), kind == HexKind)
         {
             Writers = columns[6].Length == 0 ? [] : columns[6].Split(WriterSeparator),
             IsNumber = kind is NumberKind or HexKind || decoder is not null,
             Decoder = decoder,
-            Structure = kind is PointerKind or NumberKind or HexKind || decoder is not null ? null : kind
+            Target = target,
+            IsFunction = kind == FunctionKind,
+            Structure = kind is PointerKind or FunctionKind or NumberKind or HexKind || decoder is not null || target is not null
+                ? null
+                : kind
         };
 
         return (field, columns[5].Length == 0 ? 1 : ReadNumber(columns[5]));

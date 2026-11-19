@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Database;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views;
@@ -26,11 +28,21 @@ public sealed partial class DatabaseView : IDisposable
         AllocationInfoAppBarToggleButton.Unchecked += AppBarToggleButton_Changed;
 
         AllocationTabView.Loaded += AllocationTabView_Loaded;
+
+        DataContextChanged += OnDataContextChanged;
+
+        VisibilityCallbackToken = RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
     }
 
     public DatabaseTabViewModel TabViewModel => (DatabaseTabViewModel)DataContext;
 
     public double AllocationMapHeight { get; set; }
+
+    private long VisibilityCallbackToken { get; }
+
+    private DatabaseTabViewModel? ObservedViewModel { get; set; }
+
+    private bool IsLayerGridReady => Visibility == Visibility.Visible && ObservedViewModel is { IsLoading: false };
 
     public Visibility ToInverseVisibility(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
 
@@ -52,6 +64,14 @@ public sealed partial class DatabaseView : IDisposable
         AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
         AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;
         AllocationTabView.Loaded -= AllocationTabView_Loaded;
+        DataContextChanged -= OnDataContextChanged;
+
+        UnregisterPropertyChangedCallback(VisibilityProperty, VisibilityCallbackToken);
+
+        if (ObservedViewModel is not null)
+        {
+            ObservedViewModel.PropertyChanged -= OnTabViewModelPropertyChanged;
+        }
 
         // Releases the connection, and with it the backup's file handles, decode window and page map
         _ = (DataContext as DatabaseTabViewModel)?.DisposeAsync().AsTask();
@@ -60,6 +80,47 @@ public sealed partial class DatabaseView : IDisposable
     private void AllocationTabView_Loaded(object sender, RoutedEventArgs e)
     {
         EnsureTabSelected();
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        if (ObservedViewModel is not null)
+        {
+            ObservedViewModel.PropertyChanged -= OnTabViewModelPropertyChanged;
+        }
+
+        ObservedViewModel = args.NewValue as DatabaseTabViewModel;
+
+        if (ObservedViewModel is not null)
+        {
+            ObservedViewModel.PropertyChanged += OnTabViewModelPropertyChanged;
+        }
+
+        ShowLayerRowsWhenReady();
+    }
+
+    private void OnTabViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DatabaseTabViewModel.IsLoading))
+        {
+            ShowLayerRowsWhenReady();
+        }
+    }
+
+    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
+    {
+        ShowLayerRowsWhenReady();
+    }
+
+    private void ShowLayerRowsWhenReady()
+    {
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (AllocationLayerGrid.ViewModel.IsPreparing && IsLayerGridReady)
+            {
+                AllocationLayerGrid.ShowRows();
+            }
+        });
     }
 
     private void EnsureTabSelected()

@@ -26,7 +26,10 @@ public class EngineLayoutTests
     [InlineData("CValHash", "Record Offset,Slot,Accessor")]
     [InlineData("CValSSTable", "Slot,Accessor")]
     [InlineData("CValHashCachedSwitch", "Value,Cached Status,Cached Type,Cached Value,Cached Length")]
-    [InlineData("CEsExec", "Input Values")]
+    [InlineData("CEsExec",
+                "Evaluate,Program,Evaluation Stack,Current Instruction,Input Values,Temporary Buffers,Execution Context,"
+                + "Query Execution Context")]
+    [InlineData("CEsComp", "Instructions,Operands,Operand Count")]
     [InlineData("CQScanTopNew", "Inputs,Plan Object,Execution Context,Top Count Expression")]
     [InlineData("CQScanUnknown", "")]
     public void A_Class_Has_Its_Own_Fields_And_Its_Base_Classes_Fields(string className, string expected)
@@ -108,6 +111,32 @@ public class EngineLayoutTests
         var text = ReadResources().Single(r => r.Name.EndsWith("SqlServer2025.psv", StringComparison.Ordinal)).Text;
 
         var reader = new StringReader(text + "BUF|Extra|0xB8|8|Missing||\n");
+
+        Assert.Throws<InvalidDataException>(() => EngineLayoutReader.Read("Test", reader));
+    }
+
+    [Fact]
+    public void A_Field_Whose_Kind_Starts_With_A_Star_Is_A_Pointer_To_That_Structure()
+    {
+        var field = EngineLayout.Latest.GetStructure("CEsComp").Get("Instructions");
+
+        Assert.Equal(("CXCodeInst", null, true), (field.Target, field.Structure, field.IsPointer));
+    }
+
+    [Fact]
+    public void A_Field_Whose_Kind_Is_Function_Is_A_Pointer_To_Code()
+    {
+        var field = EngineLayout.Latest.GetStructure("CXCodeInst").Get("Handler");
+
+        Assert.Equal((true, true, null), (field.IsFunction, field.IsPointer, field.Structure));
+    }
+
+    [Fact]
+    public void A_Pointer_To_An_Unknown_Structure_Is_Refused()
+    {
+        var text = ReadResources().Single(r => r.Name.EndsWith("SqlServer2025.psv", StringComparison.Ordinal)).Text;
+
+        var reader = new StringReader(text + "BUF|Extra|0xB8|8|*Missing||\n");
 
         Assert.Throws<InvalidDataException>(() => EngineLayoutReader.Read("Test", reader));
     }

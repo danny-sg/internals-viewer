@@ -34,6 +34,14 @@ public sealed partial class MemoryDetailsPanelView : UserControl
         }
     }
 
+    private void OnTypePartClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is HyperlinkButton { DataContext: MemoryTypePart { Open: { } open } })
+        {
+            open();
+        }
+    }
+
     private void OnWriterClick(object sender, RoutedEventArgs e)
     {
         if (sender is HyperlinkButton { DataContext: MemoryWriterSummary writer })

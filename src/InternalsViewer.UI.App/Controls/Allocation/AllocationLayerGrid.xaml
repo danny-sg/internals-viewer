@@ -41,6 +41,8 @@
                                  BorderThickness="0"
                                  Sorting="LayerTable_OnSorting"
                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                 Visibility="{x:Bind ViewModel.IsPreparing, Mode=OneWay,
+                                         Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                  ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
 
                 <tableView:TableView.Resources>
@@ -194,6 +196,12 @@
                     </tableView:TableViewTemplateColumn>
                 </tableView:TableView.Columns>
             </tableView:TableView>
+
+            <ProgressRing HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          IsActive="{x:Bind ViewModel.IsPreparing, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsPreparing, Mode=OneWay,
+                                  Converter={StaticResource BoolToVisibilityConverter}}"/>
         </Grid>
     </Grid>
 </UserControl>

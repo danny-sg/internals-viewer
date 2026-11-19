@@ -296,6 +296,12 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            && (trace.MemoryObjects.IsMemoryObject(value)
                || MemoryObjectMap.IsMemoryObjectClass(trace.AddressMap.GetEntry(value, position)?.ClassName));
 
+    public bool IsExpressionInstruction(ulong address) => Trace?.IsExpressionInstruction(address) == true;
+
+    public string? GetFunctionLabel(ulong address) => Trace?.GetModuleLabel(address);
+
+    public ulong? GetInstructionOperand(ulong instruction, TracePosition position) => Trace?.GetInstructionOperand(instruction, position);
+
     public string? GetUntrackedLabel(ulong address, TracePosition position)
     {
         if (Trace is not { } trace || Store.GetBlock(address, position) >= 0)
@@ -317,6 +323,11 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         => pointer.Page is { } page
             ? GetBufferPageLabel(page)
             : GetPointerDetail(pointer.Value) ?? GetPointerLabel(pointer.Value, position) ?? $"0x{pointer.Value:X16}";
+
+    public List<(string Name, MemoryHistoryPointer Pointer)> GetListedPointers(int block)
+        => GetLastArray(block) is { } array && GetElementNames(array) is { } names && names.Distinct().Count() > 1
+            ? [.. names.Select((name, index) => (name, array.Pointers[index]))]
+            : [];
 
     public List<MemoryHistoryPointer>? GetPointerArray(ulong address, TracePosition position)
         => Store.GetBlock(address, position) is >= 0 and var block && (IsUnnamed(block) || IsPointerArrayType(block))
@@ -513,7 +524,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         var vtableClass = GetVtableLabel(Store.Blocks[block]) ?? (IsUnclassified(block) ? Trace?.GetVtableClass(block) : null);
 
-        var type = Store.Layout.ResolveClass(GetMapLabel(Store.Blocks[block]), vtableClass) ?? vtableClass;
+        var type = Trace?.GetDeclaredType(block) ?? Store.Layout.ResolveClass(GetMapLabel(Store.Blocks[block]), vtableClass) ?? vtableClass;
 
         return GetIteratorTarget(block) is { } target ? IteratorLayout.GetLayoutType(Store.Layout, type, target.Type) : type;
     }
@@ -716,6 +727,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            ?? GetTablePartName(block)
            ?? GetMemoryObjectPageLabel(Store.Blocks[block])
            ?? GetVtableLabel(Store.Blocks[block])
+           ?? GetDeclaredLabel(block)
            ?? GetContentLabel(block)
            ?? GetListLabel(block)
            ?? GetAllocationTypeLabel(Store.Blocks[block])
@@ -749,14 +761,21 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         if (GetLastArray(block) is { } array)
         {
-            var types = array.Pointers.Select(p => GetElementType(p, array.Position)).Distinct().ToList();
-
-            label = GetPointerShape(block, types is [{ } type] ? $"{PointerLabel}<{type}>" : PointerLabel);
+            label = GetElementNames(array) is { } names
+                ? PointerArrayText.GetLabel(names, Store.Blocks[block].Size != MemoryHistoryPointerReader.PointerSize)
+                : GetPointerShape(block, PointerLabel);
         }
 
         PointerArrayLabels[block] = label;
 
         return label;
+    }
+
+    private List<string>? GetElementNames((List<MemoryHistoryPointer> Pointers, TracePosition Position) array)
+    {
+        var types = array.Pointers.Select(p => GetElementType(p, array.Position)).ToList();
+
+        return types.TrueForAll(t => t is null) ? null : [.. types.Select((t, i) => t ?? $"0x{array.Pointers[i].Value:X}")];
     }
 
     private string? GetElementType(MemoryHistoryPointer pointer, TracePosition position)
@@ -896,6 +915,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
             : TableParts.GetSortPart(block) is { } sort
                 ? SortTablePartLabel.GetName(sort)
                 : null;
+    }
+
+    private string? GetDeclaredLabel(int block)
+    {
+        if (Trace?.GetDeclaredType(block) is not { } type)
+        {
+            return null;
+        }
+
+        var size = Store.Layout.GetKnownSize(type);
+
+        var bytes = Store.Blocks[block].Size;
+
+        return size > 0 && bytes > size && bytes % size == 0 ? $"{type}[{bytes / size}]" : type;
     }
 
     private string? GetArrayLabel(int block)

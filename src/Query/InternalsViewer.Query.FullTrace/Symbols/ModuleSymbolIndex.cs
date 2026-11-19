@@ -47,6 +47,11 @@ internal sealed class ModuleSymbolIndex
             ? table.GetDecoratedName(symbol)
             : null;
 
+    public string? GetSignature(ulong value)
+        => Locate(value) is (_, { } table, var rva, >= 0 and var symbol) && table.GetRva(symbol) == rva
+            ? table.GetSignature(symbol)
+            : null;
+
     private (string Module, SymbolTable Table, uint Rva, int Symbol)? Locate(ulong value)
     {
         var index = SortedSearch.FirstAfter(Starts, value) - 1;
